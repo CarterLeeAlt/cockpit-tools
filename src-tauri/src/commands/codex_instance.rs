@@ -564,6 +564,53 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(test_root);
     }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_terminal_probe_detects_wt_exe_on_path() {
+        let temp = std::env::temp_dir().join(format!("cockpit-wt-probe-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp).expect("create temp dir");
+        std::fs::write(temp.join("wt.exe"), b"placeholder").expect("write wt.exe stub");
+
+        // Build a synthetic PATH-like OsString containing the temp dir. split_paths uses ';' as
+        // the separator on Windows. This never touches the real process environment, so it is
+        // safe to run alongside other tests.
+        let synthetic_path =
+            std::env::join_paths(std::iter::once(temp.as_path())).expect("join synthetic path");
+
+        let detected = windows_terminal_available_on_paths(Some(synthetic_path));
+
+        let _ = std::fs::remove_dir_all(&temp);
+        assert!(detected, "wt.exe on PATH should be detected");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_terminal_probe_returns_false_when_wt_absent() {
+        let temp =
+            std::env::temp_dir().join(format!("cockpit-wt-probe-empty-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp).expect("create temp dir");
+
+        let synthetic_path =
+            std::env::join_paths(std::iter::once(temp.as_path())).expect("join synthetic path");
+
+        let detected = windows_terminal_available_on_paths(Some(synthetic_path));
+
+        let _ = std::fs::remove_dir_all(&temp);
+        assert!(
+            !detected,
+            "wt.exe absent from the controlled PATH should not be detected"
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_terminal_probe_returns_false_when_path_unset() {
+        assert!(
+            !windows_terminal_available_on_paths(None),
+            "missing PATH should never report Windows Terminal available"
+        );
+    }
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -675,6 +722,28 @@ fn escape_applescript(value: &str) -> String {
         .replace('\\', "\\\\")
         .replace('"', "\\\"")
         .replace('\n', "\\n")
+}
+
+/// Whether Windows Terminal (`wt.exe`) is reachable on `PATH`.
+///
+/// Win11 ships `wt.exe` under `%LOCALAPPDATA%\Microsoft\WindowsApps` (on PATH by default) and
+/// exposes a system "Default terminal application" setting that redirects console hosts into
+/// Windows Terminal. Cockpit's `Command::spawn` uses `CreateProcess` directly and bypasses that
+/// redirection, so to honor the `default_terminal = "system"` contract we probe for `wt.exe`
+/// explicitly and route through Windows Terminal when it is available.
+#[cfg(target_os = "windows")]
+fn windows_terminal_available() -> bool {
+    windows_terminal_available_on_paths(std::env::var_os("PATH"))
+}
+
+#[cfg(target_os = "windows")]
+fn windows_terminal_available_on_paths(path: Option<std::ffi::OsString>) -> bool {
+    let candidates = ["wt.exe", "wt"];
+    // split_paths borrows its input, so iterate by reference over the owned OsString to keep it
+    // alive for the duration of the probe instead of consuming it in a flat_map closure.
+    let paths = path.as_deref();
+    std::env::split_paths(paths.unwrap_or_default())
+        .any(|dir| candidates.iter().any(|name| dir.join(name).is_file()))
 }
 
 #[tauri::command]
@@ -1681,11 +1750,18 @@ pub async fn codex_execute_instance_launch_command(
             .trim()
             .to_string();
 
+        // `system` means "honor the OS default terminal". On Windows 11 that is Windows Terminal
+        // for most users; route through `wt.exe` when it is available so the CLI launches inside a
+        // real terminal tab instead of a bare console host window. When `wt.exe` is absent (older
+        // Windows without Windows Terminal), fall back to the legacy PowerShell host.
+        let use_windows_terminal =
+            (terminal == "system" && windows_terminal_available()) || terminal == "wt";
+
         let mut cmd = if terminal == "pwsh" {
             let mut command_process = Command::new("pwsh");
             command_process.args(["-NoExit", "-Command", &command]);
             command_process
-        } else if terminal == "wt" {
+        } else if use_windows_terminal {
             let mut command_process = Command::new("wt");
             command_process.args(["powershell", "-NoExit", "-Command", &command]);
             command_process
