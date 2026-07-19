@@ -4475,6 +4475,57 @@ requires_openai_auth = false
     }
 
     #[test]
+    fn api_key_import_preserves_relay_pair_and_provider_identity() {
+        let _lock = TEST_ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let env = TestEnvGuard::new("codex-core-api-key-import-projection-test");
+        let account = CodexAccount::new_api_key(
+            "portable-relay".to_string(),
+            "portable-relay@example.com".to_string(),
+            "sk-core-imported-relay".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://core-imported-relay.example.com/v1".to_string()),
+            Some("core_imported_relay".to_string()),
+            Some("Core Imported Relay".to_string()),
+        );
+
+        let mut imported = super::import_account_struct(account).expect("import API key account");
+        assert_eq!(imported.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(
+            imported.api_provider_id.as_deref(),
+            Some("core_imported_relay")
+        );
+        assert_eq!(
+            imported.api_provider_name.as_deref(),
+            Some("Core Imported Relay")
+        );
+
+        let profile_dir = env.home_dir.join("imported-relay-profile");
+        write_account_bundle_to_dir(&profile_dir, &imported)
+            .expect("project imported API key account");
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(profile_dir.join("auth.json")).expect("read imported auth"),
+        )
+        .expect("parse imported auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-core-imported-relay");
+        let config =
+            fs::read_to_string(profile_dir.join("config.toml")).expect("read imported config");
+        assert!(config.contains("openai_base_url = \"https://core-imported-relay.example.com/v1\""));
+        assert!(!config.contains("model_provider = "));
+        assert!(!config.contains("[model_providers.core_imported_relay]"));
+
+        sync_api_key_account_from_local_state(&mut imported, &profile_dir);
+        assert_eq!(imported.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(
+            imported.api_provider_id.as_deref(),
+            Some("core_imported_relay")
+        );
+        assert_eq!(
+            imported.api_provider_name.as_deref(),
+            Some("Core Imported Relay")
+        );
+    }
+
+    #[test]
     fn quick_config_reads_custom_context_window_without_hiding_it() {
         let base_dir = make_temp_dir("codex-quick-config-custom-window-test");
         let config_path = base_dir.join("config.toml");

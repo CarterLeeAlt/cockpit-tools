@@ -8783,6 +8783,60 @@ mod tests {
     }
 
     #[test]
+    fn portable_api_key_import_projects_its_own_relay_credentials() {
+        let _lock = crate::modules::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        let env = TestEnvGuard::new("codex-portable-api-key-import-projection-test");
+        let account = parse_codex_account_compat(
+            serde_json::json!({
+                "auth_mode": "apikey",
+                "OPENAI_API_KEY": "sk-imported-relay",
+                "api_base_url": "https://imported-relay.example.com/v1",
+                "api_provider_id": "imported_relay",
+                "api_provider_name": "Imported Relay",
+                "api_wire_api": "responses",
+                "api_supports_websockets": true,
+                "email": "imported-relay@example.com"
+            }),
+            "portable-import-source",
+            None,
+        )
+        .expect("parse portable API key account")
+        .expect("portable API key account");
+
+        let mut imported = super::import_account_struct(account).expect("import API key account");
+        assert_eq!(imported.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(imported.api_provider_id.as_deref(), Some("imported_relay"));
+        assert_eq!(
+            imported.api_provider_name.as_deref(),
+            Some("Imported Relay")
+        );
+
+        let profile_dir = env.home_dir.join("imported-relay-profile");
+        write_account_bundle_to_dir(&profile_dir, &imported)
+            .expect("project imported API key account");
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(profile_dir.join("auth.json")).expect("read imported auth"),
+        )
+        .expect("parse imported auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-imported-relay");
+        let config =
+            fs::read_to_string(profile_dir.join("config.toml")).expect("read imported config");
+        assert!(config.contains("openai_base_url = \"https://imported-relay.example.com/v1\""));
+        assert!(!config.contains("codex_local_access"));
+        assert!(!config.contains("[model_providers.imported_relay]"));
+
+        sync_api_key_account_from_local_state(&mut imported, &profile_dir);
+        assert_eq!(imported.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(imported.api_provider_id.as_deref(), Some("imported_relay"));
+        assert_eq!(
+            imported.api_provider_name.as_deref(),
+            Some("Imported Relay")
+        );
+    }
+
+    #[test]
     fn compat_disables_websockets_for_chat_completions_account() {
         let account = parse_codex_account_compat(
             serde_json::json!({
@@ -11752,6 +11806,13 @@ supports_websockets = false
         let config = fs::read_to_string(profile_dir.join("config.toml")).expect("read config");
         assert!(config.contains("model_catalog_json = \"cockpit-provider-model-catalog.json\""));
         assert!(config.contains("model = \"custom-b\""));
+        assert!(config.contains("openai_base_url = \"https://relay.example.com/v1\""));
+        assert!(!config.contains("codex_local_access"));
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(profile_dir.join("auth.json")).expect("read instance auth"),
+        )
+        .expect("parse instance auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-upsert-model-catalog");
         assert!(profile_dir
             .join(super::CODEX_MANAGED_MODEL_CATALOG_FILE)
             .exists());
