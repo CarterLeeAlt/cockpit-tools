@@ -3858,6 +3858,24 @@ mod tests {
     }
 
     #[test]
+    fn relay_openai_base_url_keeps_history_visibility_on_builtin_openai() {
+        let data_dir = make_temp_dir("codex-session-visibility-relay-provider-test");
+        fs::write(
+            data_dir.join(CONFIG_FILE_NAME),
+            "openai_base_url = \"https://relay.example.com/v1\"\n",
+        )
+        .expect("write relay config");
+
+        assert_eq!(
+            read_history_visibility_provider_for_dir(&data_dir)
+                .expect("read history visibility provider"),
+            DEFAULT_PROVIDER_ID
+        );
+
+        fs::remove_dir_all(&data_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
     fn sqlite_repair_marks_threads_with_first_user_message_visible() {
         let data_dir = make_temp_dir("codex-session-visibility-sqlite-test");
         let db_path = data_dir.join(STATE_DB_FILE);
