@@ -8660,14 +8660,15 @@ mod tests {
         should_accept_authority_snapshot, sync_account_from_auth_dir,
         sync_api_key_account_from_local_state, sync_api_key_provider_accounts,
         sync_managed_projection_from_auth_dir, try_parse_pending_oauth_delimited_line,
-        upsert_account, upsert_account_for_reauth, upsert_account_from_access_token,
-        upsert_account_from_access_token_with_hints, upsert_account_from_auth_tokens,
-        upsert_api_key_account, validate_api_key_credentials, write_account_bundle_to_dir,
-        write_api_key_bearer_provider_override_to_config_toml, write_api_provider_to_config_toml,
-        write_auth_file_to_dir, write_managed_projection_to_dir, write_quick_config_to_config_toml,
-        ApiProviderConfig, CodexAccessTokenImportHints, CodexAccountGroupRecord, CodexAccountIndex,
-        CodexAccountSummary, CodexAuthFile, CodexAuthTokens, CodexGroupQuotaRefreshPolicy,
-        CodexJsonImportCandidate, LocalCodexOAuthSnapshot, CODEX_ACCOUNT_DETAIL_SCHEMA_VERSION,
+        update_api_key_credentials, upsert_account, upsert_account_for_reauth,
+        upsert_account_from_access_token, upsert_account_from_access_token_with_hints,
+        upsert_account_from_auth_tokens, upsert_api_key_account, validate_api_key_credentials,
+        write_account_bundle_to_dir, write_api_key_bearer_provider_override_to_config_toml,
+        write_api_provider_to_config_toml, write_auth_file_to_dir, write_managed_projection_to_dir,
+        write_quick_config_to_config_toml, ApiProviderConfig, CodexAccessTokenImportHints,
+        CodexAccountGroupRecord, CodexAccountIndex, CodexAccountSummary, CodexAuthFile,
+        CodexAuthTokens, CodexGroupQuotaRefreshPolicy, CodexJsonImportCandidate,
+        LocalCodexOAuthSnapshot, CODEX_ACCOUNT_DETAIL_SCHEMA_VERSION,
         CODEX_AUTHORIZATION_STATUS_PENDING, CODEX_AUTO_COMPACT_DEFAULT_LIMIT,
         CODEX_CONTEXT_WINDOW_1M_VALUE, CODEX_DISABLE_HOSTED_IMAGE_GENERATION_HEADER,
         CODEX_DISABLE_HOSTED_IMAGE_GENERATION_HEADER_VALUE, CODEX_IMAGEGEN_ACTOR_HEADER,
@@ -10893,6 +10894,125 @@ multi_agent = true
     }
 
     #[test]
+    fn api_key_account_switch_updates_relay_key_and_base_url_together() {
+        let base_dir = make_temp_dir("codex-api-key-relay-switch-test");
+        let mut first = CodexAccount::new_api_key(
+            "relay-a".to_string(),
+            "relay-a@example.com".to_string(),
+            "sk-relay-a".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay-a.example.com/v1".to_string()),
+            Some("relay_a".to_string()),
+            Some("Relay A".to_string()),
+            Vec::new(),
+        );
+        first.api_wire_api = Some("responses".to_string());
+
+        write_auth_file_to_dir(&base_dir, &first).expect("write first relay account");
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(base_dir.join("auth.json")).expect("read first auth"),
+        )
+        .expect("parse first auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-relay-a");
+        let config = fs::read_to_string(base_dir.join("config.toml")).expect("read first config");
+        assert!(config.contains("openai_base_url = \"https://relay-a.example.com/v1\""));
+        assert!(!config.contains("codex_local_access"));
+
+        sync_api_key_account_from_local_state(&mut first, &base_dir);
+        assert_eq!(first.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(first.api_provider_id.as_deref(), Some("relay_a"));
+        assert_eq!(first.api_provider_name.as_deref(), Some("Relay A"));
+
+        let mut second = CodexAccount::new_api_key(
+            "relay-b".to_string(),
+            "relay-b@example.com".to_string(),
+            "sk-relay-b".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay-b.example.com/v1".to_string()),
+            Some("relay_b".to_string()),
+            Some("Relay B".to_string()),
+            Vec::new(),
+        );
+        second.api_wire_api = Some("responses".to_string());
+
+        write_auth_file_to_dir(&base_dir, &second).expect("write second relay account");
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(base_dir.join("auth.json")).expect("read second auth"),
+        )
+        .expect("parse second auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-relay-b");
+        let config = fs::read_to_string(base_dir.join("config.toml")).expect("read second config");
+        assert!(config.contains("openai_base_url = \"https://relay-b.example.com/v1\""));
+        assert!(!config.contains("relay-a.example.com"));
+        assert!(!config.contains("codex_local_access"));
+
+        fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn editing_current_api_key_account_rewrites_relay_key_and_base_url() {
+        let _lock = crate::modules::test_support::env_lock()
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
+        let env = TestEnvGuard::new("codex-api-key-edit-runtime-test");
+        let mut account = CodexAccount::new_api_key(
+            "relay-before-edit".to_string(),
+            "relay-before@example.com".to_string(),
+            "sk-before-edit".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://before.example.com/v1".to_string()),
+            Some("before_relay".to_string()),
+            Some("Before Relay".to_string()),
+            Vec::new(),
+        );
+        account.api_wire_api = Some("responses".to_string());
+        save_account(&account).expect("save API key account");
+        let mut index = CodexAccountIndex::new();
+        index.current_account_id = Some(account.id.clone());
+        index.accounts.push(CodexAccountSummary {
+            id: account.id.clone(),
+            email: account.email.clone(),
+            plan_type: account.plan_type.clone(),
+            subscription_active_until: account.subscription_active_until.clone(),
+            created_at: account.created_at,
+            last_used: account.last_used,
+        });
+        save_account_index(&index).expect("mark account current");
+        write_account_bundle_to_dir(&env.codex_home(), &account).expect("write initial account");
+
+        let updated = update_api_key_credentials(
+            &account.id,
+            "sk-after-edit".to_string(),
+            Some("https://after.example.com/v1".to_string()),
+            Some(CodexApiProviderMode::Custom),
+            Some("after_relay".to_string()),
+            Some("After Relay".to_string()),
+            Vec::new(),
+            Some(false),
+            Some("responses".to_string()),
+            false,
+            false,
+            std::collections::HashMap::new(),
+            None,
+        )
+        .expect("update API key account");
+
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(env.codex_home().join("auth.json")).expect("read edited auth"),
+        )
+        .expect("parse edited auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-after-edit");
+        let config =
+            fs::read_to_string(env.codex_home().join("config.toml")).expect("read edited config");
+        assert!(config.contains("openai_base_url = \"https://after.example.com/v1\""));
+        assert!(!config.contains("before.example.com"));
+        assert!(!config.contains("codex_local_access"));
+        assert_eq!(updated.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(updated.api_provider_id.as_deref(), Some("after_relay"));
+        assert_eq!(updated.api_provider_name.as_deref(), Some("After Relay"));
+    }
+
+    #[test]
     fn api_key_config_toml_enables_imagegen_for_capable_provider() {
         let base_dir = make_temp_dir("codex-api-key-config-imagegen-test");
         let config_path = base_dir.join("config.toml");
@@ -11225,6 +11345,25 @@ supports_websockets = false
             .unwrap_or_else(|err| err.into_inner());
         let _env = TestEnvGuard::new("codex-api-key-bound-oauth-no-image-test");
         let base_dir = make_temp_dir("codex-api-key-bound-oauth-no-image-test");
+        let mut previous_relay = CodexAccount::new_api_key(
+            "previous-relay".to_string(),
+            "previous-relay@example.com".to_string(),
+            "sk-previous".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://previous-relay.example.com/v1".to_string()),
+            Some("previous_relay".to_string()),
+            Some("Previous Relay".to_string()),
+            Vec::new(),
+        );
+        previous_relay.api_wire_api = Some("responses".to_string());
+        write_account_bundle_to_dir(&base_dir, &previous_relay)
+            .expect("write previous built-in relay bundle");
+        let previous_config =
+            fs::read_to_string(base_dir.join("config.toml")).expect("read previous config");
+        assert!(
+            previous_config.contains("openai_base_url = \"https://previous-relay.example.com/v1\"")
+        );
+
         let mut oauth = CodexAccount::new(
             "oauth-bound-no-image-test".to_string(),
             "oauth-no-image@example.com".to_string(),
@@ -11254,6 +11393,9 @@ supports_websockets = false
 
         let content = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
         assert!(content.contains("requires_openai_auth = true"));
+        assert!(content.contains("base_url = \"https://relay.example.com/v1\""));
+        assert!(!content.contains("previous-relay.example.com"));
+        assert!(!content.contains("openai_base_url"));
         assert!(
             !content.contains(CODEX_IMAGEGEN_ACTOR_HEADER),
             "no image model in catalog → no actor: {content}"
