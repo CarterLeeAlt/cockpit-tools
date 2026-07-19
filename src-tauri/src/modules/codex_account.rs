@@ -287,6 +287,35 @@ fn infer_api_provider_config(
     })
 }
 
+fn canonical_openai_base_url_for_match(raw: Option<&str>) -> Option<String> {
+    normalize_api_base_url(raw)
+        .filter(|base_url| !is_default_openai_base_url(base_url))
+        .and_then(|base_url| normalize_api_base_url_for_match(Some(&base_url)))
+}
+
+fn should_preserve_account_provider_identity(
+    account_provider: &ApiProviderConfig,
+    config_provider: &ApiProviderConfig,
+    local_base_url: Option<&str>,
+) -> bool {
+    if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
+        return true;
+    }
+    if config_provider.provider_id.is_some()
+        && config_provider.provider_id.as_deref() != Some(CODEX_OPENAI_PROVIDER_ID)
+    {
+        return false;
+    }
+
+    matches!(
+        (
+            canonical_openai_base_url_for_match(local_base_url),
+            canonical_openai_base_url_for_match(account_provider.base_url.as_deref()),
+        ),
+        (Some(local), Some(account)) if local == account
+    )
+}
+
 fn is_http_like_url(raw: &str) -> bool {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -922,6 +951,14 @@ fn write_api_provider_to_config_toml(
     base_dir: &Path,
     provider_config: &ApiProviderConfig,
 ) -> Result<(), String> {
+    write_api_provider_to_config_toml_with_options(base_dir, provider_config, true)
+}
+
+fn write_api_provider_to_config_toml_with_options(
+    base_dir: &Path,
+    provider_config: &ApiProviderConfig,
+    cleanup_managed_model_catalog: bool,
+) -> Result<(), String> {
     let config_path = get_config_toml_path(base_dir);
     let normalized = provider_config.base_url.clone();
 
@@ -939,7 +976,9 @@ fn write_api_provider_to_config_toml(
 
     match provider_config.mode {
         CodexApiProviderMode::OpenaiBuiltin => {
-            remove_managed_model_catalog_from_doc(&mut doc);
+            if cleanup_managed_model_catalog {
+                remove_managed_model_catalog_from_doc(&mut doc);
+            }
             let _ = doc.remove(CODEX_CONFIG_MODEL_PROVIDER_KEY);
             remove_managed_api_key_model_providers_from_doc(&mut doc);
             #[cfg(target_os = "windows")]
@@ -1156,22 +1195,11 @@ fn cleanup_managed_model_catalog_for_dir(base_dir: &Path) -> Result<bool, String
 }
 
 fn collect_managed_api_key_provider_ids() -> HashSet<String> {
-    let mut ids = HashSet::from([
+    HashSet::from([
         CODEX_RUNTIME_MODEL_PROVIDER_ID.to_string(),
         CODEX_COCKPIT_API_PROVIDER_ID.to_string(),
         CODEX_LEGACY_API_KEY_OPENAI_PROVIDER_ID.to_string(),
-    ]);
-
-    for account in list_accounts() {
-        if !account.is_api_key_auth() {
-            continue;
-        }
-        if let Some(provider_id) = normalize_optional_ref(account.api_provider_id.as_deref()) {
-            ids.insert(provider_id);
-        }
-    }
-
-    ids
+    ])
 }
 
 fn remove_managed_api_key_model_providers_from_doc(doc: &mut Document) {
@@ -1324,7 +1352,7 @@ fn set_imagegen_headers(provider_table: &mut toml_edit::Table, images_only_for_c
     }
 }
 
-fn write_api_key_provider_to_config_toml(
+fn write_api_key_bearer_provider_override_to_config_toml(
     base_dir: &Path,
     provider_config: &ApiProviderConfig,
     bearer_token: &str,
@@ -1334,6 +1362,8 @@ fn write_api_key_provider_to_config_toml(
     // false → 纯 API Key，配合 actor 走 bearer 生图。
     require_openai_auth: bool,
 ) -> Result<(), String> {
+    // This is the compatibility path for runtimes that need a bearer distinct from auth.json or
+    // provider-only capabilities that Codex's built-in `openai` entry cannot be configured with.
     let config_path = get_config_toml_path(base_dir);
     let bearer_token = normalize_api_key(bearer_token)
         .ok_or_else(|| "API Key 账号缺少可写入 provider 的密钥".to_string())?;
@@ -1355,6 +1385,9 @@ fn write_api_key_provider_to_config_toml(
             .map_err(|e| format!("解析 config.toml 失败: {}", e))?
     };
 
+    // A custom compatibility provider owns its endpoint. Drop any URL left by the previously
+    // active built-in OpenAI relay so two accounts' routing state cannot coexist.
+    let _ = doc.remove(CODEX_CONFIG_OPENAI_BASE_URL_KEY);
     doc[CODEX_CONFIG_MODEL_PROVIDER_KEY] = value(CODEX_RUNTIME_MODEL_PROVIDER_ID);
     if doc.get(CODEX_CONFIG_MODEL_PROVIDERS_KEY).is_none() {
         doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY] = toml_edit::table();
@@ -1403,6 +1436,74 @@ fn write_api_key_provider_to_config_toml(
     let content = crate::modules::codex_config_format::codex_config_doc_to_string(&mut doc);
     crate::modules::codex_config_format::write_codex_config_toml_atomic(&config_path, &content)
         .map_err(|e| format!("写入 config.toml 失败: {}", e))
+}
+
+fn write_api_key_builtin_openai_to_config_toml(
+    base_dir: &Path,
+    provider_config: &ApiProviderConfig,
+    cleanup_managed_model_catalog: bool,
+) -> Result<(), String> {
+    // Provider id/name remain user-facing Cockpit metadata. A Responses-compatible relay uses the
+    // built-in Codex provider at runtime and changes only its account-specific `openai_base_url`.
+    let builtin_openai_config = resolve_api_provider_config(
+        provider_config.base_url.as_deref(),
+        Some(CodexApiProviderMode::OpenaiBuiltin),
+        None,
+        None,
+    )?;
+    write_api_provider_to_config_toml_with_options(
+        base_dir,
+        &builtin_openai_config,
+        cleanup_managed_model_catalog,
+    )
+}
+
+fn api_key_account_requires_bearer_provider_override(
+    account: &CodexAccount,
+    provider_config: &ApiProviderConfig,
+    oauth_bound: bool,
+) -> bool {
+    let base_url = provider_config
+        .base_url
+        .as_deref()
+        .unwrap_or(CODEX_DEFAULT_OPENAI_BASE_URL);
+    let uses_local_runtime = provider_config.provider_id.as_deref()
+        == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID)
+        && is_loopback_http_base_url(Some(base_url));
+
+    oauth_bound
+        || uses_local_runtime
+        || crate::modules::codex_local_access::account_requires_provider_gateway(account)
+        || api_key_provider_should_enable_imagegen(account, provider_config)
+}
+
+fn write_api_key_runtime_provider_to_config_toml(
+    base_dir: &Path,
+    account: &CodexAccount,
+    provider_config: &ApiProviderConfig,
+    oauth_bound: bool,
+    cleanup_managed_model_catalog: bool,
+) -> Result<(), String> {
+    if !api_key_account_requires_bearer_provider_override(account, provider_config, oauth_bound) {
+        return write_api_key_builtin_openai_to_config_toml(
+            base_dir,
+            provider_config,
+            cleanup_managed_model_catalog,
+        );
+    }
+
+    let api_key = normalize_api_key(account.openai_api_key.as_deref().unwrap_or_default())
+        .ok_or_else(|| "API Key 账号缺少 OPENAI_API_KEY".to_string())?;
+    let supports_image = api_key_provider_should_enable_imagegen(account, provider_config);
+    write_api_key_bearer_provider_override_to_config_toml(
+        base_dir,
+        provider_config,
+        &api_key,
+        account.api_provider_mode == CodexApiProviderMode::Custom
+            && account.api_supports_websockets,
+        supports_image,
+        oauth_bound || !supports_image,
+    )
 }
 
 pub(crate) fn client_instance_id_for_profile_dir(base_dir: &Path) -> String {
@@ -4192,25 +4293,42 @@ fn sync_api_key_account_from_local_state(account: &mut CodexAccount, base_dir: &
         return;
     }
 
-    let provider_mode = config_provider.mode.clone();
-    let provider_id = config_provider.provider_id.as_deref();
-    let provider_name = config_provider.provider_name.as_deref();
     let resolved_base_url = extract_api_base_url_from_auth_file(&auth_file)
         .or_else(|| config_provider.base_url.clone());
     if is_loopback_http_base_url(resolved_base_url.as_deref()) {
         return;
     }
-    let current_provider = infer_api_provider_config(
-        resolved_base_url.as_deref(),
-        Some(provider_mode),
-        provider_id,
-        provider_name,
-    );
     let account_provider = infer_api_provider_config(
         account.api_base_url.as_deref(),
         Some(account.api_provider_mode.clone()),
         account.api_provider_id.as_deref(),
         account.api_provider_name.as_deref(),
+    );
+    let preserve_account_provider_identity = should_preserve_account_provider_identity(
+        &account_provider,
+        &config_provider,
+        resolved_base_url.as_deref(),
+    );
+    let provider_mode = if preserve_account_provider_identity {
+        account.api_provider_mode.clone()
+    } else {
+        config_provider.mode.clone()
+    };
+    let provider_id = if preserve_account_provider_identity {
+        account.api_provider_id.as_deref()
+    } else {
+        config_provider.provider_id.as_deref()
+    };
+    let provider_name = if preserve_account_provider_identity {
+        account.api_provider_name.as_deref()
+    } else {
+        config_provider.provider_name.as_deref()
+    };
+    let current_provider = infer_api_provider_config(
+        resolved_base_url.as_deref(),
+        Some(provider_mode),
+        provider_id,
+        provider_name,
     );
 
     if account_provider == current_provider {
@@ -4512,24 +4630,18 @@ pub fn write_auth_file_to_dir(base_dir: &Path, account: &CodexAccount) -> Result
     })?;
 
     let provider_config = if account.is_api_key_auth() {
-        let api_key = normalize_api_key(account.openai_api_key.as_deref().unwrap_or_default())
-            .ok_or_else(|| "API Key 账号缺少 OPENAI_API_KEY".to_string())?;
         let provider_config = infer_api_provider_config(
             account.api_base_url.as_deref(),
             Some(account.api_provider_mode.clone()),
             account.api_provider_id.as_deref(),
             account.api_provider_name.as_deref(),
         );
-        let supports_image = api_key_provider_should_enable_imagegen(account, &provider_config);
-        write_api_key_provider_to_config_toml(
+        write_api_key_runtime_provider_to_config_toml(
             base_dir,
+            account,
             &provider_config,
-            &api_key,
-            account.api_provider_mode == CodexApiProviderMode::Custom
-                && account.api_supports_websockets,
-            supports_image,
-            // 纯 API Key：有生图时关闭 openai auth 门，走 bearer + actor。
-            !supports_image,
+            false,
+            true,
         )?;
         provider_config
     } else {
@@ -4617,28 +4729,17 @@ fn write_api_key_provider_override_to_config_toml(
     base_dir: &Path,
     api_key_account: &CodexAccount,
 ) -> Result<ApiProviderConfig, String> {
-    let api_key = normalize_api_key(
-        api_key_account
-            .openai_api_key
-            .as_deref()
-            .unwrap_or_default(),
-    )
-    .ok_or_else(|| "API Key 账号缺少 OPENAI_API_KEY".to_string())?;
     let provider_config = infer_api_provider_config(
         api_key_account.api_base_url.as_deref(),
         Some(api_key_account.api_provider_mode.clone()),
         api_key_account.api_provider_id.as_deref(),
         api_key_account.api_provider_name.as_deref(),
     );
-    // 绑定 OAuth 一律 requires_openai_auth=true（显示/使用 OAuth 登录态）。
-    // 生图：与纯 API Key 同一判定——本地 loopback 始终开；第三方仅目录含 gpt-image-2。
-    let supports_image = api_key_provider_should_enable_imagegen(api_key_account, &provider_config);
-    write_api_key_provider_to_config_toml(
+    write_api_key_runtime_provider_to_config_toml(
         base_dir,
+        api_key_account,
         &provider_config,
-        &api_key,
-        api_key_account.api_supports_websockets,
-        supports_image,
+        true,
         true,
     )?;
     Ok(provider_config)
@@ -4658,23 +4759,18 @@ fn refresh_api_key_provider_projection_in_dir(
             return Ok(());
         }
     }
-    let api_key = normalize_api_key(account.openai_api_key.as_deref().unwrap_or_default())
-        .ok_or_else(|| "API Key 账号缺少 OPENAI_API_KEY".to_string())?;
     let provider_config = infer_api_provider_config(
         account.api_base_url.as_deref(),
         Some(account.api_provider_mode.clone()),
         account.api_provider_id.as_deref(),
         account.api_provider_name.as_deref(),
     );
-    let supports_image = api_key_provider_should_enable_imagegen(account, &provider_config);
-    write_api_key_provider_to_config_toml(
+    write_api_key_runtime_provider_to_config_toml(
         base_dir,
+        account,
         &provider_config,
-        &api_key,
-        account.api_provider_mode == CodexApiProviderMode::Custom
-            && account.api_supports_websockets,
-        supports_image,
-        !supports_image,
+        false,
+        false,
     )?;
     Ok(())
 }
@@ -8567,9 +8663,9 @@ mod tests {
         upsert_account, upsert_account_for_reauth, upsert_account_from_access_token,
         upsert_account_from_access_token_with_hints, upsert_account_from_auth_tokens,
         upsert_api_key_account, validate_api_key_credentials, write_account_bundle_to_dir,
-        write_api_key_provider_to_config_toml, write_api_provider_to_config_toml,
-        write_managed_projection_to_dir, write_quick_config_to_config_toml, ApiProviderConfig,
-        CodexAccessTokenImportHints, CodexAccountGroupRecord, CodexAccountIndex,
+        write_api_key_bearer_provider_override_to_config_toml, write_api_provider_to_config_toml,
+        write_auth_file_to_dir, write_managed_projection_to_dir, write_quick_config_to_config_toml,
+        ApiProviderConfig, CodexAccessTokenImportHints, CodexAccountGroupRecord, CodexAccountIndex,
         CodexAccountSummary, CodexAuthFile, CodexAuthTokens, CodexGroupQuotaRefreshPolicy,
         CodexJsonImportCandidate, LocalCodexOAuthSnapshot, CODEX_ACCOUNT_DETAIL_SCHEMA_VERSION,
         CODEX_AUTHORIZATION_STATUS_PENDING, CODEX_AUTO_COMPACT_DEFAULT_LIMIT,
@@ -10484,6 +10580,9 @@ mod tests {
         let config_path = base_dir.join("config.toml");
         let content = fs::read_to_string(&config_path).expect("read config");
         assert!(content.contains("openai_base_url = \"https://api.example.com\""));
+        #[cfg(target_os = "windows")]
+        assert!(content.contains("model_provider = \"openai\""));
+        #[cfg(not(target_os = "windows"))]
         assert!(!content.contains("model_provider = "));
         assert!(!content.contains("codex_local_access"));
         assert_eq!(
@@ -10567,6 +10666,9 @@ requires_openai_auth = false
         write_api_provider_to_config_toml(&base_dir, &provider_config).expect("write config");
 
         let content = fs::read_to_string(&config_path).expect("read config");
+        #[cfg(target_os = "windows")]
+        assert!(content.contains("model_provider = \"openai\""));
+        #[cfg(not(target_os = "windows"))]
         assert!(!content.contains("model_provider = "));
         assert!(!content.contains("[model_providers.codex_local_access]"));
         assert!(!content.contains("experimental_bearer_token = \"sk-history\""));
@@ -10621,6 +10723,9 @@ multi_agent = true
         write_api_provider_to_config_toml(&base_dir, &provider_config).expect("write config");
 
         let content = fs::read_to_string(&config_path).expect("read config");
+        #[cfg(target_os = "windows")]
+        assert!(content.contains("model_provider = \"openai\""));
+        #[cfg(not(target_os = "windows"))]
         assert!(!content.contains("model_provider = "));
         assert!(content.contains("model_catalog_json = \"user-model-catalog.json\""));
         assert!(content.contains("[model_providers.user_manual_provider]"));
@@ -10712,44 +10817,30 @@ multi_agent = true
     }
 
     #[test]
-    fn api_key_config_toml_uses_fixed_provider_for_default_official_endpoint() {
+    fn api_key_config_toml_keeps_builtin_openai_for_default_official_endpoint() {
         let base_dir = make_temp_dir("codex-api-key-config-openai-default-test");
-        let provider_config = resolve_api_provider_config(
-            Some("https://api.openai.com/v1/"),
-            Some(CodexApiProviderMode::OpenaiBuiltin),
+        let account = CodexAccount::new_api_key(
+            "openai-api-key".to_string(),
+            "openai@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::OpenaiBuiltin,
+            Some("https://api.openai.com/v1/".to_string()),
             None,
             None,
-        )
-        .expect("resolve provider config");
+            Vec::new(),
+        );
 
-        write_api_key_provider_to_config_toml(
-            &base_dir,
-            &provider_config,
-            "sk-test",
-            false,
-            false,
-            true,
-        )
-        .expect("write config");
+        write_auth_file_to_dir(&base_dir, &account).expect("write auth bundle");
 
         let config_path = base_dir.join("config.toml");
-        let content = fs::read_to_string(&config_path).expect("read config");
-        assert!(content.contains("model_provider = \"codex_local_access\""));
-        assert!(content.contains("[model_providers.codex_local_access]"));
-        assert!(content.contains("name = \"OpenAI Official\""));
-        assert!(content.contains("base_url = \"https://api.openai.com/v1\""));
-        assert!(content.contains("wire_api = \"responses\""));
-        assert!(content.contains("requires_openai_auth = true"));
-        assert!(content.contains("experimental_bearer_token = \"sk-test\""));
-        assert!(content.contains("supports_websockets = false"));
-        assert!(!content.contains("openai_base_url"));
+        assert!(!config_path.exists());
         assert_eq!(
             read_api_provider_from_config_toml(&base_dir),
             ApiProviderConfig {
-                mode: CodexApiProviderMode::Custom,
-                base_url: Some("https://api.openai.com/v1".to_string()),
-                provider_id: Some("codex_local_access".to_string()),
-                provider_name: Some("OpenAI Official".to_string()),
+                mode: CodexApiProviderMode::OpenaiBuiltin,
+                base_url: None,
+                provider_id: None,
+                provider_name: None,
             }
         );
 
@@ -10757,45 +10848,44 @@ multi_agent = true
     }
 
     #[test]
-    fn api_key_config_toml_uses_fixed_provider_for_custom_provider() {
+    fn api_key_config_toml_uses_builtin_openai_for_responses_relay() {
         let base_dir = make_temp_dir("codex-api-key-config-custom-provider-test");
-        let provider_config = resolve_api_provider_config(
-            Some("https://relay.example.com/v1/"),
-            Some(CodexApiProviderMode::Custom),
-            Some("relay"),
-            Some("Relay"),
-        )
-        .expect("resolve provider config");
+        let mut account = CodexAccount::new_api_key(
+            "relay".to_string(),
+            "relay@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay.example.com/v1/".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            Vec::new(),
+        );
+        account.api_wire_api = Some("responses".to_string());
 
-        write_api_key_provider_to_config_toml(
-            &base_dir,
-            &provider_config,
-            "sk-test",
-            false,
-            false,
-            true,
-        )
-        .expect("write config");
+        write_auth_file_to_dir(&base_dir, &account).expect("write relay auth bundle");
 
         let config_path = base_dir.join("config.toml");
         let content = fs::read_to_string(&config_path).expect("read config");
-        assert!(content.contains("model_provider = \"codex_local_access\""));
-        assert!(content.contains("[model_providers.codex_local_access]"));
+        assert!(content.contains("openai_base_url = \"https://relay.example.com/v1\""));
+        assert!(!content.contains("codex_local_access"));
         assert!(!content.contains("[model_providers.relay]"));
-        assert!(content.contains("name = \"Relay\""));
-        assert!(content.contains("base_url = \"https://relay.example.com/v1\""));
-        assert!(content.contains("wire_api = \"responses\""));
-        assert!(content.contains("requires_openai_auth = true"));
-        assert!(content.contains("experimental_bearer_token = \"sk-test\""));
-        assert!(content.contains("supports_websockets = false"));
-        assert!(!content.contains("openai_base_url"));
+        assert!(!content.contains("experimental_bearer_token"));
+        #[cfg(target_os = "windows")]
+        assert!(content.contains("model_provider = \"openai\""));
+        #[cfg(not(target_os = "windows"))]
+        assert!(!content.contains("model_provider = "));
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(base_dir.join("auth.json")).expect("read relay auth"),
+        )
+        .expect("parse relay auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-test");
         assert_eq!(
             read_api_provider_from_config_toml(&base_dir),
             ApiProviderConfig {
-                mode: CodexApiProviderMode::Custom,
+                mode: CodexApiProviderMode::OpenaiBuiltin,
                 base_url: Some("https://relay.example.com/v1".to_string()),
-                provider_id: Some("codex_local_access".to_string()),
-                provider_name: Some("Relay".to_string()),
+                provider_id: None,
+                provider_name: None,
             }
         );
 
@@ -10821,7 +10911,7 @@ X-Custom = "keep-me"
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(
+        write_api_key_bearer_provider_override_to_config_toml(
             &base_dir,
             &provider_config,
             "agt_codex_test",
@@ -10880,7 +10970,7 @@ X-Custom = "keep-me"
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(
+        write_api_key_bearer_provider_override_to_config_toml(
             &base_dir,
             &provider_config,
             "sk-test",
@@ -10916,7 +11006,7 @@ http_headers = { "x-openai-actor-authorization" = "legacy", "X-Custom" = "keep-m
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(
+        write_api_key_bearer_provider_override_to_config_toml(
             &base_dir,
             &provider_config,
             "sk-test",
@@ -10980,7 +11070,7 @@ http_headers = { "x-openai-actor-authorization" = "legacy", "X-Custom" = "keep-m
     }
 
     #[test]
-    fn pure_third_party_without_image_catalog_clears_stale_actor_headers() {
+    fn pure_responses_relay_without_image_catalog_uses_builtin_openai() {
         let base_dir = make_temp_dir("codex-third-party-clear-stale-actor");
         let config_path = base_dir.join("config.toml");
         fs::write(
@@ -11017,7 +11107,14 @@ supports_websockets = false
             !content.contains(CODEX_IMAGEGEN_ACTOR_HEADER),
             "stale actor must be cleared when catalog has no gpt-image-2: {content}"
         );
-        assert!(content.contains("experimental_bearer_token = \"sk-new\""));
+        assert!(content.contains("openai_base_url = \"https://relay.example.com/v1\""));
+        assert!(!content.contains("experimental_bearer_token"));
+        assert!(!content.contains("codex_local_access"));
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(base_dir.join("auth.json")).expect("read auth"),
+        )
+        .expect("parse auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-new");
 
         fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
     }
@@ -11033,7 +11130,7 @@ supports_websockets = false
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(
+        write_api_key_bearer_provider_override_to_config_toml(
             &base_dir,
             &provider_config,
             "agt_codex_test",
@@ -11177,7 +11274,7 @@ supports_websockets = false
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(
+        write_api_key_bearer_provider_override_to_config_toml(
             &base_dir,
             &provider_config,
             "sk-test",
@@ -11241,7 +11338,9 @@ supports_websockets = false
 
         let config =
             fs::read_to_string(env.codex_home().join("config.toml")).expect("read current config");
-        assert!(config.contains("supports_websockets = true"));
+        assert!(config.contains("openai_base_url = \"https://relay.example.com/v1\""));
+        assert!(!config.contains("codex_local_access"));
+        assert!(!config.contains("supports_websockets = "));
     }
 
     #[test]
@@ -11442,6 +11541,8 @@ supports_websockets = false
         let config = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
         assert!(config.contains("model_catalog_json = \"cockpit-provider-model-catalog.json\""));
         assert!(config.contains("model = \"custom-a\""));
+        assert!(config.contains("openai_base_url = \"https://relay.example.com/v1\""));
+        assert!(!config.contains("codex_local_access"));
         let catalog: serde_json::Value = serde_json::from_str(
             &fs::read_to_string(base_dir.join(super::CODEX_MANAGED_MODEL_CATALOG_FILE))
                 .expect("read managed catalog"),
@@ -11583,7 +11684,9 @@ supports_websockets = false
         write_account_bundle_to_dir(&base_dir, &account).expect("write account bundle");
 
         let config = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
-        assert!(config.contains("supports_websockets = true"));
+        assert!(config.contains("openai_base_url = \"https://relay.example.com/v1\""));
+        assert!(!config.contains("codex_local_access"));
+        assert!(!config.contains("supports_websockets = "));
         assert!(!config.contains("model_catalog_json"));
         assert!(!base_dir
             .join(super::CODEX_MANAGED_MODEL_CATALOG_FILE)
@@ -11614,8 +11717,11 @@ supports_websockets = false
         assert!(!base_dir
             .join(super::CODEX_MANAGED_MODEL_CATALOG_FILE)
             .exists());
-        let config = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
-        assert!(!config.contains("model_catalog_json"));
+        let config_path = base_dir.join("config.toml");
+        if config_path.exists() {
+            let config = fs::read_to_string(&config_path).expect("read config");
+            assert!(!config.contains("model_catalog_json"));
+        }
 
         fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
     }
@@ -11746,6 +11852,8 @@ supports_websockets = false
         write_account_bundle_to_dir(&base_dir, &account).expect("write account bundle");
 
         let config = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
+        assert!(config.contains("model_provider = \"codex_local_access\""));
+        assert!(config.contains("experimental_bearer_token = \"sk-custom\""));
         assert!(!config.contains("model_catalog_json"));
         assert!(!base_dir
             .join(super::CODEX_MANAGED_MODEL_CATALOG_FILE)
@@ -11771,8 +11879,11 @@ supports_websockets = false
 
         write_account_bundle_to_dir(&base_dir, &account).expect("write account bundle");
 
-        let config = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
-        assert!(!config.contains("model_catalog_json"));
+        let config_path = base_dir.join("config.toml");
+        if config_path.exists() {
+            let config = fs::read_to_string(&config_path).expect("read config");
+            assert!(!config.contains("model_catalog_json"));
+        }
         assert!(!base_dir
             .join(super::CODEX_MANAGED_MODEL_CATALOG_FILE)
             .exists());
@@ -11819,7 +11930,7 @@ supports_websockets = false
     }
 
     #[test]
-    fn api_key_config_toml_only_updates_codex_local_access() {
+    fn api_key_config_toml_clears_builtin_url_without_touching_other_providers() {
         let base_dir = make_temp_dir("codex-config-clean-provider-test");
         let config_path = base_dir.join("config.toml");
         fs::write(
@@ -11874,7 +11985,7 @@ multi_agent = true
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(
+        write_api_key_bearer_provider_override_to_config_toml(
             &base_dir,
             &provider_config,
             "sk-test",
@@ -11895,7 +12006,7 @@ multi_agent = true
         assert!(content.contains("[model_providers.openai_api_key]"));
         assert!(content.contains("[model_providers.relay]"));
         assert!(content.contains("model_catalog_json = \"cockpit-provider-model-catalog.json\""));
-        assert!(content.contains("openai_base_url = \"https://legacy.example.com/v1\""));
+        assert!(!content.contains("openai_base_url"));
         assert!(content.contains("model_context_window = 1000000"));
         assert!(content.contains("[features]"));
 
