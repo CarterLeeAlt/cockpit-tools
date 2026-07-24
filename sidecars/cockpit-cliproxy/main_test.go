@@ -3995,3 +3995,83 @@ func TestResponsesWebsocketRejectsProviderGatewayBeforeCodexAuth(t *testing.T) {
 		t.Fatalf("body = %s", w.Body.String())
 	}
 }
+
+func TestFilterRegistryModelsByExcludedModels(t *testing.T) {
+	models := []*cliproxy.ModelInfo{
+		{ID: "gpt-5.3-codex"},
+		{ID: "gpt-5.3-codex-spark"},
+		{ID: "gpt-5.4"},
+	}
+	filtered := filterRegistryModelsByExcluded(models, []string{"gpt-5.3-*"})
+	if len(filtered) != 1 || filtered[0].ID != "gpt-5.4" {
+		t.Fatalf("unexpected filtered models: %#v", filtered)
+	}
+}
+
+func TestExcludedModelsForAuthMergesManifestAndMetadata(t *testing.T) {
+	m := &manifest{
+		ExcludedModels: []string{"gpt-image-*"},
+		AccountModelRules: []accountModelRule{{
+			AccountID:      "plus-account",
+			ExcludedModels: []string{"gpt-5.3-codex-spark"},
+		}},
+		Accounts: []accountSpec{{
+			ID:     "plus-account",
+			AuthID: "plus-auth",
+			Email:  "plus@example.com",
+		}},
+	}
+	m.accountByID = map[string]*accountSpec{"plus-account": &m.Accounts[0]}
+	m.accountByAuthID = map[string]*accountSpec{"plus-auth": &m.Accounts[0]}
+	auth := &coreauth.Auth{
+		ID: "plus-auth",
+		Metadata: map[string]any{
+			"excluded_models": []string{"custom-model"},
+		},
+		Attributes: map[string]string{
+			"account_id": "plus-account",
+		},
+	}
+	excluded := excludedModelsForAuth(m, auth)
+	if len(excluded) != 3 {
+		t.Fatalf("expected 3 excluded patterns, got %#v", excluded)
+	}
+	if !authModelExcluded(m, auth, "gpt-5.3-codex-spark") {
+		t.Fatal("spark should be excluded for plus auth")
+	}
+	if authModelExcluded(m, auth, "gpt-5.4") {
+		t.Fatal("gpt-5.4 should remain available")
+	}
+}
+
+func TestRegisterManifestModelsForAuthRespectsPerAccountExclusions(t *testing.T) {
+	m := &manifest{
+		ModelIDs: []string{"gpt-5.3-codex", codexSparkModel, "gpt-5.4"},
+		Accounts: []accountSpec{{
+			ID:     "plus-account",
+			AuthID: "plus-auth",
+		}},
+	}
+	m.accountByID = map[string]*accountSpec{"plus-account": &m.Accounts[0]}
+	m.accountByAuthID = map[string]*accountSpec{"plus-auth": &m.Accounts[0]}
+	auth := &coreauth.Auth{
+		ID: "plus-auth",
+		Metadata: map[string]any{
+			"excluded_models": []string{codexSparkModel},
+		},
+		Attributes: map[string]string{
+			"account_id": "plus-account",
+		},
+	}
+	manager := coreauth.NewManager(nil, &cockpitSelector{manifest: m}, nil)
+	t.Cleanup(func() {
+		cliproxy.GlobalModelRegistry().UnregisterClient(auth.ID)
+	})
+	registerManifestModelsForAuth(manager, m, auth)
+	models := registry.GetGlobalRegistry().GetModelsForClient(auth.ID)
+	for _, model := range models {
+		if strings.EqualFold(model.ID, codexSparkModel) {
+			t.Fatalf("spark should not be registered for excluded auth: %#v", models)
+		}
+	}
+}

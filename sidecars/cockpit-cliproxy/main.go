@@ -92,12 +92,18 @@ var (
 	imageStreamIdleTimeout = 60 * time.Second
 )
 
+type accountModelRule struct {
+	AccountID      string   `json:"accountId"`
+	ExcludedModels []string `json:"excludedModels"`
+}
+
 type manifest struct {
 	APIKeys                    []apiKeySpec        `json:"apiKeys"`
 	Accounts                   []accountSpec       `json:"accounts"`
 	ModelIDs                   []string            `json:"modelIds"`
 	ModelAliases               []modelAliasSpec    `json:"modelAliases"`
 	ExcludedModels             []string            `json:"excludedModels"`
+	AccountModelRules          []accountModelRule  `json:"accountModelRules"`
 	RoutingStrategy            string              `json:"routingStrategy"`
 	CustomRoutingRules         []customRoutingRule `json:"customRoutingRules"`
 	ImmediateSSEResponse       bool                `json:"immediateSseResponse"`
@@ -744,6 +750,10 @@ func loadManifest(path string) (*manifest, error) {
 	}
 	m.ModelIDs = normalizeStringList(m.ModelIDs)
 	m.ExcludedModels = normalizeStringList(m.ExcludedModels)
+	for index := range m.AccountModelRules {
+		m.AccountModelRules[index].AccountID = strings.TrimSpace(m.AccountModelRules[index].AccountID)
+		m.AccountModelRules[index].ExcludedModels = normalizeStringList(m.AccountModelRules[index].ExcludedModels)
+	}
 	return &m, nil
 }
 
@@ -2188,6 +2198,9 @@ func (s *cockpitSelector) Pick(ctx context.Context, provider, model string, opts
 		if !authAvailable(auth, model, now) {
 			continue
 		}
+		if authModelExcluded(s.manifest, auth, model) {
+			continue
+		}
 		if reason := quotaReserveBlockReasonWithState(s.accountForAuth(auth), s.quota, now); reason != "" {
 			quotaReserveReasons = append(quotaReserveReasons, reason)
 			continue
@@ -3507,6 +3520,9 @@ func readManifestCodexTokenAuth(account *accountSpec, authDir, path string) (*co
 	if proxyURL := firstMetadataString(metadata, "proxy_url", "proxy-url"); proxyURL != "" {
 		auth.ProxyURL = proxyURL
 	}
+	if excluded := extractExcludedModelsFromMetadataMap(metadata); len(excluded) > 0 {
+		auth.Attributes["excluded_models"] = strings.Join(excluded, ",")
+	}
 	coreauth.ApplyCustomHeadersFromMetadata(auth)
 	return auth, nil
 }
@@ -3706,7 +3722,7 @@ func registerManifestModelsForAuth(manager *coreauth.Manager, m *manifest, auth 
 	if manager == nil || m == nil || auth == nil || strings.TrimSpace(auth.ID) == "" {
 		return
 	}
-	models := manifestRegistryModels(m)
+	models := filterRegistryModelsByExcluded(manifestRegistryModels(m), excludedModelsForAuth(m, auth))
 	if len(models) == 0 {
 		cliproxy.GlobalModelRegistry().UnregisterClient(auth.ID)
 		manager.RefreshSchedulerEntry(auth.ID)
@@ -3715,6 +3731,131 @@ func registerManifestModelsForAuth(manager *coreauth.Manager, m *manifest, auth 
 	cliproxy.GlobalModelRegistry().RegisterClient(auth.ID, "codex", models)
 	manager.ReconcileRegistryModelStates(context.Background(), auth.ID)
 	manager.RefreshSchedulerEntry(auth.ID)
+}
+
+func excludedModelsForAuth(m *manifest, auth *coreauth.Auth) []string {
+	seen := make(map[string]struct{})
+	add := func(items []string) {
+		for _, item := range items {
+			trimmed := strings.TrimSpace(item)
+			if trimmed == "" {
+				continue
+			}
+			key := strings.ToLower(trimmed)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+		}
+	}
+	if m != nil {
+		add(m.ExcludedModels)
+		if account := accountForAuthInManifest(m, auth); account != nil {
+			add(accountExcludedModelsFromManifest(m, account.ID))
+		}
+	}
+	if auth != nil {
+		if auth.Metadata != nil {
+			add(extractExcludedModelsFromMetadataMap(auth.Metadata))
+		}
+		if auth.Attributes != nil {
+			if value := strings.TrimSpace(auth.Attributes["excluded_models"]); value != "" {
+				add(strings.Split(value, ","))
+			}
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(seen))
+	for item := range seen {
+		out = append(out, item)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func accountExcludedModelsFromManifest(m *manifest, accountID string) []string {
+	if m == nil {
+		return nil
+	}
+	accountID = strings.TrimSpace(accountID)
+	if accountID == "" {
+		return nil
+	}
+	for _, rule := range m.AccountModelRules {
+		if strings.TrimSpace(rule.AccountID) != accountID {
+			continue
+		}
+		return append([]string(nil), rule.ExcludedModels...)
+	}
+	return nil
+}
+
+func extractExcludedModelsFromMetadataMap(metadata map[string]any) []string {
+	if metadata == nil {
+		return nil
+	}
+	raw, ok := metadata["excluded_models"]
+	if !ok {
+		raw, ok = metadata["excluded-models"]
+	}
+	if !ok || raw == nil {
+		return nil
+	}
+	switch values := raw.(type) {
+	case []string:
+		return append([]string(nil), values...)
+	case []any:
+		out := make([]string, 0, len(values))
+		for _, item := range values {
+			if value, ok := item.(string); ok {
+				out = append(out, value)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func filterRegistryModelsByExcluded(models []*cliproxy.ModelInfo, excluded []string) []*cliproxy.ModelInfo {
+	if len(models) == 0 || len(excluded) == 0 {
+		return models
+	}
+	filtered := make([]*cliproxy.ModelInfo, 0, len(models))
+	for _, model := range models {
+		if model == nil {
+			continue
+		}
+		modelID := strings.TrimSpace(model.ID)
+		if modelID == "" {
+			continue
+		}
+		if modelMatchesAnyRule(modelID, excluded) {
+			continue
+		}
+		filtered = append(filtered, model)
+	}
+	return filtered
+}
+
+func authModelExcluded(m *manifest, auth *coreauth.Auth, model string) bool {
+	model = strings.TrimSpace(model)
+	if model == "" || auth == nil {
+		return false
+	}
+	excluded := excludedModelsForAuth(m, auth)
+	if len(excluded) == 0 {
+		return false
+	}
+	if modelMatchesAnyRule(model, excluded) {
+		return true
+	}
+	if canonical := resolveSupportedModelAlias(m, model); canonical != "" && modelMatchesAnyRule(canonical, excluded) {
+		return true
+	}
+	return false
 }
 
 func manifestRegistryModels(m *manifest) []*cliproxy.ModelInfo {
