@@ -135,7 +135,13 @@ func codexTerminalStreamErr(eventData []byte) (statusErr, []byte, bool) {
 	if len(body) == 0 {
 		return statusErr{}, nil, false
 	}
-	return newCodexStatusErr(http.StatusBadRequest, body), body, true
+	statusCode := http.StatusBadRequest
+	if isCodexServiceUnavailableError(body) {
+		statusCode = http.StatusServiceUnavailable
+	}
+	streamErr := newCodexStatusErr(statusCode, body)
+	streamErr.responsesStreamEvent = bytes.Clone(eventData)
+	return streamErr, body, true
 }
 
 func codexTerminalErrorBody(eventData []byte, path string) []byte {
@@ -812,7 +818,7 @@ func (e *CodexExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth
 	if err := e.PrepareRequest(httpReq, auth); err != nil {
 		return nil, err
 	}
-	httpClient := helps.NewUtlsHTTPClient(ctx, e.cfg, auth, 0)
+	httpClient := newCodexAuthenticatedHTTPClient(ctx, e.cfg, auth)
 	return httpClient.Do(httpReq)
 }
 
@@ -894,7 +900,7 @@ func (e *CodexExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, re
 		AuthType:  authType,
 		AuthValue: authValue,
 	})
-	httpClient := helps.NewUtlsHTTPClient(ctx, e.cfg, auth, 0)
+	httpClient := newCodexAuthenticatedHTTPClient(ctx, e.cfg, auth)
 	httpClient = reporter.TrackHTTPClient(httpClient)
 	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
@@ -910,6 +916,7 @@ func (e *CodexExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, re
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
 		b, _ := io.ReadAll(httpResp.Body)
 		b = applyCodexIdentityConfuseResponsePayload(b, identityState)
+		b = redactCodexAgentIdentitySensitiveBody(auth, b)
 		clearCodexReasoningReplayOnInvalidSignature(replayScope, httpResp.StatusCode, b)
 		helps.AppendAPIResponseChunk(ctx, e.cfg, b)
 		helps.LogWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, helps.SummarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
@@ -922,6 +929,7 @@ func (e *CodexExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, re
 		return resp, err
 	}
 	upstreamData := applyCodexIdentityConfuseResponsePayload(data, identityState)
+	upstreamData = redactCodexAgentIdentitySensitiveBody(auth, upstreamData)
 	helps.AppendAPIResponseChunk(ctx, e.cfg, upstreamData)
 
 	lines := bytes.Split(upstreamData, []byte("\n"))
@@ -932,11 +940,13 @@ func (e *CodexExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, re
 			continue
 		}
 
-		eventData := bytes.TrimSpace(line[5:])
+		eventData := normalizeCodexCollaborationSpawnAgentModel(bytes.TrimSpace(line[5:]))
 		eventType := gjson.GetBytes(eventData, "type").String()
 
 		if streamErr, terminalBody, ok := codexTerminalStreamErr(eventData); ok {
 			clearCodexReasoningReplayOnInvalidSignature(replayScope, streamErr.StatusCode(), terminalBody)
+			helps.RecordAPIStreamSemanticStatus(ctx, e.cfg, streamErr.StatusCode(), eventType)
+			helps.LogWithRequestID(ctx).Debugf("codex stream terminal error: transport_status=%d semantic_status=%d event=%s", httpResp.StatusCode, streamErr.StatusCode(), eventType)
 			err = streamErr
 			return resp, err
 		}
@@ -1061,7 +1071,7 @@ func (e *CodexExecutor) executeCompact(ctx context.Context, auth *cliproxyauth.A
 		AuthType:  authType,
 		AuthValue: authValue,
 	})
-	httpClient := helps.NewUtlsHTTPClient(ctx, e.cfg, auth, 0)
+	httpClient := newCodexAuthenticatedHTTPClient(ctx, e.cfg, auth)
 	httpClient = reporter.TrackHTTPClient(httpClient)
 	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
@@ -1077,6 +1087,7 @@ func (e *CodexExecutor) executeCompact(ctx context.Context, auth *cliproxyauth.A
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
 		b, _ := io.ReadAll(httpResp.Body)
 		b = applyCodexIdentityConfuseResponsePayload(b, identityState)
+		b = redactCodexAgentIdentitySensitiveBody(auth, b)
 		helps.AppendAPIResponseChunk(ctx, e.cfg, b)
 		helps.LogWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, helps.SummarizeErrorBody(httpResp.Header.Get("Content-Type"), b))
 		err = newCodexStatusErr(httpResp.StatusCode, b)
@@ -1088,6 +1099,7 @@ func (e *CodexExecutor) executeCompact(ctx context.Context, auth *cliproxyauth.A
 		return resp, err
 	}
 	upstreamData := applyCodexIdentityConfuseResponsePayload(data, identityState)
+	upstreamData = redactCodexAgentIdentitySensitiveBody(auth, upstreamData)
 	helps.AppendAPIResponseChunk(ctx, e.cfg, upstreamData)
 	reporter.Publish(ctx, helps.ParseOpenAIUsage(upstreamData))
 	reporter.EnsurePublished(ctx)
@@ -1176,7 +1188,7 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 		AuthValue: authValue,
 	})
 
-	httpClient := helps.NewUtlsHTTPClient(ctx, e.cfg, auth, 0)
+	httpClient := newCodexAuthenticatedHTTPClient(ctx, e.cfg, auth)
 	httpClient = reporter.TrackHTTPClient(httpClient)
 	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
@@ -1194,6 +1206,7 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 			return nil, readErr
 		}
 		data = applyCodexIdentityConfuseResponsePayload(data, identityState)
+		data = redactCodexAgentIdentitySensitiveBody(auth, data)
 		clearCodexReasoningReplayOnInvalidSignature(replayScope, httpResp.StatusCode, data)
 		helps.AppendAPIResponseChunk(ctx, e.cfg, data)
 		helps.LogWithRequestID(ctx).Debugf("request error, error status: %d, error message: %s", httpResp.StatusCode, helps.SummarizeErrorBody(httpResp.Header.Get("Content-Type"), data))
@@ -1213,15 +1226,46 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 		var param any
 		outputItemsByIndex := make(map[int64][]byte)
 		var outputItemsFallback [][]byte
+		var bootstrapMetadataChunks [][]byte
+		hasMeaningfulOutput := false
+		sendPayload := func(payload []byte) bool {
+			select {
+			case out <- cliproxyexecutor.StreamChunk{Payload: payload}:
+				return true
+			case <-ctx.Done():
+				return false
+			}
+		}
+		flushBootstrapMetadata := func() bool {
+			for _, payload := range bootstrapMetadataChunks {
+				if !sendPayload(payload) {
+					return false
+				}
+			}
+			bootstrapMetadataChunks = nil
+			return true
+		}
 		for scanner.Scan() {
 			line := applyCodexIdentityConfuseResponsePayload(scanner.Bytes(), identityState)
+			line = redactCodexAgentIdentitySensitiveBody(auth, line)
 			helps.AppendAPIResponseChunk(ctx, e.cfg, line)
 			translatedLine := bytes.Clone(line)
+			isDataLine := false
+			eventType := ""
 
 			if bytes.HasPrefix(line, dataTag) {
+				isDataLine = true
 				data := bytes.TrimSpace(line[5:])
+				originalData := data
+				data = normalizeCodexCollaborationSpawnAgentModel(data)
+				eventType = gjson.GetBytes(data, "type").String()
+				if !bytes.Equal(data, originalData) {
+					translatedLine = append([]byte("data: "), data...)
+				}
 				if streamErr, terminalBody, ok := codexTerminalStreamErr(data); ok {
 					clearCodexReasoningReplayOnInvalidSignature(replayScope, streamErr.StatusCode(), terminalBody)
+					helps.RecordAPIStreamSemanticStatus(ctx, e.cfg, streamErr.StatusCode(), eventType)
+					helps.LogWithRequestID(ctx).Debugf("codex stream terminal error: transport_status=%d semantic_status=%d event=%s", httpResp.StatusCode, streamErr.StatusCode(), eventType)
 					helps.RecordAPIResponseError(ctx, e.cfg, streamErr)
 					reporter.PublishFailure(ctx, streamErr)
 					select {
@@ -1230,7 +1274,7 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 					}
 					return
 				}
-				switch gjson.GetBytes(data, "type").String() {
+				switch eventType {
 				case "response.output_item.done":
 					collectCodexOutputItemDone(data, outputItemsByIndex, &outputItemsFallback)
 				case "response.completed":
@@ -1246,10 +1290,20 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 
 			translatedLine = applyCodexIdentityExposeResponsePayload(translatedLine, identityState)
 			chunks := sdktranslator.TranslateStream(ctx, to, from, req.Model, originalPayload, body, translatedLine, &param)
+			if !hasMeaningfulOutput && (!isDataLine || isCodexStreamBootstrapMetadataEvent(eventType)) {
+				for i := range chunks {
+					bootstrapMetadataChunks = append(bootstrapMetadataChunks, bytes.Clone(chunks[i]))
+				}
+				continue
+			}
+			if !hasMeaningfulOutput {
+				hasMeaningfulOutput = true
+				if !flushBootstrapMetadata() {
+					return
+				}
+			}
 			for i := range chunks {
-				select {
-				case out <- cliproxyexecutor.StreamChunk{Payload: chunks[i]}:
-				case <-ctx.Done():
+				if !sendPayload(chunks[i]) {
 					return
 				}
 			}
@@ -1264,6 +1318,15 @@ func (e *CodexExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Au
 		}
 	}()
 	return &cliproxyexecutor.StreamResult{Headers: httpResp.Header.Clone(), Chunks: out}, nil
+}
+
+func isCodexStreamBootstrapMetadataEvent(eventType string) bool {
+	switch strings.TrimSpace(eventType) {
+	case "response.created", "response.queued", "response.in_progress":
+		return true
+	default:
+		return false
+	}
 }
 
 func (e *CodexExecutor) CountTokens(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
@@ -1637,7 +1700,9 @@ func codexIdentityConfuseUUID(authID string, kind string, value string) string {
 
 func applyCodexHeaders(r *http.Request, auth *cliproxyauth.Auth, token string, stream bool, cfg *config.Config) {
 	r.Header.Set("Content-Type", "application/json")
-	r.Header.Set("Authorization", "Bearer "+token)
+	if !isCodexAgentIdentityAuth(auth) {
+		r.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	var ginHeaders http.Header
 	if ginCtx, ok := r.Context().Value("gin").(*gin.Context); ok && ginCtx != nil && ginCtx.Request != nil {
@@ -1877,7 +1942,7 @@ func codexResponsesLiteEnabled(headers http.Header) bool {
 
 func codexResponsesLiteToolSupported(tool gjson.Result) bool {
 	switch strings.TrimSpace(tool.Get("type").String()) {
-	case "function", "custom":
+	case "function", "custom", "namespace":
 		return true
 	case "tool_search":
 		return strings.EqualFold(strings.TrimSpace(tool.Get("execution").String()), "client")
@@ -2003,6 +2068,10 @@ func isCodexModelCapacityError(errorBody []byte) bool {
 	if len(errorBody) == 0 {
 		return false
 	}
+	errorCode := strings.ToLower(strings.TrimSpace(gjson.GetBytes(errorBody, "error.code").String()))
+	if errorCode == "model_at_capacity" {
+		return true
+	}
 	candidates := []string{
 		gjson.GetBytes(errorBody, "error.message").String(),
 		gjson.GetBytes(errorBody, "message").String(),
@@ -2019,6 +2088,20 @@ func isCodexModelCapacityError(errorBody []byte) bool {
 		}
 	}
 	return false
+}
+
+func isCodexServiceUnavailableError(errorBody []byte) bool {
+	if len(errorBody) == 0 {
+		return false
+	}
+	errorCode := strings.ToLower(strings.TrimSpace(gjson.GetBytes(errorBody, "error.code").String()))
+	errorType := strings.ToLower(strings.TrimSpace(gjson.GetBytes(errorBody, "error.type").String()))
+	if errorCode == "server_is_overloaded" || errorCode == "server_overloaded" || errorType == "service_unavailable_error" {
+		return true
+	}
+	message := strings.ToLower(strings.TrimSpace(gjson.GetBytes(errorBody, "error.message").String()))
+	return strings.Contains(message, "servers are currently overloaded") ||
+		strings.Contains(message, "server is currently overloaded")
 }
 
 func parseCodexRetryAfter(statusCode int, errorBody []byte, now time.Time) *time.Duration {

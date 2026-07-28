@@ -191,6 +191,11 @@ const TRAE_GET_USER_INFO_PATH: &str = "/cloudide/api/v3/trae/GetUserInfo";
 const TRAE_CHECK_LOGIN_PATH: &str = "/cloudide/api/v3/trae/CheckLogin";
 const TRAE_PAY_STATUS_PATH: &str = "/trae/api/v1/pay/ide_user_pay_status";
 const TRAE_ENT_USAGE_PATH: &str = "/trae/api/v1/pay/ide_user_ent_usage";
+/// Trae CN / TRAE SOLO CN 官方 pay 接口当前以 v2 为准（参考社区 #1281）。
+const TRAE_CN_PAY_STATUS_PATH: &str = "/trae/api/v2/pay/ide_user_pay_status";
+const TRAE_CN_ENT_USAGE_PATH: &str = "/trae/api/v2/pay/ide_user_ent_usage";
+const TRAE_CN_CURRENT_ENTITLEMENT_LIST_PATH: &str =
+    "/trae/api/v2/pay/user_current_entitlement_list";
 const TRAE_AUTH_DOMAIN: &str = "www.trae.ai";
 const TRAE_CN_AUTH_DOMAIN: &str = "www.trae.cn";
 const TRAE_AUTH_CLIENT_ID: &str = "ono9krqynydwx5";
@@ -4280,9 +4285,12 @@ fn apply_profile_response(account: &mut TraeAccount, response: &Value) {
     }
 }
 
-fn usage_identity_from_product_type(product_type: i64) -> Option<&'static str> {
+fn usage_identity_from_product_type(product_type: i64, is_cn: bool) -> Option<&'static str> {
     match product_type {
+        // CN 专属套餐（社区 #1281 / 官方 CN 权益 product_type）
+        100 if is_cn => Some("CNExpress"),
         6 => Some("Ultra"),
+        5 => Some("Pro+"),
         4 => Some("Pro+"),
         1 => Some("Pro"),
         9 => Some("Pro"),
@@ -4302,6 +4310,41 @@ fn usage_pack_product_type(pack: &Value) -> Option<i64> {
     )
 }
 
+fn usage_response_payload_root(response: &Value) -> &Value {
+    response
+        .get("data")
+        .or_else(|| response.get("Result"))
+        .or_else(|| response.get("result"))
+        .or_else(|| response.get("payload"))
+        .or_else(|| response.get("user_current_entitlement_list"))
+        .or_else(|| response.get("ide_user_ent_usage"))
+        .unwrap_or(response)
+}
+
+fn mark_trae_usage_source(response: &mut Value, source: &str) {
+    if let Some(object) = response.as_object_mut() {
+        object.insert(
+            "_cockpit_source".to_string(),
+            Value::String(source.to_string()),
+        );
+        for key in [
+            "data",
+            "Result",
+            "result",
+            "payload",
+            "user_current_entitlement_list",
+            "ide_user_ent_usage",
+        ] {
+            if let Some(inner) = object.get_mut(key).and_then(|value| value.as_object_mut()) {
+                inner.insert(
+                    "_cockpit_source".to_string(),
+                    Value::String(source.to_string()),
+                );
+            }
+        }
+    }
+}
+
 fn apply_entitlement_response(account: &mut TraeAccount, response: &Value) {
     if let Some(code) = pick_i64(Some(response), &[&["code"]]) {
         if code != 0 {
@@ -4311,16 +4354,40 @@ fn apply_entitlement_response(account: &mut TraeAccount, response: &Value) {
 
     account.trae_entitlement_raw = Some(response.clone());
 
+    let entitlement_root = usage_response_payload_root(response);
+    let plan_from_root = pick_string(
+        Some(entitlement_root),
+        &[
+            &["user_pay_identity_str"],
+            &["identityStr"],
+            &["detail", "user_pay_identity_str"],
+        ],
+    );
+    let plan_from_response = pick_string(
+        Some(response),
+        &[&["user_pay_identity_str"], &["identityStr"]],
+    );
     if let Some(plan_type) =
-        normalize_non_empty(pick_string(Some(response), &[&["user_pay_identity_str"]]).as_deref())
+        normalize_non_empty(plan_from_root.as_deref().or(plan_from_response.as_deref()))
     {
         account.plan_type = Some(plan_type);
     }
 
-    account.plan_reset_at = normalize_timestamp(pick_i64(
+    let reset_from_root = pick_i64(
+        Some(entitlement_root),
+        &[
+            &["detail", "subscription_renew_time"],
+            &["detail", "subscriptionRenewTime"],
+        ],
+    );
+    let reset_from_response = pick_i64(
         Some(response),
-        &[&["detail", "subscription_renew_time"]],
-    ));
+        &[
+            &["detail", "subscription_renew_time"],
+            &["detail", "subscriptionRenewTime"],
+        ],
+    );
+    account.plan_reset_at = normalize_timestamp(reset_from_root.or(reset_from_response));
 }
 
 fn apply_usage_response(account: &mut TraeAccount, response: &Value) {
@@ -4331,9 +4398,12 @@ fn apply_usage_response(account: &mut TraeAccount, response: &Value) {
     }
 
     account.trae_usage_raw = Some(response.clone());
+    let is_cn = resolve_account_platform_kind(account).is_cn();
+    let usage_root = usage_response_payload_root(response);
 
-    if let Some(pack_list) = response
+    if let Some(pack_list) = usage_root
         .get("user_entitlement_pack_list")
+        .or_else(|| response.get("user_entitlement_pack_list"))
         .and_then(|value| value.as_array())
     {
         let filtered_packs: Vec<&Value> = pack_list
@@ -4348,15 +4418,27 @@ fn apply_usage_response(account: &mut TraeAccount, response: &Value) {
                 .find(|pack| usage_pack_product_type(pack) == Some(product_type))
         };
 
-        let pack = find_pack(6)
-            .or_else(|| find_pack(4))
-            .or_else(|| find_pack(1))
-            .or_else(|| find_pack(9))
-            .or_else(|| find_pack(8))
-            .or_else(|| find_pack(0));
+        // CN：CNExpress(100) > Ultra > Pro+(5/4) > Pro > Trial/SoloInvite > Lite > Free
+        let pack = if is_cn {
+            find_pack(100)
+                .or_else(|| find_pack(6))
+                .or_else(|| find_pack(5))
+                .or_else(|| find_pack(4))
+                .or_else(|| find_pack(1))
+                .or_else(|| find_pack(9))
+                .or_else(|| find_pack(8))
+                .or_else(|| find_pack(0))
+        } else {
+            find_pack(6)
+                .or_else(|| find_pack(4))
+                .or_else(|| find_pack(1))
+                .or_else(|| find_pack(9))
+                .or_else(|| find_pack(8))
+                .or_else(|| find_pack(0))
+        };
         if let Some(pack) = pack {
             if let Some(product_type) = usage_pack_product_type(pack) {
-                if let Some(identity) = usage_identity_from_product_type(product_type) {
+                if let Some(identity) = usage_identity_from_product_type(product_type, is_cn) {
                     account.plan_type = Some(identity.to_string());
                 }
             }
@@ -4630,48 +4712,115 @@ async fn refresh_quota_snapshot(
     client: &reqwest::Client,
     cookie: Option<&str>,
 ) {
-    let entitlement_urls = build_refresh_api_urls(account, TRAE_PAY_STATUS_PATH);
-    let entitlement_response = request_trae_pay_json_with_candidates(
-        client,
-        Method::POST,
-        entitlement_urls.as_slice(),
-        &account.access_token,
-        cookie,
-        Some(serde_json::json!({})),
-    )
-    .await;
+    let is_cn = resolve_account_platform_kind(account).is_cn();
+    // CN 优先 v2（对齐官方 CN 客户端 / 社区 #1281），失败再回退 v1。
+    let pay_status_paths: Vec<&str> = if is_cn {
+        vec![TRAE_CN_PAY_STATUS_PATH, TRAE_PAY_STATUS_PATH]
+    } else {
+        vec![TRAE_PAY_STATUS_PATH]
+    };
+    let ent_usage_paths: Vec<&str> = if is_cn {
+        vec![TRAE_CN_ENT_USAGE_PATH, TRAE_ENT_USAGE_PATH]
+    } else {
+        vec![TRAE_ENT_USAGE_PATH]
+    };
 
     let mut quota_query_errors: Vec<String> = Vec::new();
-    match entitlement_response {
-        Ok(response) => apply_entitlement_response(account, &response),
-        Err(err) => {
-            logger::log_warn(&format!("[Trae Refresh] ide_user_pay_status 失败: {}", err));
-            quota_query_errors.push(err);
+
+    let mut entitlement_ok = false;
+    for path in pay_status_paths {
+        let entitlement_urls = build_refresh_api_urls(account, path);
+        match request_trae_pay_json_with_candidates(
+            client,
+            Method::POST,
+            entitlement_urls.as_slice(),
+            &account.access_token,
+            cookie,
+            Some(serde_json::json!({})),
+        )
+        .await
+        {
+            Ok(response) => {
+                apply_entitlement_response(account, &response);
+                entitlement_ok = true;
+                break;
+            }
+            Err(err) => {
+                logger::log_warn(&format!(
+                    "[Trae Refresh] ide_user_pay_status 失败 ({}): {}",
+                    path, err
+                ));
+                quota_query_errors.push(format!("{}: {}", path, err));
+            }
+        }
+    }
+    if !entitlement_ok {
+        // keep errors for later aggregation
+    }
+
+    let mut usage_refreshed = false;
+    for path in ent_usage_paths {
+        let usage_urls = build_refresh_api_urls(account, path);
+        match request_trae_pay_json_with_candidates(
+            client,
+            Method::POST,
+            usage_urls.as_slice(),
+            &account.access_token,
+            cookie,
+            Some(serde_json::json!({
+                "require_usage": true,
+            })),
+        )
+        .await
+        {
+            Ok(response) => {
+                apply_usage_response(account, &response);
+                usage_refreshed = true;
+                break;
+            }
+            Err(err) => {
+                logger::log_warn(&format!(
+                    "[Trae Refresh] ide_user_ent_usage 失败 ({}): {}",
+                    path, err
+                ));
+                quota_query_errors.push(format!("{}: {}", path, err));
+            }
         }
     }
 
-    let usage_urls = build_refresh_api_urls(account, TRAE_ENT_USAGE_PATH);
-    let usage_response = request_trae_pay_json_with_candidates(
-        client,
-        Method::POST,
-        usage_urls.as_slice(),
-        &account.access_token,
-        cookie,
-        Some(serde_json::json!({
-            "require_usage": true,
-        })),
-    )
-    .await;
-
-    let mut usage_refreshed = false;
-    match usage_response {
-        Ok(response) => {
-            apply_usage_response(account, &response);
-            usage_refreshed = true;
-        }
-        Err(err) => {
-            logger::log_warn(&format!("[Trae Refresh] ide_user_ent_usage 失败: {}", err));
-            quota_query_errors.push(err);
+    // CN 额外拉当前权益列表：部分账号 ide_user_ent_usage 不完整，此接口补 pack / 速通字段。
+    if is_cn {
+        let list_urls = build_refresh_api_urls(account, TRAE_CN_CURRENT_ENTITLEMENT_LIST_PATH);
+        match request_trae_pay_json_with_candidates(
+            client,
+            Method::POST,
+            list_urls.as_slice(),
+            &account.access_token,
+            cookie,
+            Some(serde_json::json!({
+                "require_usage": true,
+            })),
+        )
+        .await
+        {
+            Ok(mut response) => {
+                mark_trae_usage_source(&mut response, "user_current_entitlement_list");
+                apply_usage_response(account, &response);
+                usage_refreshed = true;
+            }
+            Err(err) => {
+                logger::log_warn(&format!(
+                    "[Trae Refresh] user_current_entitlement_list 失败: {}",
+                    err
+                ));
+                // 已有 usage 时仅记录，不把整次刷新判失败
+                if !usage_refreshed {
+                    quota_query_errors.push(format!(
+                        "{}: {}",
+                        TRAE_CN_CURRENT_ENTITLEMENT_LIST_PATH, err
+                    ));
+                }
+            }
         }
     }
 

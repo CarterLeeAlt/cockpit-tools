@@ -15,7 +15,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func TestNormalizeCodexResponsesLiteRequestFiltersUnsupportedTools(t *testing.T) {
+func TestNormalizeCodexResponsesLiteRequestFiltersUnsupportedToolsAndKeepsNamespaces(t *testing.T) {
 	body := []byte(`{
 		"parallel_tool_calls": true,
 		"tools": [
@@ -25,7 +25,7 @@ func TestNormalizeCodexResponsesLiteRequestFiltersUnsupportedTools(t *testing.T)
 			{"type":"tool_search","execution":"server"},
 			{"type":"web_search"},
 			{"type":"image_generation"},
-			{"type":"namespace","name":"codex_app"}
+			{"type":"namespace","name":"functions.collaboration","tools":[{"type":"function","name":"spawn_agent","parameters":{"type":"object"}}]}
 		],
 		"tool_choice": {"type":"image_generation"}
 	}`)
@@ -41,8 +41,8 @@ func TestNormalizeCodexResponsesLiteRequestFiltersUnsupportedTools(t *testing.T)
 		t.Fatalf("parallel_tool_calls = true, want false: %s", result)
 	}
 	tools := gjson.GetBytes(result, "tools").Array()
-	if len(tools) != 3 {
-		t.Fatalf("len(tools) = %d, want 3: %s", len(tools), result)
+	if len(tools) != 4 {
+		t.Fatalf("len(tools) = %d, want 4: %s", len(tools), result)
 	}
 	if got := tools[0].Get("type").String(); got != "function" {
 		t.Fatalf("tools.0.type = %q, want function", got)
@@ -52,6 +52,12 @@ func TestNormalizeCodexResponsesLiteRequestFiltersUnsupportedTools(t *testing.T)
 	}
 	if got := tools[2].Get("type").String(); got != "tool_search" {
 		t.Fatalf("tools.2.type = %q, want tool_search", got)
+	}
+	if got := tools[3].Get("name").String(); got != "functions.collaboration" {
+		t.Fatalf("tools.3.name = %q, want functions.collaboration", got)
+	}
+	if got := tools[3].Get("tools.0.name").String(); got != "spawn_agent" {
+		t.Fatalf("tools.3.tools.0.name = %q, want spawn_agent", got)
 	}
 	if gjson.GetBytes(result, "tool_choice").Exists() {
 		t.Fatalf("unsupported tool_choice was not removed: %s", result)
@@ -156,6 +162,86 @@ func TestNormalizeCodexResponsesLiteRequestUsesFullResponsesForCodexImageGenTool
 				t.Fatalf("imagegen tool was removed: %s", result)
 			}
 		})
+	}
+}
+
+func TestCodexExecutorExecutePreservesCollaborationNamespaceInResponsesLiteAdditionalTools(t *testing.T) {
+	type capturedRequest struct {
+		header http.Header
+		body   []byte
+	}
+	captured := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		captured <- capturedRequest{header: r.Header.Clone(), body: body}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"object\":\"response\",\"created_at\":0,\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":0,\"output_tokens\":0,\"total_tokens\":0}}}\n\n"))
+	}))
+	defer server.Close()
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ginContext.Request = httptest.NewRequest(http.MethodPost, "http://localhost/v1/responses", nil)
+	ginContext.Request.Header.Set(codexResponsesLiteHeaderName, "true")
+	ctx := context.WithValue(context.Background(), "gin", ginContext)
+
+	executor := NewCodexExecutor(&config.Config{})
+	auth := &cliproxyauth.Auth{
+		Attributes: map[string]string{"base_url": server.URL},
+		Metadata:   map[string]any{"access_token": "oauth-token"},
+	}
+	payload := []byte(`{
+		"model":"gpt-5.6-sol",
+		"instructions":"",
+		"parallel_tool_calls":true,
+		"tool_choice":"required",
+		"input":[
+			{"type":"additional_tools","role":"developer","tools":[
+				{"type":"namespace","name":"collaboration","tools":[
+					{"type":"function","name":"spawn_agent","parameters":{"type":"object"}},
+					{"type":"function","name":"wait_agent","parameters":{"type":"object"}},
+					{"type":"function","name":"send_message","parameters":{"type":"object"}},
+					{"type":"function","name":"followup_task","parameters":{"type":"object"}},
+					{"type":"function","name":"interrupt_agent","parameters":{"type":"object"}},
+					{"type":"function","name":"list_agents","parameters":{"type":"object"}}
+				]}
+			]},
+			{"type":"message","role":"user","content":[{"type":"input_text","text":"delegate this task"}]}
+		]
+	}`)
+
+	_, err := executor.Execute(ctx, auth, cliproxyexecutor.Request{
+		Model:   "gpt-5.6-sol",
+		Payload: payload,
+	}, cliproxyexecutor.Options{
+		SourceFormat: sdktranslator.FromString("openai-response"),
+		Headers:      http.Header{codexResponsesLiteHeaderName: []string{"true"}},
+	})
+	if err != nil {
+		t.Fatalf("Execute error: %v", err)
+	}
+
+	got := <-captured
+	if !codexResponsesLiteEnabled(got.header) {
+		t.Fatalf("upstream request lost Responses Lite header: %v", got.header)
+	}
+	if gjson.GetBytes(got.body, "parallel_tool_calls").Bool() {
+		t.Fatalf("parallel_tool_calls = true, want false: %s", got.body)
+	}
+	if choice := gjson.GetBytes(got.body, "tool_choice").String(); choice != "required" {
+		t.Fatalf("tool_choice = %q, want required: %s", choice, got.body)
+	}
+	if name := gjson.GetBytes(got.body, "input.0.tools.0.name").String(); name != "collaboration" {
+		t.Fatalf("upstream namespace = %q, want collaboration: %s", name, got.body)
+	}
+	wantTools := []string{"spawn_agent", "wait_agent", "send_message", "followup_task", "interrupt_agent", "list_agents"}
+	tools := gjson.GetBytes(got.body, "input.0.tools.0.tools").Array()
+	if len(tools) != len(wantTools) {
+		t.Fatalf("upstream collaboration tool count = %d, want %d: %s", len(tools), len(wantTools), got.body)
+	}
+	for index, want := range wantTools {
+		if name := tools[index].Get("name").String(); name != want {
+			t.Fatalf("upstream collaboration tool %d = %q, want %q: %s", index, name, want, got.body)
+		}
 	}
 }
 

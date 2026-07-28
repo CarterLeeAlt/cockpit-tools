@@ -650,6 +650,11 @@
       "codexPathReset": "Restablecer predeterminado",
       "codexSyncWsl": "Sincronizar Codex con WSL",
       "codexSyncWslDesc": "Después de cambiar la cuenta predeterminada de Codex, también se escriben auth.json y config.toml en el directorio de Codex en WSL.",
+      "codexAppUiInjection": "Cuota del servicio API",
+      "codexAppUiInjectionDesc": "Tras reiniciar una instancia de Codex, muestra debajo del compositor el número de cuentas y las cuotas semanal y de 5 horas del servicio API de Cockpit Tools. Cockpit Tools debe seguir ejecutándose en segundo plano; las actualizaciones se detienen al cerrarlo por completo o si no hay red.",
+      "codexAppUiInjectionPoolLabel": "Cuentas",
+      "codexAppUiInjectionWeeklyLabel": "Semana",
+      "codexAppUiInjectionFiveHourLabel": "5 h",
       "codexWslConfigDir": "Directorio Codex en WSL",
       "codexWslConfigDirDesc": "Introduce el directorio .codex dentro de WSL. Se admiten rutas \\\\wsl.localhost\\.",
       "codexWslConfigDirPlaceholder": "Ejemplo: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -696,6 +701,10 @@
       "codebuddySettingsTitle": "Configuración de CodeBuddy",
       "codebuddyAutoRefresh": "Actualización automática de cuota de CodeBuddy",
       "codebuddyAutoRefreshDesc": "Frecuencia de actualización en segundo plano",
+      "codebuddyShareSessionsOnSwitch": "Compartir sesiones locales al cambiar",
+    "codebuddyShareSessionsOnSwitchDesc": "Combina las sesiones locales y el estado de restauración entre las cuentas de CodeBuddy de este dispositivo. El contenido solo se lee y escribe localmente y no se sube.",
+    "workbuddyShareSessionsOnSwitch": "Compartir sesiones locales al cambiar",
+    "workbuddyShareSessionsOnSwitchDesc": "Combina las sesiones locales y el estado de restauración entre las cuentas de WorkBuddy de este dispositivo. El contenido solo se lee y escribe localmente y no se sube.",
       "codebuddyAppPath": "Ruta de inicio de CodeBuddy",
       "codebuddyAppPathDesc": "Déjelo vacío para usar la ruta predeterminada",
       "codebuddyAppPathPlaceholder": "Ruta predeterminada",
@@ -762,6 +771,7 @@
       "defaultTerminal": "Terminal predeterminado",
       "defaultTerminalDesc": "La terminal utilizada al abrir CLI",
       "terminalSystem": "Predeterminado del sistema",
+      "terminalSystemWindowsCompatibility": "Compatibilidad del sistema (PowerShell)",
       "currentAccountRefreshRequiresAutoRefresh": "Activa primero «Actualización automática de cuota» para configurar la actualización de la cuenta actual.",
       "codebuddyCnAppPath": "Ruta de la aplicación CodeBuddy CN",
       "codebuddyCnAppPathDesc": "Dejar en blanco para usar la ruta predeterminada",
@@ -1824,11 +1834,23 @@
       "formatRefreshOnlyLabel": "Solo refresh_token",
       "formatBatchLabel": "Ejemplo por lotes"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Aviso de importación de Web Session",
+      "noticeMessage": "Se detectaron {{count}} cuentas Web Session. Al continuar se registrarán automáticamente como Agent Identity.",
+      "noticeApiOnly": "Estas cuentas son solo para el Servicio API y se añadirán automáticamente a su grupo de cuentas.",
+      "noticeNoSwitch": "No se pueden usar para cambiar cuentas normales de Codex, iniciar directamente el cliente oficial o la CLI ni como cuenta vinculada mediante OAuth.",
+      "noticeCredential": "La aplicación genera y guarda localmente una clave privada de Agent Identity. Protege las copias exportadas como contraseñas.",
+      "noticeConfirm": "Entiendo, continuar",
+      "apiOnlyActionError": "Las cuentas Agent Identity solo están disponibles mediante el Servicio API y no se pueden cambiar ni iniciar directamente.",
+      "oauthBindingUnsupported": "Las cuentas Agent Identity son exclusivas del Servicio API y no se pueden usar como cuentas vinculadas mediante OAuth."
+    },
     "exportFormat": {
       "label": "Formato de exportación",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "Formato sub2api",
       "cpa": "Formato cpa",
+      "agentIdentityCpaUnsupported": "Las cuentas Agent Identity no se pueden exportar en formato cpa. Usa Cockpit Tools o sub2api.",
+      "agentIdentityPrivateKeyNotice": "Esta exportación contiene una clave privada de Agent Identity que permite restaurar la cuenta en otro dispositivo. Protégela como una contraseña.",
       "downloadAll": "Descargar todo",
       "cpaCardTitle": "Cuenta {{index}}",
       "savedFolder": "Carpeta guardada",
@@ -1878,6 +1900,8 @@
         "freeNotice": "Las cuentas gratuitas aún no son compatibles. No se pueden seleccionar cuentas gratuitas.",
         "freeUnsupported": "Las cuentas gratuitas aún no son compatibles",
         "restrictFreeToggle": "Limitar cuentas Free",
+        "sessionAffinityConfirmTitle": "¿Activar afinidad de sesión?",
+        "sessionAffinityDescription": "Al activarla, una misma conversación intentará seguir usando la misma cuenta. Si no está disponible, el enrutamiento podrá cambiarla; tras caducar se elegirá otra cuenta.",
         "chatApiKeyUnsupported": "Chat Completions no compatible",
         "pendingOauthUnsupported": "Pendiente no se admite",
         "freeNoticeRestricted": "Las cuentas Free están limitadas. Desactiva esto para seleccionarlas.",
@@ -1907,7 +1931,10 @@
       "testConnectFailed": "No se puede conectar a {{url}}. Confirma que el servicio API esté en ejecución, que el puerto no haya cambiado y que nada lo bloquee.",
       "testAuthFailed": "El servicio responde, pero falló la autenticación: {{detail}}. Revisa la clave del servicio API o el estado de inicio de sesión de la cuenta.",
       "testServiceUnavailable": "El servicio responde, pero no está disponible: {{detail}}. Revisa si el servicio está activado, si la colección de cuentas está vacía o si las cuentas son utilizables.",
-      "gatewayErrors": {"authUnavailable": "Ninguna cuenta del grupo está disponible para enrutar ahora. Puede estar en espera, sin autorización o limitada por cuota. Revisa su estado en el servicio API de Cockpit Tools.", "authNotFound": "No hay ninguna cuenta utilizable configurada en el grupo. Añade o activa una cuenta en el servicio API de Cockpit Tools."},
+      "gatewayErrors": {
+        "authUnavailable": "Ninguna cuenta del grupo está disponible para enrutar ahora. Puede estar en espera, sin autorización o limitada por cuota. Revisa su estado en el servicio API de Cockpit Tools.",
+        "authNotFound": "No hay ninguna cuenta utilizable configurada en el grupo. Añade o activa una cuenta en el servicio API de Cockpit Tools."
+      },
       "testRateLimited": "El servicio responde, pero el ascendente tiene límite de velocidad o cuota agotada: {{detail}}.",
       "testHttpFailed": "El servicio responde, pero la solicitud devolvió HTTP {{status}}: {{detail}}.",
       "activateAction": "Iniciar servicio API",
@@ -3360,7 +3387,7 @@
       "routing": {
         "optionsTitle": "Opciones de ruta",
         "sessionAffinity": "Afinidad de sesión",
-        "sessionAffinityTtl": "TTL de afinidad",
+        "sessionAffinityTtl": "Caducidad (segundos)",
         "responsesWebsockets": "Responses por WebSocket",
         "maxRetryCredentials": "Cuentas retry",
         "maxRetryInterval": "Espera retry",
@@ -4666,7 +4693,18 @@
       "payAsYouGoConsuming": "Uso bajo demanda: consumiendose",
       "payAsYouGoEnabled": "Uso bajo demanda: activado",
       "payAsYouGoEmpty": "Uso bajo demanda: --",
-      "payAsYouGoLabel": "Uso bajo demanda"
+      "payAsYouGoLabel": "Uso bajo demanda",
+      "statusSynced": "Estado: sync",
+      "statusSyncedPending": "Estado: sync, resto pendiente",
+      "fastAvailable": "Rápido: {{times}}",
+      "fastTimes": "{{count}}",
+      "fastUnlimited": "Ilimitado",
+      "fastPerMonth": "Rápido/mes: {{count}}",
+      "fastChannelPerMonth": "Express: {{count}}/mes",
+      "fastChannelStatus": "Canal rápido: {{status}}",
+      "freeRemainingUnknown": "Free resto: --",
+      "timesRemainingUnknown": "Resto: --",
+      "soloParallel": "Pack: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "Guia de cuentas de Trae (haz clic para expandir o contraer)",
@@ -4678,6 +4716,10 @@
       "permissionWithPlatform": "Alcance de permisos: lee y escribe campos de inicio de sesión en storage.json local de {{platform}} para importar cuentas, inyectar cambios de cuenta y mostrar el plan. Todos los datos se procesan localmente.",
       "networkGlobal": "Alcance de red: el inicio OAuth, la actualización de tokens y las consultas de plan de {{platform}} llaman a APIs oficiales trae.ai / traeapi.us. No se suben archivos locales de cuenta ni contenido bruto a servicios de terceros.",
       "networkCn": "Alcance de red: el inicio OAuth, la actualización de tokens y las consultas de plan de {{platform}} llaman a APIs oficiales trae.cn / trae.com.cn. No se suben archivos locales de cuenta ni contenido bruto a servicios de terceros."
+    },
+    "token": {
+      "jsonOnlyDesc": "Pega el JSON completo de Trae CN. No se admiten tokens sin formato.",
+      "jsonOnlyPlaceholder": "JSON completo de Trae CN..."
     }
   },
   "codebuddyCn": {
@@ -4836,7 +4878,19 @@
       "queryFailed": "Consulta fallida",
       "retry": "Reintentar",
       "inactive": "No disponible",
-      "inactiveHint": "El check-in no está activo en esta cuenta"
+      "inactiveHint": "El check-in no está activo en esta cuenta",
+      "autoCheckinSettings": "Configuración de registro automático",
+      "autoCheckinLabel": "Registro automático",
+      "autoCheckinOff": "Registro automático desactivado",
+      "autoCheckinEnabledHint": "Registro automático activado: registro aleatorio entre {{start}} y {{end}}",
+      "autoCheckinDisabledHint": "Registro automático desactivado",
+      "enableAutoCheckin": "Habilitar registro automático",
+      "enableAutoCheckinDesc": "Realiza un registro diario aleatorio dentro del rango de tiempo especificado",
+      "randomTimeRange": "Rango de tiempo de registro aleatorio",
+      "startTime": "Hora de inicio",
+      "endTime": "Hora de finalización",
+      "timeRangeHint": "Selecciona diariamente una hora aleatoria dentro de este rango para completar el registro.",
+      "timeRangeError": "La hora de inicio no puede ser posterior a la hora de finalización"
     }
   },
   "zcode": {

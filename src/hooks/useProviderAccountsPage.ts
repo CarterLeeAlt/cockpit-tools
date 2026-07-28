@@ -706,6 +706,7 @@ export interface UseProviderAccountsPageReturn {
   tokenInput: string;
   setTokenInput: (v: string) => void;
   importing: boolean;
+  setImporting: (v: boolean) => void;
   openAddModal: (tab: string) => void;
   closeAddModal: () => void;
   resetAddModalState: () => void;
@@ -2583,6 +2584,7 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     tokenInput,
     setTokenInput,
     importing,
+    setImporting,
     openAddModal,
     closeAddModal,
     resetAddModalState,

@@ -697,6 +697,11 @@
       "codexPathReset": "إعادة التعيين إلى الافتراضي",
       "codexSyncWsl": "مزامنة Codex مع WSL",
       "codexSyncWslDesc": "بعد تبديل حساب Codex الافتراضي، تتم كتابة auth.json و config.toml أيضًا إلى مجلد إعدادات Codex في WSL.",
+      "codexAppUiInjection": "عرض حصة خدمة API",
+      "codexAppUiInjectionDesc": "بعد إعادة تشغيل مثيل Codex، اعرض عدد حسابات خدمة API في Cockpit Tools وحصتي الأسبوع و5 ساعات أسفل منطقة الكتابة. يجب إبقاء Cockpit Tools قيد التشغيل في الخلفية؛ يتوقف التحديث عند إغلاقه تمامًا أو عند عدم توفر الشبكة.",
+      "codexAppUiInjectionPoolLabel": "الحسابات",
+      "codexAppUiInjectionWeeklyLabel": "أسبوع",
+      "codexAppUiInjectionFiveHourLabel": "5 س",
       "codexWslConfigDir": "مجلد Codex في WSL",
       "codexWslConfigDirDesc": "أدخل مجلد .codex داخل WSL. مسارات \\\\wsl.localhost\\ مدعومة.",
       "codexWslConfigDirPlaceholder": "مثال: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -743,6 +748,10 @@
       "codebuddySettingsTitle": "إعدادات CodeBuddy",
       "codebuddyAutoRefresh": "التحديث التلقائي لحصة CodeBuddy",
       "codebuddyAutoRefreshDesc": "فاصل التحديث التلقائي في الخلفية",
+      "codebuddyShareSessionsOnSwitch": "مشاركة الجلسات المحلية عند التبديل",
+    "codebuddyShareSessionsOnSwitchDesc": "يدمج الجلسات المحلية وحالة الاستعادة بين حسابات CodeBuddy على هذا الجهاز. تتم قراءة محتوى الجلسات وكتابته محليًا فقط ولا يتم رفعه.",
+    "workbuddyShareSessionsOnSwitch": "مشاركة الجلسات المحلية عند التبديل",
+    "workbuddyShareSessionsOnSwitchDesc": "يدمج الجلسات المحلية وحالة الاستعادة بين حسابات WorkBuddy على هذا الجهاز. تتم قراءة محتوى الجلسات وكتابته محليًا فقط ولا يتم رفعه.",
       "codebuddyAppPath": "مسار تشغيل CodeBuddy",
       "codebuddyAppPathDesc": "اتركه فارغًا لاستخدام المسار الافتراضي",
       "codebuddyAppPathPlaceholder": "المسار الافتراضي",
@@ -809,6 +818,7 @@
       "defaultTerminal": "المحطة الافتراضية",
       "defaultTerminalDesc": "المحطة المستخدمة عند فتح CLI",
       "terminalSystem": "افتراضي النظام",
+      "terminalSystemWindowsCompatibility": "توافق النظام (PowerShell)",
       "currentAccountRefreshRequiresAutoRefresh": "فعّل أولاً \"التحديث التلقائي للحصة\" حتى تتمكن من إعداد تحديث الحساب الحالي.",
       "codebuddyCnAppPath": "مسار تطبيق CodeBuddy CN",
       "codebuddyCnAppPathDesc": "يُستخدم المسار الافتراضي إذا تُرك فارغًا",
@@ -1871,11 +1881,23 @@
       "formatRefreshOnlyLabel": "مثال refresh_token فقط",
       "formatBatchLabel": "مثال دفعي"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "تنبيه استيراد Web Session",
+      "noticeMessage": "تم اكتشاف {{count}} من حسابات Web Session. عند المتابعة ستُسجّل تلقائيًا كـ Agent Identity.",
+      "noticeApiOnly": "هذه الحسابات مخصصة لخدمة API فقط وستُضاف تلقائيًا إلى مجموعة حساباتها.",
+      "noticeNoSwitch": "لا يمكن استخدامها لتبديل حساب Codex العادي أو لتشغيل العميل الرسمي أو CLI مباشرةً أو كحساب مرتبط عبر OAuth.",
+      "noticeCredential": "ينشئ التطبيق مفتاح Agent Identity خاصًا ويحفظه محليًا. احمِ النسخ الاحتياطية المصدّرة مثل كلمات المرور.",
+      "noticeConfirm": "أفهم ذلك، متابعة",
+      "apiOnlyActionError": "حسابات Agent Identity متاحة عبر خدمة API فقط ولا يمكن التبديل إليها أو تشغيلها مباشرةً.",
+      "oauthBindingUnsupported": "حسابات Agent Identity مخصصة لخدمة API فقط ولا يمكن استخدامها كحسابات مرتبطة عبر OAuth."
+    },
     "exportFormat": {
       "label": "تنسيق التصدير",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "تنسيق sub2api",
       "cpa": "تنسيق cpa",
+      "agentIdentityCpaUnsupported": "لا يمكن تصدير حسابات Agent Identity بتنسيق cpa. استخدم Cockpit Tools أو sub2api.",
+      "agentIdentityPrivateKeyNotice": "يتضمن هذا التصدير مفتاح Agent Identity خاصًا يمكن استخدامه لاستعادة الحساب على جهاز آخر. احفظه كما تحفظ كلمة المرور.",
       "downloadAll": "تنزيل الكل",
       "cpaCardTitle": "الحساب {{index}}",
       "savedFolder": "مجلد الحفظ",
@@ -1925,6 +1947,8 @@
         "freeNotice": "الحسابات المجانية غير مدعومة بعد. لا يمكن تحديد الحسابات المجانية.",
         "freeUnsupported": "الحسابات المجانية غير مدعومة بعد",
         "restrictFreeToggle": "تقييد الحسابات المجانية",
+        "sessionAffinityConfirmTitle": "تفعيل ثبات الجلسة؟",
+        "sessionAffinityDescription": "عند التفعيل، تحاول المحادثة نفسها الاستمرار باستخدام الحساب نفسه. إذا تعذر استخدام الحساب، يمكن للتوجيه التبديل إلى حساب آخر، وبعد انتهاء المدة يُختار حساب من جديد.",
         "chatApiKeyUnsupported": "Chat Completions غير مدعوم",
         "pendingOauthUnsupported": "معلّق: غير مسموح",
         "freeNoticeRestricted": "الحسابات المجانية مقيّدة. عطّل هذا الخيار لتحديدها.",
@@ -1954,7 +1978,10 @@
       "testConnectFailed": "لا يمكن الاتصال بـ {{url}}. تأكد من تشغيل خدمة API، وأن المنفذ لم يتغير، ولا يوجد ما يحظره.",
       "testAuthFailed": "الخدمة قابلة للوصول، لكن المصادقة فشلت: {{detail}}. تحقق من مفتاح خدمة API أو حالة تسجيل الدخول للحساب.",
       "testServiceUnavailable": "الخدمة قابلة للوصول، لكنها غير متاحة حاليًا: {{detail}}. تحقق من تفعيل الخدمة، أو من أن مجموعة الحسابات ليست فارغة، أو من صلاحية الحسابات.",
-      "gatewayErrors": {"authUnavailable": "لا يوجد حاليًا حساب قابل للتوجيه. قد يكون الحساب في فترة تهدئة أو بلا مصادقة أو مقيّدًا بالحصّة. تحقّق من حالته في خدمة API داخل Cockpit Tools.", "authNotFound": "لا يوجد حساب صالح مُعدّ في مجموعة الحسابات. أضف حسابًا أو فعّله في خدمة API داخل Cockpit Tools."},
+      "gatewayErrors": {
+        "authUnavailable": "لا يوجد حاليًا حساب قابل للتوجيه. قد يكون الحساب في فترة تهدئة أو بلا مصادقة أو مقيّدًا بالحصّة. تحقّق من حالته في خدمة API داخل Cockpit Tools.",
+        "authNotFound": "لا يوجد حساب صالح مُعدّ في مجموعة الحسابات. أضف حسابًا أو فعّله في خدمة API داخل Cockpit Tools."
+      },
       "testRateLimited": "الخدمة قابلة للوصول، لكن upstream مقيّد أو الحصة نفدت: {{detail}}.",
       "testHttpFailed": "الخدمة قابلة للوصول، لكن الطلب أعاد HTTP {{status}}: {{detail}}.",
       "activateAction": "تشغيل خدمة API",
@@ -3407,7 +3434,7 @@
       "routing": {
         "optionsTitle": "خيارات التوجيه",
         "sessionAffinity": "تثبيت الجلسة",
-        "sessionAffinityTtl": "TTL للتثبيت",
+        "sessionAffinityTtl": "انتهاء الصلاحية (بالثواني)",
         "responsesWebsockets": "استجابات WebSocket",
         "maxRetryCredentials": "حسابات retry",
         "maxRetryInterval": "انتظار retry",
@@ -4713,7 +4740,18 @@
       "payAsYouGoConsuming": "الاستخدام حسب الطلب: قيد الاستهلاك",
       "payAsYouGoEnabled": "الاستخدام حسب الطلب: مفعل",
       "payAsYouGoEmpty": "الاستخدام حسب الطلب: --",
-      "payAsYouGoLabel": "الاستخدام حسب الطلب"
+      "payAsYouGoLabel": "الاستخدام حسب الطلب",
+      "statusSynced": "الحالة: متزامن",
+      "statusSyncedPending": "الحالة: متزامن، المتبقي قيد التأكيد",
+      "fastAvailable": "سريع متبقي {{times}}",
+      "fastTimes": "{{count}}",
+      "fastUnlimited": "غير محدود",
+      "fastPerMonth": "سريع/شهر: {{count}}",
+      "fastChannelPerMonth": "Express: {{count}}/شهر",
+      "fastChannelStatus": "قناة سريعة: {{status}}",
+      "freeRemainingUnknown": "Free متبقي: --",
+      "timesRemainingUnknown": "المتبقي: --",
+      "soloParallel": "حزمة: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "دليل حساب Trae (انقر للتوسيع أو الطي)",
@@ -4725,6 +4763,10 @@
       "permissionWithPlatform": "نطاق الأذونات: قراءة وكتابة حقول تسجيل الدخول في ملف storage.json المحلي الخاص بـ {{platform}} لاستيراد الحساب وحقن تبديل الحساب وعرض الخطة. تتم معالجة كل البيانات محليًا فقط.",
       "networkGlobal": "نطاق الشبكة: تسجيل دخول OAuth وتحديث الرمز واستعلامات الخطة في {{platform}} تستدعي واجهات trae.ai / traeapi.us الرسمية. لا يتم رفع ملفات الحساب المحلية أو محتوى التخزين الخام إلى خدمات طرف ثالث.",
       "networkCn": "نطاق الشبكة: تسجيل دخول OAuth وتحديث الرمز واستعلامات الخطة في {{platform}} تستدعي واجهات trae.cn / trae.com.cn الرسمية. لا يتم رفع ملفات الحساب المحلية أو محتوى التخزين الخام إلى خدمات طرف ثالث."
+    },
+    "token": {
+      "jsonOnlyDesc": "الصق JSON حساب Trae CN الكامل. الرمز الخام غير مدعوم.",
+      "jsonOnlyPlaceholder": "JSON Trae CN كامل..."
     }
   },
   "codebuddyCn": {
@@ -4883,7 +4925,19 @@
       "queryFailed": "فشل الاستعلام",
       "retry": "إعادة",
       "inactive": "غير متاح",
-      "inactiveHint": "تسجيل الحضور غير مفعّل لهذا الحساب"
+      "inactiveHint": "تسجيل الحضور غير مفعّل لهذا الحساب",
+      "autoCheckinSettings": "إعدادات تسجيل الوصول التلقائي",
+      "autoCheckinLabel": "تسجيل الوصول التلقائي",
+      "autoCheckinOff": "إيقاف تسجيل الوصول التلقائي",
+      "autoCheckinEnabledHint": "تم تمكين تسجيل الوصول التلقائي: تسجيل عشوائي بين {{start}} و {{end}}",
+      "autoCheckinDisabledHint": "تم تعطيل تسجيل الوصول التلقائي",
+      "enableAutoCheckin": "تمكين تسجيل الوصول التلقائي",
+      "enableAutoCheckinDesc": "تسجيل الوصول يوميًا بشكل عشوائي ضمن النطاق الزمني المحدد",
+      "randomTimeRange": "النطاق الزمني لتسجيل الوصول العشوائي",
+      "startTime": "وقت البدء",
+      "endTime": "وقت الانتهاء",
+      "timeRangeHint": "يختار وقتًا عشوائيًا يوميًا ضمن هذا النطاق لإكمال تسجيل الوصول في الخلفية.",
+      "timeRangeError": "لا يمكن أن يكون وقت البدء متأخرًا عن وقت الانتهاء"
     }
   },
   "zcode": {

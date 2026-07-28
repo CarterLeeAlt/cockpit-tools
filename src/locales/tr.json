@@ -588,6 +588,7 @@
       "defaultTerminal": "Varsayılan Terminal",
       "defaultTerminalDesc": "CLI açılırken kullanılan terminal",
       "terminalSystem": "Sistem Varsayılanı",
+      "terminalSystemWindowsCompatibility": "Sistem uyumluluğu (PowerShell)",
       "themeLight": "Açık",
       "themeDark": "Koyu",
       "themeSystem": "Sistem",
@@ -653,6 +654,11 @@
       "codexPathReset": "Varsayılana sıfırla",
       "codexSyncWsl": "Codex'i WSL ile eşitle",
       "codexSyncWslDesc": "Varsayılan Codex hesabı değiştirildikten sonra auth.json ve config.toml WSL içindeki Codex dizinine de yazılır.",
+      "codexAppUiInjection": "API hizmeti kotası",
+      "codexAppUiInjectionDesc": "Codex örneği yeniden başlatıldıktan sonra Cockpit Tools API hizmetinin hesap sayısını, haftalık ve 5 saatlik kotasını oluşturucunun altında gösterir. Cockpit Tools arka planda çalışmaya devam etmelidir; uygulama tamamen kapatıldığında veya ağ kullanılamadığında güncellemeler durur.",
+      "codexAppUiInjectionPoolLabel": "Hesaplar",
+      "codexAppUiInjectionWeeklyLabel": "Hafta",
+      "codexAppUiInjectionFiveHourLabel": "5 sa",
       "codexWslConfigDir": "WSL Codex dizini",
       "codexWslConfigDirDesc": "WSL içindeki .codex dizinini girin. \\\\wsl.localhost\\ yolları desteklenir.",
       "codexWslConfigDirPlaceholder": "Örnek: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -699,6 +705,10 @@
       "codebuddySettingsTitle": "CodeBuddy Ayarları",
       "codebuddyAutoRefresh": "CodeBuddy Kota Otomatik Yenileme",
       "codebuddyAutoRefreshDesc": "Arka plan otomatik yenileme aralığı",
+      "codebuddyShareSessionsOnSwitch": "Geçişte yerel oturumları paylaş",
+    "codebuddyShareSessionsOnSwitchDesc": "Bu cihazdaki CodeBuddy hesapları arasında yerel oturumları ve geri yükleme durumunu birleştirir. Oturum içeriği yalnızca yerel olarak okunup yazılır ve yüklenmez.",
+    "workbuddyShareSessionsOnSwitch": "Geçişte yerel oturumları paylaş",
+    "workbuddyShareSessionsOnSwitchDesc": "Bu cihazdaki WorkBuddy hesapları arasında yerel oturumları ve geri yükleme durumunu birleştirir. Oturum içeriği yalnızca yerel olarak okunup yazılır ve yüklenmez.",
       "codebuddyAppPath": "CodeBuddy Başlatma Yolu",
       "codebuddyAppPathDesc": "Varsayılan yol için boş bırakın",
       "codebuddyAppPathPlaceholder": "Varsayılan yol",
@@ -1824,11 +1834,23 @@
       "formatRefreshOnlyLabel": "Yalnızca refresh_token",
       "formatBatchLabel": "Toplu örnek"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Web Session içe aktarma bildirimi",
+      "noticeMessage": "{{count}} Web Session hesabı algılandı. Devam edildiğinde bunlar otomatik olarak Agent Identity şeklinde kaydedilir.",
+      "noticeApiOnly": "Bu hesaplar yalnızca API Hizmeti içindir ve hesap havuzuna otomatik olarak eklenir.",
+      "noticeNoSwitch": "Normal Codex hesap geçişi, resmi istemciyi ya da CLI'ı doğrudan başlatmak veya OAuth ile bağlanan hesap olarak kullanılamazlar.",
+      "noticeCredential": "Uygulama Agent Identity özel anahtarını yerel olarak oluşturur ve saklar. Dışa aktarılan yedekleri parola gibi koruyun.",
+      "noticeConfirm": "Anladım, devam et",
+      "apiOnlyActionError": "Agent Identity hesapları yalnızca API Hizmeti üzerinden kullanılabilir; doğrudan geçiş yapılamaz veya başlatılamaz.",
+      "oauthBindingUnsupported": "Agent Identity hesapları yalnızca API Hizmeti içindir ve OAuth ile bağlanan hesap olarak kullanılamaz."
+    },
     "exportFormat": {
       "label": "Dışa aktarma biçimi",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "sub2api biçimi",
       "cpa": "cpa biçimi",
+      "agentIdentityCpaUnsupported": "Agent Identity hesapları cpa biçiminde dışa aktarılamaz. Cockpit Tools veya sub2api kullanın.",
+      "agentIdentityPrivateKeyNotice": "Bu dışa aktarım, hesabı başka bir cihazda geri yükleyebilen bir Agent Identity özel anahtarı içerir. Parola gibi koruyun.",
       "downloadAll": "Tümünü indir",
       "cpaCardTitle": "Hesap {{index}}",
       "savedFolder": "Kaydedilen klasör",
@@ -1878,6 +1900,8 @@
         "freeNotice": "Ücretsiz hesaplar henüz desteklenmemektedir. Free accounts cannot be selected.",
         "freeUnsupported": "Ücretsiz hesaplar henüz desteklenmiyor",
         "restrictFreeToggle": "Free hesapları sınırla",
+        "sessionAffinityConfirmTitle": "Oturum bağlılığını aç?",
+        "sessionAffinityDescription": "Açıldığında aynı konuşma mümkün olduğunca aynı hesabı kullanır. Hesap kullanılamazsa yönlendirme başka hesaba geçebilir; süre dolunca hesap yeniden seçilir.",
         "chatApiKeyUnsupported": "Chat Completions desteklenmez",
         "pendingOauthUnsupported": "Bekleyen eklenemez",
         "freeNoticeRestricted": "Free hesaplar sınırlıdır. Seçmek için bunu kapatın.",
@@ -1907,7 +1931,10 @@
       "testConnectFailed": "{{url}} adresine bağlanılamıyor. API hizmetinin çalıştığını, portun değişmediğini ve engellenmediğini doğrulayın.",
       "testAuthFailed": "Hizmete erişiliyor ancak kimlik doğrulama başarısız: {{detail}}. API hizmeti anahtarını veya hesap oturum durumunu kontrol edin.",
       "testServiceUnavailable": "Hizmete erişiliyor ancak şu anda kullanılamıyor: {{detail}}. Hizmetin etkin olup olmadığını, hesap koleksiyonunun boş olup olmadığını veya hesapların kullanılabilirliğini kontrol edin.",
-      "gatewayErrors": {"authUnavailable": "Şu anda yönlendirilebilir hesap yok. Hesap beklemede, yetkisiz veya kota sınırlı olabilir. Cockpit Tools API hizmetinde durumunu kontrol edin.", "authNotFound": "Hesap havuzunda kullanılabilir hesap yapılandırılmamış. Cockpit Tools API hizmetinde hesap ekleyin veya etkinleştirin."},
+      "gatewayErrors": {
+        "authUnavailable": "Şu anda yönlendirilebilir hesap yok. Hesap beklemede, yetkisiz veya kota sınırlı olabilir. Cockpit Tools API hizmetinde durumunu kontrol edin.",
+        "authNotFound": "Hesap havuzunda kullanılabilir hesap yapılandırılmamış. Cockpit Tools API hizmetinde hesap ekleyin veya etkinleştirin."
+      },
       "testRateLimited": "Hizmete erişiliyor ancak upstream hız sınırında veya kota tükendi: {{detail}}.",
       "testHttpFailed": "Hizmete erişiliyor ancak istek HTTP {{status}} döndürdü: {{detail}}.",
       "activateAction": "API hizmetini başlat",
@@ -3360,7 +3387,7 @@
       "routing": {
         "optionsTitle": "Yönlendirme seçenekleri",
         "sessionAffinity": "Oturum bağı",
-        "sessionAffinityTtl": "Bağ TTL",
+        "sessionAffinityTtl": "Süre (saniye)",
         "responsesWebsockets": "WebSocket üzerinden Responses",
         "maxRetryCredentials": "Retry hesapları",
         "maxRetryInterval": "Retry bekleme",
@@ -4666,7 +4693,18 @@
       "payAsYouGoConsuming": "Kullandikca odeme: tuketiliyor",
       "payAsYouGoEnabled": "Kullandikca odeme: etkin",
       "payAsYouGoEmpty": "Kullandikca odeme: --",
-      "payAsYouGoLabel": "Istege bagli kullanim"
+      "payAsYouGoLabel": "Istege bagli kullanim",
+      "statusSynced": "Durum: senkron",
+      "statusSyncedPending": "Durum: senkron, kalan belirsiz",
+      "fastAvailable": "Hızlı: {{times}}",
+      "fastTimes": "{{count}}",
+      "fastUnlimited": "Sınırsız",
+      "fastPerMonth": "Hızlı/ay: {{count}}",
+      "fastChannelPerMonth": "Express: {{count}}/ay",
+      "fastChannelStatus": "Hızlı kanal: {{status}}",
+      "freeRemainingUnknown": "Free kalan: --",
+      "timesRemainingUnknown": "Kalan: --",
+      "soloParallel": "Paket: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "Trae hesap kilavuzu (genisletmek/daraltmak icin tiklayin)",
@@ -4678,6 +4716,10 @@
       "permissionWithPlatform": "İzin kapsamı: hesap içe aktarma, hesap değiştirme enjeksiyonu ve plan gösterimi için yerel {{platform}} storage.json içindeki oturum alanlarını okur ve yazar. Tüm veriler yalnızca yerelde işlenir.",
       "networkGlobal": "Ağ kapsamı: {{platform}} OAuth oturum açma, token yenileme ve plan sorguları resmi trae.ai / traeapi.us API’lerini çağırır. Yerel hesap dosyaları ve ham depolama içerikleri üçüncü taraf hizmetlere yüklenmez.",
       "networkCn": "Ağ kapsamı: {{platform}} OAuth oturum açma, token yenileme ve plan sorguları resmi trae.cn / trae.com.cn API’lerini çağırır. Yerel hesap dosyaları ve ham depolama içerikleri üçüncü taraf hizmetlere yüklenmez."
+    },
+    "token": {
+      "jsonOnlyDesc": "Tam Trae CN hesap JSON yapıştırın. Ham token desteklenmez.",
+      "jsonOnlyPlaceholder": "Tam Trae CN JSON..."
     }
   },
   "codebuddyCn": {
@@ -4836,7 +4878,19 @@
       "queryFailed": "Sorgu başarısız",
       "retry": "Yeniden dene",
       "inactive": "Kullanılamaz",
-      "inactiveHint": "Bu hesap için check-in etkin değil"
+      "inactiveHint": "Bu hesap için check-in etkin değil",
+      "autoCheckinSettings": "Otomatik Giriş Ayarları",
+      "autoCheckinLabel": "Otomatik Giriş",
+      "autoCheckinOff": "Otomatik Giriş Kapalı",
+      "autoCheckinEnabledHint": "Otomatik giriş etkin: {{start}} ile {{end}} arasında rastgele giriş",
+      "autoCheckinDisabledHint": "Otomatik giriş devre dışı",
+      "enableAutoCheckin": "Otomatik Girişi Etkinleştir",
+      "enableAutoCheckinDesc": "Belirtilen zaman aralığında günlük olarak rastgele giriş yapar",
+      "randomTimeRange": "Rastgele Giriş Zaman Aralığı",
+      "startTime": "Başlangıç Zamanı",
+      "endTime": "Bitiş Zamanı",
+      "timeRangeHint": "Arka planda girişi tamamlamak için her gün bu aralıkta rastgele bir zaman seçer.",
+      "timeRangeError": "Başlangıç zamanı bitiş zamanından sonra olamaz"
     }
   },
   "zcode": {

@@ -51,6 +51,7 @@ type upstreamAttempt struct {
 	bodyHasContent       bool
 	prevWasSSEEvent      bool
 	errorWritten         bool
+	streamStatusWritten  bool
 }
 
 // RecordAPIRequest stores the upstream request metadata in Gin context for request logging.
@@ -124,6 +125,29 @@ func RecordAPIResponseMetadata(ctx context.Context, cfg *config.Config, status i
 		attempt.response.WriteString("\n")
 	}
 
+	updateAggregatedResponse(ginCtx, attempts)
+}
+
+// RecordAPIStreamSemanticStatus records an error status carried inside an
+// otherwise successful HTTP event stream without overwriting its transport status.
+func RecordAPIStreamSemanticStatus(ctx context.Context, cfg *config.Config, status int, eventType string) {
+	if cfg == nil || !cfg.RequestLog || status <= 0 {
+		return
+	}
+	ginCtx := ginContextFrom(ctx)
+	if ginCtx == nil {
+		return
+	}
+	attempts, attempt := ensureAttempt(ginCtx)
+	ensureResponseIntro(attempt)
+	if attempt.streamStatusWritten {
+		return
+	}
+	attempt.response.WriteString(fmt.Sprintf("Stream-Status: %d\n", status))
+	if eventType = strings.TrimSpace(eventType); eventType != "" {
+		attempt.response.WriteString(fmt.Sprintf("Stream-Event: %s\n", eventType))
+	}
+	attempt.streamStatusWritten = true
 	updateAggregatedResponse(ginCtx, attempts)
 }
 

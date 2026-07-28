@@ -593,6 +593,7 @@
       "defaultTerminal": "Терминал по умолчанию",
       "defaultTerminalDesc": "Терминал, используемый при открытии CLI",
       "terminalSystem": "Системный по умолчанию",
+      "terminalSystemWindowsCompatibility": "Системная совместимость (PowerShell)",
       "accountManagement": "Управление аккаунтами",
       "autoRefresh": "Автообновление квоты Antigravity IDE",
       "codexAutoRefresh": "Автообновление квоты Codex",
@@ -653,6 +654,11 @@
       "codexPathReset": "Сбросить по умолчанию",
       "codexSyncWsl": "Синхронизировать Codex с WSL",
       "codexSyncWslDesc": "После переключения учетной записи Codex по умолчанию auth.json и config.toml также записываются в каталог Codex в WSL.",
+      "codexAppUiInjection": "Квота службы API",
+      "codexAppUiInjectionDesc": "После перезапуска экземпляра Codex показывать под полем ввода количество аккаунтов, недельную и 5-часовую квоты службы API Cockpit Tools. Cockpit Tools должен продолжать работать в фоне; обновление прекращается после полного выхода из приложения или при отсутствии сети.",
+      "codexAppUiInjectionPoolLabel": "Аккаунты",
+      "codexAppUiInjectionWeeklyLabel": "Неделя",
+      "codexAppUiInjectionFiveHourLabel": "5 ч",
       "codexWslConfigDir": "Каталог Codex в WSL",
       "codexWslConfigDirDesc": "Укажите каталог .codex внутри WSL. Поддерживаются пути \\\\wsl.localhost\\.",
       "codexWslConfigDirPlaceholder": "Пример: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -699,6 +705,10 @@
       "codebuddySettingsTitle": "Настройки CodeBuddy",
       "codebuddyAutoRefresh": "Автообновление квоты CodeBuddy",
       "codebuddyAutoRefreshDesc": "Интервал фонового автообновления",
+      "codebuddyShareSessionsOnSwitch": "Общие локальные сеансы при смене",
+    "codebuddyShareSessionsOnSwitchDesc": "Объединяет локальные сеансы и состояние восстановления между аккаунтами CodeBuddy на этом устройстве. Содержимое читается и записывается только локально и не отправляется.",
+    "workbuddyShareSessionsOnSwitch": "Общие локальные сеансы при смене",
+    "workbuddyShareSessionsOnSwitchDesc": "Объединяет локальные сеансы и состояние восстановления между аккаунтами WorkBuddy на этом устройстве. Содержимое читается и записывается только локально и не отправляется.",
       "codebuddyAppPath": "Путь запуска CodeBuddy",
       "codebuddyAppPathDesc": "Оставьте пустым, чтобы использовать путь по умолчанию",
       "codebuddyAppPathPlaceholder": "Путь по умолчанию",
@@ -1824,11 +1834,23 @@
       "formatRefreshOnlyLabel": "Только refresh_token",
       "formatBatchLabel": "Пакетный пример"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Уведомление об импорте Web Session",
+      "noticeMessage": "Обнаружено аккаунтов Web Session: {{count}}. При продолжении они будут автоматически зарегистрированы как Agent Identity.",
+      "noticeApiOnly": "Эти аккаунты предназначены только для API-сервиса и будут автоматически добавлены в его пул.",
+      "noticeNoSwitch": "Их нельзя использовать для обычного переключения аккаунтов Codex, прямого запуска официального клиента или CLI либо как аккаунт, привязанный через OAuth.",
+      "noticeCredential": "Приложение локально создаёт и хранит закрытый ключ Agent Identity. Защищайте экспортированные копии как пароли.",
+      "noticeConfirm": "Понятно, продолжить",
+      "apiOnlyActionError": "Аккаунты Agent Identity доступны только через API-сервис; на них нельзя напрямую переключиться или запустить их.",
+      "oauthBindingUnsupported": "Аккаунты Agent Identity предназначены только для API-сервиса и не могут использоваться как аккаунты, привязанные через OAuth."
+    },
     "exportFormat": {
       "label": "Формат экспорта",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "Формат sub2api",
       "cpa": "Формат cpa",
+      "agentIdentityCpaUnsupported": "Аккаунты Agent Identity нельзя экспортировать в формате cpa. Используйте Cockpit Tools или sub2api.",
+      "agentIdentityPrivateKeyNotice": "Экспорт содержит закрытый ключ Agent Identity, с помощью которого можно восстановить аккаунт на другом устройстве. Храните его как пароль.",
       "downloadAll": "Скачать все",
       "cpaCardTitle": "Аккаунт {{index}}",
       "savedFolder": "Папка сохранения",
@@ -1878,6 +1900,8 @@
         "freeNotice": "Бесплатные аккаунты пока не поддерживаются. Бесплатные аккаунты выбрать нельзя.",
         "freeUnsupported": "Бесплатные аккаунты пока не поддерживаются.",
         "restrictFreeToggle": "Ограничить Free-аккаунты",
+        "sessionAffinityConfirmTitle": "Включить привязку сеанса?",
+        "sessionAffinityDescription": "После включения один диалог будет по возможности использовать один аккаунт. Если он недоступен, маршрутизация может переключиться; после истечения срока аккаунт выбирается заново.",
         "chatApiKeyUnsupported": "Chat Completions не поддерживается",
         "pendingOauthUnsupported": "Ожидает: нельзя",
         "freeNoticeRestricted": "Free-аккаунты ограничены. Отключите это, чтобы их выбирать.",
@@ -1907,7 +1931,10 @@
       "testConnectFailed": "Не удалось подключиться к {{url}}. Убедитесь, что API-сервис запущен, порт не изменён и ничего его не блокирует.",
       "testAuthFailed": "Сервис доступен, но аутентификация не прошла: {{detail}}. Проверьте ключ API-сервиса или состояние входа в аккаунт.",
       "testServiceUnavailable": "Сервис доступен, но сейчас недоступен: {{detail}}. Проверьте, включён ли сервис, не пуста ли коллекция аккаунтов и доступны ли аккаунты.",
-      "gatewayErrors": {"authUnavailable": "Сейчас нет доступного для маршрутизации аккаунта. Аккаунт может быть на паузе, не авторизован или ограничен квотой. Проверьте состояние в API-сервисе Cockpit Tools.", "authNotFound": "В коллекции нет настроенного доступного аккаунта. Добавьте или включите аккаунт в API-сервисе Cockpit Tools."},
+      "gatewayErrors": {
+        "authUnavailable": "Сейчас нет доступного для маршрутизации аккаунта. Аккаунт может быть на паузе, не авторизован или ограничен квотой. Проверьте состояние в API-сервисе Cockpit Tools.",
+        "authNotFound": "В коллекции нет настроенного доступного аккаунта. Добавьте или включите аккаунт в API-сервисе Cockpit Tools."
+      },
       "testRateLimited": "Сервис доступен, но upstream ограничен или квота исчерпана: {{detail}}.",
       "testHttpFailed": "Сервис доступен, но запрос вернул HTTP {{status}}: {{detail}}.",
       "activateAction": "Запустить API-сервис",
@@ -3360,7 +3387,7 @@
       "routing": {
         "optionsTitle": "Параметры маршрута",
         "sessionAffinity": "Привязка сессии",
-        "sessionAffinityTtl": "TTL привязки",
+        "sessionAffinityTtl": "Срок действия (секунды)",
         "responsesWebsockets": "Responses через WebSocket",
         "maxRetryCredentials": "Аккаунты retry",
         "maxRetryInterval": "Ожидание retry",
@@ -4666,7 +4693,18 @@
       "payAsYouGoConsuming": "Оплата по факту: расходуется",
       "payAsYouGoEnabled": "Оплата по факту: включена",
       "payAsYouGoEmpty": "Оплата по факту: --",
-      "payAsYouGoLabel": "Использование по требованию"
+      "payAsYouGoLabel": "Использование по требованию",
+      "statusSynced": "Статус: синхр.",
+      "statusSyncedPending": "Статус: синхр., остаток уточн.",
+      "fastAvailable": "Быстрые: {{times}}",
+      "fastTimes": "{{count}}",
+      "fastUnlimited": "Безлимит",
+      "fastPerMonth": "Быстрые/мес: {{count}}",
+      "fastChannelPerMonth": "Экспресс: {{count}}/мес",
+      "fastChannelStatus": "Экспресс: {{status}}",
+      "freeRemainingUnknown": "Free ост.: --",
+      "timesRemainingUnknown": "Ост.: --",
+      "soloParallel": "Пакет: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "Руководство по аккаунту Trae (нажмите, чтобы развернуть или свернуть)",
@@ -4678,6 +4716,10 @@
       "permissionWithPlatform": "Область разрешений: чтение и запись полей входа в локальном storage.json {{platform}} для импорта аккаунта, переключения и отображения плана. Все данные обрабатываются локально.",
       "networkGlobal": "Сеть: OAuth-вход {{platform}}, обновление токенов и запросы плана обращаются к официальным API trae.ai / traeapi.us. Локальные файлы аккаунтов и сырые данные не загружаются в сторонние сервисы.",
       "networkCn": "Сеть: OAuth-вход {{platform}}, обновление токенов и запросы плана обращаются к официальным API trae.cn / trae.com.cn. Локальные файлы аккаунтов и сырые данные не загружаются в сторонние сервисы."
+    },
+    "token": {
+      "jsonOnlyDesc": "Вставьте полный JSON аккаунта Trae CN. Сырой token не поддерживается.",
+      "jsonOnlyPlaceholder": "Полный Trae CN JSON..."
     }
   },
   "codebuddyCn": {
@@ -4836,7 +4878,19 @@
       "queryFailed": "Сбой запроса",
       "retry": "Повтор",
       "inactive": "Недоступно",
-      "inactiveHint": "Чек-ин недоступен для этого аккаунта"
+      "inactiveHint": "Чек-ин недоступен для этого аккаунта",
+      "autoCheckinSettings": "Настройки автоматической отметки",
+      "autoCheckinLabel": "Авто-отметка",
+      "autoCheckinOff": "Авто-отметка выключена",
+      "autoCheckinEnabledHint": "Авто-отметка включена: случайная отметка между {{start}} и {{end}}",
+      "autoCheckinDisabledHint": "Авто-отметка отключена",
+      "enableAutoCheckin": "Включить авто-отметку",
+      "enableAutoCheckinDesc": "Ежедневно выполняет случайную отметку в указанном временном интервале",
+      "randomTimeRange": "Случайный интервал времени отметки",
+      "startTime": "Время начала",
+      "endTime": "Время окончания",
+      "timeRangeHint": "Ежедневно выбирает случайное время в этом интервале для выполнения фоновой отметки.",
+      "timeRangeError": "Время начала не может быть позже времени окончания"
     }
   },
   "zcode": {

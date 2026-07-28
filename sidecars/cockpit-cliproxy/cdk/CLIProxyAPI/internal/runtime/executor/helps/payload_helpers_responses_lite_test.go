@@ -80,7 +80,7 @@ func TestApplyPayloadConfigWithRequestResponsesLiteFiltersAllToolDeclarations(t 
 							{"type":"tool_search","execution":"server"},
 							{"type":"web_search"},
 							{"type":"image_generation"},
-							{"type":"namespace","name":"codex_app"}
+							{"type":"namespace","name":"codex_app","tools":[{"type":"function","name":"list_threads"}]}
 						]`,
 						"tool_choice": `{"type":"allowed_tools","mode":"auto","tools":[
 							{"type":"function","name":"lookup"},
@@ -101,9 +101,12 @@ func TestApplyPayloadConfigWithRequestResponsesLiteFiltersAllToolDeclarations(t 
 				{"type":"tool_search","execution":"client"},
 				{"type":"tool_search","execution":"server"},
 				{"type":"web_search"},
-				{"type":"image_generation"}
+				{"type":"image_generation"},
+				{"type":"namespace","name":"collaboration","tools":[
+					{"type":"function","name":"spawn_agent","parameters":{"type":"object"}},
+					{"type":"function","name":"wait_agent","parameters":{"type":"object"}}
+				]}
 			],"tool_choice":{"type":"web_search"}},
-			{"type":"additional_tools","tools":[{"type":"namespace","name":"image_gen"}]},
 			{"type":"message","role":"user","tools":[{"type":"web_search"}]}
 		],
 		"response":{
@@ -132,15 +135,24 @@ func TestApplyPayloadConfigWithRequestResponsesLiteFiltersAllToolDeclarations(t 
 		headers,
 	)
 
-	assertResponsesLiteToolTypes(t, out, "tools", []string{"function", "custom", "tool_search"})
+	assertResponsesLiteToolTypes(t, out, "tools", []string{"function", "custom", "tool_search", "namespace"})
 	assertResponsesLiteToolTypes(t, out, "tool_choice.tools", []string{"function", "custom"})
-	assertResponsesLiteToolTypes(t, out, "input.0.tools", []string{"function", "custom", "tool_search"})
+	assertResponsesLiteToolTypes(t, out, "input.0.tools", []string{"function", "custom", "tool_search", "namespace"})
 	assertResponsesLiteToolTypes(t, out, "response.tools", []string{"function", "custom", "tool_search"})
 	if gjson.GetBytes(out, "input.0.tool_choice").Exists() {
 		t.Fatalf("unsupported additional_tools tool_choice survived: %s", out)
 	}
 	if got := gjson.GetBytes(out, "input.#").Int(); got != 2 {
-		t.Fatalf("input item count = %d, want 2 after empty additional_tools removal: %s", got, out)
+		t.Fatalf("input item count = %d, want 2 with collaboration additional_tools preserved: %s", got, out)
+	}
+	if got := gjson.GetBytes(out, "input.0.tools.3.name").String(); got != "collaboration" {
+		t.Fatalf("collaboration namespace = %q, want collaboration: %s", got, out)
+	}
+	if got := gjson.GetBytes(out, "input.0.tools.3.tools.0.name").String(); got != "spawn_agent" {
+		t.Fatalf("collaboration tool = %q, want spawn_agent: %s", got, out)
+	}
+	if got := gjson.GetBytes(out, "input.0.tools.3.tools.1.name").String(); got != "wait_agent" {
+		t.Fatalf("collaboration tool = %q, want wait_agent: %s", got, out)
 	}
 	if got := gjson.GetBytes(out, "input.1.tools.0.type").String(); got != "web_search" {
 		t.Fatalf("non-additional_tools history was changed, type=%q: %s", got, out)
@@ -200,10 +212,13 @@ func TestApplyPayloadConfigWithRequestLiteHeaderPreservesImageToolsForNonLiteMod
 
 func TestApplyPayloadConfigWithRequestLiteHeaderFiltersNonImageToolsForNonLiteModel(t *testing.T) {
 	headers := http.Header{CodexResponsesLiteHeader: {"true"}}
-	payload := []byte(`{"tools":[{"type":"function","name":"keep"},{"type":"web_search"},{"type":"namespace","name":"codex_app"}]}`)
+	payload := []byte(`{"tools":[{"type":"function","name":"keep"},{"type":"web_search"},{"type":"namespace","name":"collaboration","tools":[{"type":"function","name":"spawn_agent"}]}]}`)
 
 	out := ApplyPayloadConfigWithRequest(nil, "gpt-5.4", "codex", "openai-response", "", payload, nil, "", "/v1/responses", headers)
-	assertResponsesLiteToolTypes(t, out, "tools", []string{"function"})
+	assertResponsesLiteToolTypes(t, out, "tools", []string{"function", "namespace"})
+	if got := gjson.GetBytes(out, "tools.1.tools.0.name").String(); got != "spawn_agent" {
+		t.Fatalf("collaboration namespace child = %q, want spawn_agent: %s", got, out)
+	}
 }
 
 func assertResponsesLiteToolTypes(t *testing.T, payload []byte, path string, want []string) {

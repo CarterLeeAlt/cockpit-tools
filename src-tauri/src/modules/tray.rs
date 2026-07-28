@@ -1092,13 +1092,13 @@ fn build_claude_display_info(lang: &str, desktop: bool) -> AccountDisplayInfo {
         quota_lines.push(format_quota_line(
             lang,
             &get_text("claude_current_session", lang),
-            &format_percent_text(quota.five_hour_percentage),
+            &format_percent_text((100 - quota.five_hour_percentage.clamp(0, 100)).clamp(0, 100)),
             Some(&format_reset_time_from_ts(lang, quota.five_hour_reset_time)),
         ));
         quota_lines.push(format_quota_line(
             lang,
             &get_text("claude_current_week_all_models", lang),
-            &format_percent_text(quota.seven_day_percentage),
+            &format_percent_text((100 - quota.seven_day_percentage.clamp(0, 100)).clamp(0, 100)),
             Some(&format_reset_time_from_ts(lang, quota.seven_day_reset_time)),
         ));
     } else if let Some(error) = &account.quota_error {
@@ -3589,9 +3589,9 @@ fn handle_tray_event<R: Runtime>(tray: &TrayIcon<R>, event: TrayIconEvent) {
 pub fn update_tray_menu<R: Runtime>(app: &tauri::AppHandle<R>) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        let _ = app;
+        crate::modules::macos_native_menu::update_status_item(app)?;
         if !MACOS_TRAY_SKIP_LOGGED.swap(true, Ordering::Relaxed) {
-            logger::log_info("[Tray] macOS 原生菜单模式，跳过 Tauri 托盘菜单更新");
+            logger::log_info("[Tray] macOS 原生菜单模式，已更新菜单栏状态");
         }
     }
 

@@ -482,6 +482,83 @@ func TestManagerExecuteStream_ModelSupportBadRequestFallsBackAndSuspendsAuth(t *
 	}
 }
 
+func TestManagerExecuteStream_ServiceUnavailableBootstrapFailoverUpdatesSessionAffinity(t *testing.T) {
+	selector := NewSessionAffinitySelector(&RoundRobinSelector{})
+	t.Cleanup(selector.Stop)
+
+	m := NewManager(nil, selector, nil)
+	m.SetRetryConfig(1, 2*time.Second, 2)
+
+	baseID := uuid.NewString()
+	overloadedAuth := &Auth{ID: baseID + "-auth-a", Provider: "codex"}
+	healthyAuth := &Auth{ID: baseID + "-auth-b", Provider: "codex"}
+	executor := &authFallbackExecutor{
+		id: "codex",
+		streamFirstErrors: map[string]error{
+			overloadedAuth.ID: &Error{
+				HTTPStatus: http.StatusServiceUnavailable,
+				Message:    `service_unavailable_error: server_is_overloaded`,
+			},
+		},
+	}
+	m.RegisterExecutor(executor)
+
+	model := "gpt-5.4"
+	reg := registry.GetGlobalRegistry()
+	reg.RegisterClient(overloadedAuth.ID, "codex", []*registry.ModelInfo{{ID: model}})
+	reg.RegisterClient(healthyAuth.ID, "codex", []*registry.ModelInfo{{ID: model}})
+	t.Cleanup(func() {
+		reg.UnregisterClient(overloadedAuth.ID)
+		reg.UnregisterClient(healthyAuth.ID)
+	})
+
+	if _, errRegister := m.Register(context.Background(), overloadedAuth); errRegister != nil {
+		t.Fatalf("register overloaded auth: %v", errRegister)
+	}
+	if _, errRegister := m.Register(context.Background(), healthyAuth); errRegister != nil {
+		t.Fatalf("register healthy auth: %v", errRegister)
+	}
+
+	req := cliproxyexecutor.Request{Model: model}
+	opts := cliproxyexecutor.Options{Headers: http.Header{"X-Session-ID": {"issue-1651"}}}
+	for i := 0; i < 2; i++ {
+		streamResult, errExecute := m.ExecuteStream(context.Background(), []string{"codex"}, req, opts)
+		if errExecute != nil {
+			t.Fatalf("execute stream %d: %v", i, errExecute)
+		}
+		var payload []byte
+		for chunk := range streamResult.Chunks {
+			if chunk.Err != nil {
+				t.Fatalf("execute stream %d chunk error: %v", i, chunk.Err)
+			}
+			payload = append(payload, chunk.Payload...)
+		}
+		if string(payload) != healthyAuth.ID {
+			t.Fatalf("execute stream %d payload = %q, want %q", i, string(payload), healthyAuth.ID)
+		}
+	}
+
+	wantCalls := []string{overloadedAuth.ID, healthyAuth.ID, healthyAuth.ID}
+	gotCalls := executor.StreamCalls()
+	if len(gotCalls) != len(wantCalls) {
+		t.Fatalf("stream calls = %v, want %v", gotCalls, wantCalls)
+	}
+	for i := range wantCalls {
+		if gotCalls[i] != wantCalls[i] {
+			t.Fatalf("stream call %d auth = %q, want %q", i, gotCalls[i], wantCalls[i])
+		}
+	}
+
+	updatedOverloaded, ok := m.GetByID(overloadedAuth.ID)
+	if !ok || updatedOverloaded == nil {
+		t.Fatal("expected overloaded auth to remain registered")
+	}
+	state := updatedOverloaded.ModelStates[model]
+	if state == nil || !state.Unavailable || state.NextRetryAfter.IsZero() {
+		t.Fatalf("expected overloaded auth model to enter cooldown, got %#v", state)
+	}
+}
+
 func TestManager_MarkResult_RespectsAuthDisableCoolingOverride(t *testing.T) {
 	prev := quotaCooldownDisabled.Load()
 	quotaCooldownDisabled.Store(false)

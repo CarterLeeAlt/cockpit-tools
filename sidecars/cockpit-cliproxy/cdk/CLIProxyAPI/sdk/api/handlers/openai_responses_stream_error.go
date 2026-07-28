@@ -2,10 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 )
+
+type openAIResponsesStreamEventProvider interface {
+	ResponsesStreamEvent() []byte
+}
 
 type openAIResponsesStreamErrorChunk struct {
 	Type           string `json:"type"`
@@ -116,4 +121,30 @@ func BuildOpenAIResponsesStreamErrorChunk(status int, errText string, sequenceNu
 		return data
 	}
 	return []byte(`{"type":"error","code":"internal_server_error","message":"internal error","sequence_number":0}`)
+}
+
+// BuildOpenAIResponsesStreamTerminalEvent preserves a valid upstream Responses
+// terminal event when the executor provides one, otherwise it creates a valid
+// top-level error event for the downstream Responses client.
+func BuildOpenAIResponsesStreamTerminalEvent(status int, streamErr error, sequenceNumber int) (string, []byte) {
+	var provider openAIResponsesStreamEventProvider
+	if streamErr != nil && errors.As(streamErr, &provider) && provider != nil {
+		payload := provider.ResponsesStreamEvent()
+		if json.Valid(payload) {
+			var envelope struct {
+				Type string `json:"type"`
+			}
+			if err := json.Unmarshal(payload, &envelope); err == nil {
+				eventType := strings.TrimSpace(envelope.Type)
+				if eventType == "response.failed" || eventType == "error" {
+					return eventType, payload
+				}
+			}
+		}
+	}
+	errText := ""
+	if streamErr != nil {
+		errText = streamErr.Error()
+	}
+	return "error", BuildOpenAIResponsesStreamErrorChunk(status, errText, sequenceNumber)
 }

@@ -1008,7 +1008,7 @@ func responsesLiteToolAllowed(tool gjson.Result) bool {
 		return false
 	}
 	switch strings.ToLower(strings.TrimSpace(tool.Get("type").String())) {
-	case "function", "custom":
+	case "function", "custom", "namespace":
 		return true
 	case "tool_search":
 		return strings.EqualFold(strings.TrimSpace(tool.Get("execution").String()), "client")
@@ -1036,7 +1036,7 @@ func filterResponsesLiteToolChoice(payload []byte, toolChoicePath string) []byte
 
 	choiceType := strings.ToLower(strings.TrimSpace(choice.Get("type").String()))
 	switch choiceType {
-	case "function", "custom":
+	case "function", "custom", "namespace":
 		return payload
 	case "tool_search":
 		if responsesLiteToolAllowed(choice) {

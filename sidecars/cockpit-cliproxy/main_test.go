@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,6 +26,74 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/config"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v7/sdk/translator"
 )
+
+type responsesTerminalEventTestError struct {
+	event []byte
+}
+
+func TestReadManifestCodexTokenAuthAcceptsAgentIdentityWithoutAccessToken(t *testing.T) {
+	authDir := t.TempDir()
+	path := filepath.Join(authDir, "agent.json")
+	payload := map[string]any{
+		"type":              "codex",
+		"auth_mode":         "agentIdentity",
+		"agent_runtime_id":  "runtime-test",
+		"agent_private_key": "private-key-test",
+		"account_id":        "team-test",
+		"chatgpt_user_id":   "user-test",
+		"email":             "agent@example.com",
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal auth: %v", err)
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatalf("write auth: %v", err)
+	}
+	auth, err := readManifestCodexTokenAuth(&accountSpec{
+		ID:       "account-test",
+		Email:    "agent@example.com",
+		AuthID:   "agent.json",
+		AuthKind: "agent_identity",
+	}, authDir, path)
+	if err != nil {
+		t.Fatalf("read Agent Identity auth: %v", err)
+	}
+	if auth.Attributes[coreauth.AttributeAuthKind] != coreauth.AuthKindOAuth {
+		t.Fatalf("auth kind = %q", auth.Attributes[coreauth.AttributeAuthKind])
+	}
+	if got, _ := auth.Metadata["auth_mode"].(string); got != "agentIdentity" {
+		t.Fatalf("auth mode = %q", got)
+	}
+	if _, exists := auth.Metadata["access_token"]; exists {
+		t.Fatal("Agent Identity must not fabricate access_token")
+	}
+}
+
+func (e responsesTerminalEventTestError) Error() string { return "server overloaded" }
+func (e responsesTerminalEventTestError) StatusCode() int {
+	return http.StatusServiceUnavailable
+}
+func (e responsesTerminalEventTestError) ResponsesStreamEvent() []byte {
+	return bytes.Clone(e.event)
+}
+
+func TestWriteStreamTerminalErrorForResponsesPreservesResponseFailed(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	event := []byte(`{"type":"response.failed","response":{"status":"failed","error":{"type":"service_unavailable_error","code":"server_is_overloaded","message":"Our servers are currently overloaded"}}}`)
+
+	writeStreamTerminalErrorForFormat(c, responsesTerminalEventTestError{event: event}, sdktranslator.FormatOpenAIResponse)
+
+	body := recorder.Body.String()
+	if !strings.Contains(body, "event: response.failed") {
+		t.Fatalf("expected response.failed event name, got %q", body)
+	}
+	if !strings.Contains(body, `"type":"response.failed"`) {
+		t.Fatalf("expected top-level response.failed type, got %q", body)
+	}
+}
 
 func TestResponsesSSEFramerBuffersPartialJSONAcrossChunks(t *testing.T) {
 	framer := newRelayStreamFramer(sdktranslator.FormatOpenAIResponse, "/v1/responses")
@@ -216,13 +285,12 @@ func TestCodexClientModelsResponsePreserves56Template(t *testing.T) {
 
 func TestCodexClientModelsResponseDoesNotInjectFastMode(t *testing.T) {
 	for _, test := range []struct {
-		name     string
-		spec     *apiKeySpec
-		wantFast bool
+		name string
+		spec *apiKeySpec
 	}{
-		{name: "plain API key", spec: &apiKeySpec{}, wantFast: false},
-		{name: "OAuth-bound API key", spec: &apiKeySpec{BoundOAuth: true}, wantFast: false},
-		{name: "provider gateway", spec: &apiKeySpec{ProviderGateway: &providerGatewaySpec{}}, wantFast: false},
+		{name: "plain API key", spec: &apiKeySpec{}},
+		{name: "OAuth-bound API key", spec: &apiKeySpec{BoundOAuth: true}},
+		{name: "provider gateway", spec: &apiKeySpec{ProviderGateway: &providerGatewaySpec{}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			response := buildCodexClientModelsResponse([]string{"gpt-5.6-sol", "custom-compat-model"}, test.spec)
@@ -244,8 +312,9 @@ func TestCodexClientModelsResponseDoesNotInjectFastMode(t *testing.T) {
 						hasFast = true
 					}
 				}
-				if hasFast != test.wantFast {
-					t.Fatalf("model %s Fast tier = %v, want %v: %#v", slug, hasFast, test.wantFast, model["service_tiers"])
+				wantFast := slug == "gpt-5.6-sol"
+				if hasFast != wantFast {
+					t.Fatalf("model %s Fast tier = %v, want %v: %#v", slug, hasFast, wantFast, model["service_tiers"])
 				}
 			}
 		})
@@ -266,6 +335,225 @@ func TestCodexClientModelsResponseEnablesWebsocketsWhenConfigured(t *testing.T) 
 	}
 	if got, ok := sol["prefer_websockets"].(bool); !ok || !got {
 		t.Fatalf("sol prefer_websockets = %#v, want true", sol["prefer_websockets"])
+	}
+}
+
+func TestBuildCockpitQuotaResponseAggregatesShortestWindowWithoutClamp(t *testing.T) {
+	hourlyPresent := true
+	weeklyPresent := true
+	hourlyMinutes := int64(300)
+	weeklyMinutes := int64(10080)
+	accounts := map[string]quotaPoolAccountState{
+		"team-1": {
+			Primary: &quotaPoolWindowState{Present: &weeklyPresent, RemainingPercent: intPtrForTest(100), WindowMinutes: &weeklyMinutes},
+		},
+		"plus-with-hourly": {
+			Primary:   &quotaPoolWindowState{Present: &hourlyPresent, RemainingPercent: intPtrForTest(80), WindowMinutes: &hourlyMinutes},
+			Secondary: &quotaPoolWindowState{Present: &weeklyPresent, RemainingPercent: intPtrForTest(40), WindowMinutes: &weeklyMinutes},
+		},
+	}
+	accountIDs := make([]string, 0, 16)
+	for index := 0; index < 15; index++ {
+		accountID := fmt.Sprintf("plus-%d", index+1)
+		remaining := 86
+		if index == 14 {
+			remaining = 83
+		}
+		accounts[accountID] = quotaPoolAccountState{
+			Primary: &quotaPoolWindowState{Present: &weeklyPresent, RemainingPercent: intPtrForTest(remaining), WindowMinutes: &weeklyMinutes},
+		}
+		accountIDs = append(accountIDs, accountID)
+	}
+	accountIDs = append(accountIDs, "team-1")
+	state := quotaPoolStateFile{Accounts: accounts}
+	response := buildCockpitQuotaResponse(&apiKeySpec{AccountIDs: accountIDs}, state, time.Now())
+	if response.RemainingPercent == nil || *response.RemainingPercent != 1387 {
+		t.Fatalf("remaining percent = %#v, want 1387", response.RemainingPercent)
+	}
+	if response.WeeklyRemainingPercent == nil || *response.WeeklyRemainingPercent != 1387 {
+		t.Fatalf("weekly percent = %#v, want 1387", response.WeeklyRemainingPercent)
+	}
+	if response.FiveHourRemainingPercent != nil {
+		t.Fatalf("five-hour percent should be absent: %#v", response.FiveHourRemainingPercent)
+	}
+	if response.IncludedAccountCount != 16 || response.MissingAccountCount != 0 {
+		t.Fatalf("account counts = %d/%d, want 16/0", response.IncludedAccountCount, response.MissingAccountCount)
+	}
+	shortest := buildCockpitQuotaResponse(&apiKeySpec{AccountIDs: []string{"plus-with-hourly"}}, state, time.Now())
+	if shortest.RemainingPercent == nil || *shortest.RemainingPercent != 80 {
+		t.Fatalf("shortest window percent = %#v, want 80", shortest.RemainingPercent)
+	}
+	if shortest.WeeklyRemainingPercent == nil || *shortest.WeeklyRemainingPercent != 40 {
+		t.Fatalf("weekly percent = %#v, want 40", shortest.WeeklyRemainingPercent)
+	}
+	if shortest.FiveHourRemainingPercent == nil || *shortest.FiveHourRemainingPercent != 80 {
+		t.Fatalf("five-hour percent = %#v, want 80", shortest.FiveHourRemainingPercent)
+	}
+	emptyScope := buildCockpitQuotaResponse(&apiKeySpec{}, state, time.Now())
+	if emptyScope.RemainingPercent != nil || emptyScope.AccountCount != 0 {
+		t.Fatalf("empty API key scope must not expose the full quota pool: %#v", emptyScope)
+	}
+}
+
+func TestBuildCockpitQuotaResponseGroupsPlansAndPoolHealth(t *testing.T) {
+	present := true
+	fiveHourMinutes := int64(300)
+	weeklyMinutes := int64(10080)
+	state := quotaPoolStateFile{Accounts: map[string]quotaPoolAccountState{
+		"plus-1": {
+			Primary:   &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(80), WindowMinutes: &fiveHourMinutes},
+			Secondary: &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(40), WindowMinutes: &weeklyMinutes},
+		},
+		"team-1": {
+			Primary: &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(75), WindowMinutes: &weeklyMinutes},
+		},
+	}}
+	accounts := map[string]*accountSpec{
+		"plus-1":    {ID: "plus-1", PlanType: "plus"},
+		"plus-2":    {ID: "plus-2", PlanType: "plus"},
+		"team-1":    {ID: "team-1", PlanType: "team"},
+		"api-key-1": {ID: "api-key-1", AuthKind: "api_key", PlanType: "custom"},
+	}
+	response := buildCockpitQuotaResponseWithAccounts(
+		&apiKeySpec{AccountIDs: []string{"plus-1", "plus-2", "team-1", "api-key-1"}},
+		state,
+		time.Now(),
+		accounts,
+	)
+	if response.AccountCount != 3 || response.AvailableAccountCount != 2 || response.AbnormalAccountCount != 1 || response.CooldownAccountCount != 0 {
+		t.Fatalf("pool health = available %d, abnormal %d, cooldown %d", response.AvailableAccountCount, response.AbnormalAccountCount, response.CooldownAccountCount)
+	}
+	if len(response.Plans) != 3 {
+		t.Fatalf("plan summaries = %#v, want 3 groups", response.Plans)
+	}
+	if response.Plans[0].Plan != "PLUS" || response.Plans[0].Count != 2 || response.Plans[0].WeeklyRemainingPercent == nil || *response.Plans[0].WeeklyRemainingPercent != 40 || response.Plans[0].FiveHourRemainingPercent == nil || *response.Plans[0].FiveHourRemainingPercent != 80 {
+		t.Fatalf("PLUS summary = %#v", response.Plans[0])
+	}
+	if response.Plans[1].Plan != "TEAM" || response.Plans[1].Count != 1 || response.Plans[1].WeeklyRemainingPercent == nil || *response.Plans[1].WeeklyRemainingPercent != 75 {
+		t.Fatalf("TEAM summary = %#v", response.Plans[1])
+	}
+	if response.Plans[2].Plan != "API_KEY" || response.Plans[2].Count != 1 || response.Plans[2].WeeklyRemainingPercent != nil || response.Plans[2].FiveHourRemainingPercent != nil {
+		t.Fatalf("API_KEY summary = %#v", response.Plans[2])
+	}
+	applyCockpitQuotaAuthHealth(&response, &apiKeySpec{AccountIDs: []string{"plus-1", "plus-2", "team-1", "api-key-1"}}, state, []*coreauth.Auth{{
+		ID:             "team-auth",
+		Unavailable:    true,
+		NextRetryAfter: time.Now().Add(time.Minute),
+		Attributes:     map[string]string{"account_id": "team-1"},
+	}}, time.Now())
+	if response.AvailableAccountCount != 1 || response.AbnormalAccountCount != 1 || response.CooldownAccountCount != 1 {
+		t.Fatalf("runtime pool health = available %d, abnormal %d, cooldown %d", response.AvailableAccountCount, response.AbnormalAccountCount, response.CooldownAccountCount)
+	}
+}
+
+func TestRelayServerCockpitQuotaRequiresKeyAndIsolatesAccountScopes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	statePath := filepath.Join(t.TempDir(), "quota-pool-state.json")
+	present := true
+	minutes := int64(300)
+	state := quotaPoolStateFile{Accounts: map[string]quotaPoolAccountState{
+		"account-a": {
+			Primary: &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(80), WindowMinutes: &minutes},
+		},
+		"account-b": {
+			Primary: &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(55), WindowMinutes: &minutes},
+		},
+	}}
+	content, err := json.Marshal(state)
+	if err != nil {
+		t.Fatalf("marshal quota state: %v", err)
+	}
+	if err := os.WriteFile(statePath, content, 0o600); err != nil {
+		t.Fatalf("write quota state: %v", err)
+	}
+
+	keyA := &apiKeySpec{ID: "key-a", Key: "client-a", Enabled: true, AccountIDs: []string{"account-a"}}
+	keyB := &apiKeySpec{ID: "key-b", Key: "client-b", Enabled: true, AccountIDs: []string{"account-b"}}
+	manifest := &manifest{apiKeyByValue: map[string]*apiKeySpec{
+		keyA.Key: keyA,
+		keyB.Key: keyB,
+	}}
+	router := (&relayServer{
+		runtime:            &fakeRuntime{},
+		cfg:                &config.Config{},
+		manifest:           manifest,
+		policy:             &requestPolicy{manifest: manifest},
+		quotaPoolStatePath: statePath,
+	}).router()
+
+	for _, key := range []string{"", "wrong-key"} {
+		req := httptest.NewRequest(http.MethodGet, cockpitQuotaPath, nil)
+		if key != "" {
+			req.Header.Set("Authorization", "Bearer "+key)
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("key %q status = %d, want 401; body=%s", key, w.Code, w.Body.String())
+		}
+	}
+
+	for key, want := range map[string]int{"client-a": 80, "client-b": 55} {
+		req := httptest.NewRequest(http.MethodGet, cockpitQuotaPath, nil)
+		req.Header.Set("Authorization", "Bearer "+key)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("key %q status = %d, want 200; body=%s", key, w.Code, w.Body.String())
+		}
+		var response cockpitQuotaResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("decode key %q response: %v", key, err)
+		}
+		if response.RemainingPercent == nil || *response.RemainingPercent != want || response.AccountCount != 1 {
+			t.Fatalf("key %q received another scope: %#v", key, response)
+		}
+	}
+}
+
+func TestRelayServerCockpitQuotaUpstreamFailureReturnsScopedEmptyState(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusBadGateway)
+	}))
+	defer upstream.Close()
+
+	statePath := filepath.Join(t.TempDir(), "quota-pool-state.json")
+	if err := os.WriteFile(statePath, []byte(`{"accounts":{}}`), 0o600); err != nil {
+		t.Fatalf("write quota state: %v", err)
+	}
+	spec := &apiKeySpec{
+		ID:         "provider-key",
+		Key:        "client-key",
+		Enabled:    true,
+		AccountIDs: []string{"provider-account"},
+		ProviderGateway: &providerGatewaySpec{
+			BaseURL: upstream.URL,
+			APIKey:  "upstream-key",
+		},
+	}
+	manifest := &manifest{apiKeyByValue: map[string]*apiKeySpec{spec.Key: spec}}
+	router := (&relayServer{
+		runtime:            &fakeRuntime{},
+		cfg:                &config.Config{},
+		manifest:           manifest,
+		policy:             &requestPolicy{manifest: manifest},
+		quotaPoolStatePath: statePath,
+	}).router()
+
+	req := httptest.NewRequest(http.MethodGet, cockpitQuotaPath, nil)
+	req.Header.Set("Authorization", "Bearer client-key")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var response cockpitQuotaResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.RemainingPercent != nil || response.AccountCount != 1 || response.MissingAccountCount != 1 {
+		t.Fatalf("upstream failure should keep local scoped empty state: %#v", response)
 	}
 }
 
@@ -3705,5 +3993,48 @@ func TestResponsesWebsocketRejectsProviderGatewayBeforeCodexAuth(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "websocket_not_supported") {
 		t.Fatalf("body = %s", w.Body.String())
+	}
+}
+
+func TestCoreAuthSelectorFiltersNewModelExclusionsBeforeSessionAffinity(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Routing.SessionAffinity = true
+	cfg.Routing.SessionAffinityTTL = "1h"
+	selector := buildCoreAuthSelector(cfg, &coreauth.RoundRobinSelector{}, &manifest{}, nil)
+	if stoppable, ok := selector.(coreauth.StoppableSelector); ok {
+		t.Cleanup(stoppable.Stop)
+	}
+
+	plus := &coreauth.Auth{
+		ID:       "plus.json",
+		Provider: "codex",
+		Status:   coreauth.StatusActive,
+		Metadata: map[string]any{},
+	}
+	pro := &coreauth.Auth{
+		ID:       "pro.json",
+		Provider: "codex",
+		Status:   coreauth.StatusActive,
+	}
+	auths := []*coreauth.Auth{plus, pro}
+	opts := cliproxyexecutor.Options{
+		Headers: http.Header{"Session_id": []string{"spark-session"}},
+	}
+
+	first, err := selector.Pick(context.Background(), "codex", codexSparkModel, opts, auths)
+	if err != nil {
+		t.Fatalf("initial Pick: %v", err)
+	}
+	if first == nil || first.ID != plus.ID {
+		t.Fatalf("initial Pick = %#v, want %q", first, plus.ID)
+	}
+
+	plus.Metadata["excluded_models"] = []any{codexSparkModel}
+	second, err := selector.Pick(context.Background(), "codex", codexSparkModel, opts, auths)
+	if err != nil {
+		t.Fatalf("Pick after exclusion: %v", err)
+	}
+	if second == nil || second.ID != pro.ID {
+		t.Fatalf("Pick after exclusion = %#v, want %q", second, pro.ID)
 	}
 }

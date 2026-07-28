@@ -711,6 +711,11 @@
       "codexPathReset": "Atur ulang ke bawaan",
       "codexSyncWsl": "Sinkronkan Codex ke WSL",
       "codexSyncWslDesc": "Setelah mengganti akun Codex default, auth.json dan config.toml juga ditulis ke direktori Codex di WSL.",
+      "codexAppUiInjection": "Kuota layanan API",
+      "codexAppUiInjectionDesc": "Setelah instans Codex dimulai ulang, tampilkan jumlah akun serta kuota mingguan dan 5 jam layanan API Cockpit Tools di bawah composer. Cockpit Tools harus tetap berjalan di latar belakang; pembaruan berhenti jika aplikasi ditutup sepenuhnya atau jaringan tidak tersedia.",
+      "codexAppUiInjectionPoolLabel": "Akun",
+      "codexAppUiInjectionWeeklyLabel": "Minggu",
+      "codexAppUiInjectionFiveHourLabel": "5 jam",
       "codexWslConfigDir": "Direktori Codex WSL",
       "codexWslConfigDirDesc": "Masukkan direktori .codex di dalam WSL. Path \\\\wsl.localhost\\ didukung.",
       "codexWslConfigDirPlaceholder": "Contoh: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -747,6 +752,10 @@
       "codebuddySettingsTitle": "Pengaturan CodeBuddy",
       "codebuddyAutoRefresh": "Penyegaran Otomatis Kuota CodeBuddy",
       "codebuddyAutoRefreshDesc": "Interval penyegaran otomatis latar belakang",
+      "codebuddyShareSessionsOnSwitch": "Bagikan sesi lokal saat beralih",
+    "codebuddyShareSessionsOnSwitchDesc": "Menggabungkan sesi lokal dan status pemulihan antar akun CodeBuddy di perangkat ini. Konten hanya dibaca dan ditulis secara lokal dan tidak diunggah.",
+    "workbuddyShareSessionsOnSwitch": "Bagikan sesi lokal saat beralih",
+    "workbuddyShareSessionsOnSwitchDesc": "Menggabungkan sesi lokal dan status pemulihan antar akun WorkBuddy di perangkat ini. Konten hanya dibaca dan ditulis secara lokal dan tidak diunggah.",
       "codebuddyAppPath": "Jalur Peluncuran CodeBuddy",
       "codebuddyAppPathDesc": "Biarkan kosong untuk jalur bawaan",
       "codebuddyAppPathPlaceholder": "Jalur bawaan",
@@ -809,6 +818,7 @@
       "defaultTerminal": "Terminal default",
       "defaultTerminalDesc": "Terminal yang digunakan saat membuka CLI.",
       "terminalSystem": "Ikuti sistem",
+      "terminalSystemWindowsCompatibility": "Kompatibilitas sistem (PowerShell)",
       "currentAccountRefreshRequiresAutoRefresh": "Aktifkan terlebih dahulu \"Penyegaran Kuota Otomatis\" untuk mengatur penyegaran akun saat ini.",
       "codebuddyCnAppPath": "Path Aplikasi CodeBuddy CN",
       "codebuddyCnAppPathDesc": "Kosongkan untuk menggunakan path default",
@@ -1874,11 +1884,23 @@
       "formatRefreshOnlyLabel": "Hanya refresh_token",
       "formatBatchLabel": "Contoh batch"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Pemberitahuan impor Web Session",
+      "noticeMessage": "Terdeteksi {{count}} akun Web Session. Jika dilanjutkan, akun akan otomatis didaftarkan sebagai Agent Identity.",
+      "noticeApiOnly": "Akun ini hanya untuk Layanan API dan akan otomatis ditambahkan ke kumpulan akunnya.",
+      "noticeNoSwitch": "Akun tidak dapat digunakan untuk pergantian akun Codex biasa, menjalankan klien resmi maupun CLI secara langsung, atau sebagai akun pengikatan OAuth.",
+      "noticeCredential": "Aplikasi membuat dan menyimpan kunci privat Agent Identity secara lokal. Lindungi cadangan ekspor seperti kata sandi.",
+      "noticeConfirm": "Saya paham, lanjutkan",
+      "apiOnlyActionError": "Akun Agent Identity hanya tersedia melalui Layanan API dan tidak dapat dialihkan atau dijalankan langsung.",
+      "oauthBindingUnsupported": "Akun Agent Identity hanya untuk Layanan API dan tidak dapat digunakan sebagai akun pengikatan OAuth."
+    },
     "exportFormat": {
       "label": "Format ekspor",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "Format sub2api",
       "cpa": "Format cpa",
+      "agentIdentityCpaUnsupported": "Akun Agent Identity tidak dapat diekspor dalam format cpa. Gunakan Cockpit Tools atau sub2api.",
+      "agentIdentityPrivateKeyNotice": "Ekspor ini berisi kunci privat Agent Identity yang dapat memulihkan akun di perangkat lain. Lindungi seperti kata sandi.",
       "downloadAll": "Unduh semua",
       "cpaCardTitle": "Akun {{index}}",
       "savedFolder": "Folder tersimpan",
@@ -1928,6 +1950,8 @@
         "freeNotice": "Akun gratis belum didukung. Akun gratis tidak dapat dipilih.",
         "freeUnsupported": "Akun gratis belum didukung",
         "restrictFreeToggle": "Batasi akun Free",
+        "sessionAffinityConfirmTitle": "Aktifkan afinitas sesi?",
+        "sessionAffinityDescription": "Setelah diaktifkan, percakapan yang sama akan berusaha tetap memakai akun yang sama. Jika akun tidak tersedia, perutean dapat beralih; setelah kedaluwarsa akun akan dipilih ulang.",
         "chatApiKeyUnsupported": "Chat Completions tidak didukung",
         "pendingOauthUnsupported": "Auth tertunda: tidak",
         "freeNoticeRestricted": "Akun Free dibatasi. Nonaktifkan ini untuk memilihnya.",
@@ -1957,7 +1981,10 @@
       "testConnectFailed": "Tidak dapat terhubung ke {{url}}. Pastikan layanan API berjalan, port tidak berubah, dan tidak ada yang memblokirnya.",
       "testAuthFailed": "Layanan dapat dijangkau, tetapi autentikasi gagal: {{detail}}. Periksa kunci layanan API atau status masuk akun.",
       "testServiceUnavailable": "Layanan dapat dijangkau, tetapi saat ini tidak tersedia: {{detail}}. Periksa apakah layanan aktif, koleksi akun kosong, atau akun dapat digunakan.",
-      "gatewayErrors": {"authUnavailable": "Tidak ada akun yang dapat dirutekan saat ini. Akun mungkin sedang cooldown, tidak terautentikasi, atau dibatasi kuota. Periksa statusnya di layanan API Cockpit Tools.", "authNotFound": "Tidak ada akun yang dapat digunakan di kumpulan akun. Tambahkan atau aktifkan akun di layanan API Cockpit Tools."},
+      "gatewayErrors": {
+        "authUnavailable": "Tidak ada akun yang dapat dirutekan saat ini. Akun mungkin sedang cooldown, tidak terautentikasi, atau dibatasi kuota. Periksa statusnya di layanan API Cockpit Tools.",
+        "authNotFound": "Tidak ada akun yang dapat digunakan di kumpulan akun. Tambahkan atau aktifkan akun di layanan API Cockpit Tools."
+      },
       "testRateLimited": "Layanan dapat dijangkau, tetapi upstream dibatasi atau kuota habis: {{detail}}.",
       "testHttpFailed": "Layanan dapat dijangkau, tetapi permintaan mengembalikan HTTP {{status}}: {{detail}}.",
       "activateAction": "Mulai Layanan API",
@@ -3407,7 +3434,7 @@
       "routing": {
         "optionsTitle": "Opsi Routing",
         "sessionAffinity": "Afinitas Sesi",
-        "sessionAffinityTtl": "TTL Afinitas",
+        "sessionAffinityTtl": "Kedaluwarsa (detik)",
         "responsesWebsockets": "Responses melalui WebSocket",
         "maxRetryCredentials": "Akun retry",
         "maxRetryInterval": "Tunggu retry",
@@ -4841,7 +4868,18 @@
       "payAsYouGoLabel": "Penggunaan On-Demand",
       "payAsYouGoConsuming": "Penggunaan On-Demand: Mengonsumsi",
       "payAsYouGoEnabled": "Penggunaan On-Demand: Diaktifkan",
-      "payAsYouGoEmpty": "Penggunaan On-Demand: --"
+      "payAsYouGoEmpty": "Penggunaan On-Demand: --",
+      "statusSynced": "Status: tersinkron",
+      "statusSyncedPending": "Status: sinkron, sisa menunggu",
+      "fastAvailable": "Cepat sisa {{times}}",
+      "fastTimes": "{{count}}×",
+      "fastUnlimited": "Tak terbatas",
+      "fastPerMonth": "Cepat/bln: {{count}}",
+      "fastChannelPerMonth": "Express: {{count}}/bln",
+      "fastChannelStatus": "Saluran cepat: {{status}}",
+      "freeRemainingUnknown": "Free sisa: --",
+      "timesRemainingUnknown": "Sisa: --",
+      "soloParallel": "Paket: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "Panduan akun Trae (klik untuk perluas/ciutkan)",
@@ -4853,6 +4891,10 @@
       "permissionWithPlatform": "Cakupan izin: membaca dan menulis kolom login di storage.json lokal {{platform}} untuk impor akun, injeksi pergantian akun, dan tampilan paket. Semua data diproses secara lokal.",
       "networkGlobal": "Cakupan jaringan: login OAuth, penyegaran token, dan kueri paket {{platform}} memanggil API resmi trae.ai / traeapi.us. File akun lokal dan isi penyimpanan mentah tidak diunggah ke layanan pihak ketiga.",
       "networkCn": "Cakupan jaringan: login OAuth, penyegaran token, dan kueri paket {{platform}} memanggil API resmi trae.cn / trae.com.cn. File akun lokal dan isi penyimpanan mentah tidak diunggah ke layanan pihak ketiga."
+    },
+    "token": {
+      "jsonOnlyDesc": "Tempel JSON akun Trae CN lengkap. Token mentah tidak didukung.",
+      "jsonOnlyPlaceholder": "JSON Trae CN lengkap..."
     }
   },
   "codebuddyCn": {
@@ -5011,7 +5053,19 @@
       "queryFailed": "Kueri gagal",
       "retry": "Coba lagi",
       "inactive": "Tidak tersedia",
-      "inactiveHint": "Check-in tidak aktif untuk akun ini"
+      "inactiveHint": "Check-in tidak aktif untuk akun ini",
+      "autoCheckinSettings": "Pengaturan Check-in Otomatis",
+      "autoCheckinLabel": "Check-in Otomatis",
+      "autoCheckinOff": "Check-in Otomatis Mati",
+      "autoCheckinEnabledHint": "Check-in otomatis aktif: Check-in acak antara {{start}} dan {{end}}",
+      "autoCheckinDisabledHint": "Check-in otomatis nonaktif",
+      "enableAutoCheckin": "Aktifkan Check-in Otomatis",
+      "enableAutoCheckinDesc": "Melakukan check-in harian secara acak dalam rentang waktu yang ditentukan",
+      "randomTimeRange": "Rentang Waktu Check-in Acak",
+      "startTime": "Waktu Mulai",
+      "endTime": "Waktu Selesai",
+      "timeRangeHint": "Memilih waktu acak dalam rentang ini setiap hari untuk menyelesaikan check-in latar belakang.",
+      "timeRangeError": "Waktu mulai tidak boleh lebih lambat dari waktu selesai"
     }
   },
   "mfaVault": {

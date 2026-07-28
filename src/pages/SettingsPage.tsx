@@ -140,6 +140,7 @@ interface GeneralConfig {
   codex_auto_refresh_minutes: number;
   claude_auto_refresh_minutes: number;
   codex_sync_wsl: boolean;
+  codex_app_ui_injection_enabled?: boolean;
   codex_wsl_config_dir: string;
   ghcp_auto_refresh_minutes: number;
   windsurf_auto_refresh_minutes: number;
@@ -151,6 +152,9 @@ interface GeneralConfig {
   minimize_behavior?: 'dock_and_tray' | 'tray_only';
   hide_dock_icon?: boolean;
   tray_icon_style?: 'template' | 'color';
+  menu_bar_quota_enabled?: boolean;
+  menu_bar_show_account_prefix?: boolean;
+  menu_bar_quota_platform?: PlatformId;
   floating_card_show_on_startup?: boolean;
   startup_minimized?: boolean;
   remember_main_window_state?: boolean;
@@ -171,6 +175,7 @@ interface GeneralConfig {
   kiro_app_path: string;
   cursor_app_path: string;
   codebuddy_app_path: string;
+  codebuddy_share_sessions_on_switch: boolean;
   codebuddy_cn_app_path: string;
   qoder_app_path: string;
   zcode_app_path: string;
@@ -183,6 +188,7 @@ interface GeneralConfig {
   trae_cn_app_scan_roots: string;
   trae_solo_cn_app_scan_roots: string;
   workbuddy_app_path: string;
+  workbuddy_share_sessions_on_switch: boolean;
   zed_app_path: string;
   codebuddy_auto_refresh_minutes: number;
   codebuddy_cn_auto_refresh_minutes: number;
@@ -405,7 +411,15 @@ export function SettingsPage() {
   }, []);
 
   const terminalOptions = useMemo(() => {
-    const common = [{ value: 'system', label: t('settings.general.terminalSystem', '系统默认') }];
+    const common = [{
+      value: 'system',
+      label: isWindows
+        ? t(
+            'settings.general.terminalSystemWindowsCompatibility',
+            '系统兼容（PowerShell）',
+          )
+        : t('settings.general.terminalSystem', '系统默认'),
+    }];
     const allOptions = isMacOS ? [
       { value: 'Terminal', label: 'Terminal.app' },
       { value: 'iTerm2', label: 'iTerm2' },
@@ -466,6 +480,27 @@ export function SettingsPage() {
     { value: 'ar', label: 'العربية' },
     { value: 'id', label: 'Bahasa Indonesia' },
   ];
+
+  const menuBarQuotaPlatformOptions: Array<{ value: PlatformId; label: string }> = [
+    { value: 'codex', label: 'Codex' },
+    { value: 'claude_manager', label: 'Claude' },
+    { value: 'antigravity', label: 'Antigravity' },
+    { value: 'github-copilot', label: 'GitHub Copilot' },
+    { value: 'windsurf', label: 'Windsurf' },
+    { value: 'kiro', label: 'Kiro' },
+    { value: 'cursor', label: 'Cursor' },
+    { value: 'grok', label: 'Grok' },
+    { value: 'codebuddy', label: 'CodeBuddy' },
+    { value: 'codebuddy_cn', label: 'CodeBuddy CN' },
+    { value: 'qoder', label: 'Qoder' },
+    { value: 'zcode', label: 'ZCode' },
+    { value: 'trae', label: 'Trae' },
+    { value: 'trae_solo', label: 'TRAE SOLO' },
+    { value: 'trae_cn', label: 'Trae CN' },
+    { value: 'trae_solo_cn', label: 'TRAE SOLO CN' },
+    { value: 'workbuddy', label: 'WorkBuddy' },
+    { value: 'zed', label: 'Zed' },
+  ];
   
   // General Settings States
   const [language, setLanguage] = useState(getCurrentLanguage());
@@ -480,6 +515,7 @@ export function SettingsPage() {
   const [codexAutoRefresh, setCodexAutoRefresh] = useState('10');
   const [claudeAutoRefresh, setClaudeAutoRefresh] = useState('10');
   const [codexSyncWsl, setCodexSyncWsl] = useState(false);
+  const [codexAppUiInjectionEnabled, setCodexAppUiInjectionEnabled] = useState(true);
   const [codexWslConfigDir, setCodexWslConfigDir] = useState('');
   const [ghcpAutoRefresh, setGhcpAutoRefresh] = useState('10');
   const [windsurfAutoRefresh, setWindsurfAutoRefresh] = useState('10');
@@ -495,6 +531,9 @@ export function SettingsPage() {
   const [minimizeBehavior, setMinimizeBehavior] = useState<'dock_and_tray' | 'tray_only'>('dock_and_tray');
   const [hideDockIcon, setHideDockIcon] = useState(false);
   const [trayIconStyle, setTrayIconStyle] = useState<'template' | 'color'>('template');
+  const [menuBarQuotaEnabled, setMenuBarQuotaEnabled] = useState(false);
+  const [menuBarShowAccountPrefix, setMenuBarShowAccountPrefix] = useState(true);
+  const [menuBarQuotaPlatform, setMenuBarQuotaPlatform] = useState<PlatformId>('codex');
   const [floatingCardShowOnStartup, setFloatingCardShowOnStartup] = useState(false);
   const [startupMinimized, setStartupMinimized] = useState(false);
   const [rememberMainWindowState, setRememberMainWindowState] = useState(false);
@@ -521,6 +560,7 @@ export function SettingsPage() {
   const [kiroAppPath, setKiroAppPath] = useState('');
   const [cursorAppPath, setCursorAppPath] = useState('');
   const [codebuddyAppPath, setCodebuddyAppPath] = useState('');
+  const [codebuddyShareSessionsOnSwitch, setCodebuddyShareSessionsOnSwitch] = useState(false);
   const [codebuddyCnAppPath, setCodebuddyCnAppPath] = useState('');
   const [qoderAppPath, setQoderAppPath] = useState('');
   const [zcodeAppPath, setZcodeAppPath] = useState('');
@@ -529,6 +569,7 @@ export function SettingsPage() {
   const [traeCnAppPath, setTraeCnAppPath] = useState('');
   const [traeSoloCnAppPath, setTraeSoloCnAppPath] = useState('');
   const [workbuddyAppPath, setWorkbuddyAppPath] = useState('');
+  const [workbuddyShareSessionsOnSwitch, setWorkbuddyShareSessionsOnSwitch] = useState(false);
   const [zedAppPath, setZedAppPath] = useState('');
   const [codebuddyAutoRefresh, setCodebuddyAutoRefresh] = useState('10');
   const [codebuddyCnAutoRefresh, setCodebuddyCnAutoRefresh] = useState('10');
@@ -1014,6 +1055,7 @@ export function SettingsPage() {
       codex_auto_refresh_minutes: codexAutoRefreshNum,
       claude_auto_refresh_minutes: claudeAutoRefreshNum,
       codex_sync_wsl: codexSyncWsl,
+      codex_app_ui_injection_enabled: codexAppUiInjectionEnabled,
       codex_wsl_config_dir: codexWslConfigDir,
       ghcp_auto_refresh_minutes: ghcpAutoRefreshNum,
       windsurf_auto_refresh_minutes: windsurfAutoRefreshNum,
@@ -1035,6 +1077,9 @@ export function SettingsPage() {
       minimize_behavior: minimizeBehavior,
       hide_dock_icon: hideDockIcon,
       tray_icon_style: isMacOS ? trayIconStyle : undefined,
+      menu_bar_quota_enabled: isMacOS ? menuBarQuotaEnabled : undefined,
+      menu_bar_show_account_prefix: isMacOS ? menuBarShowAccountPrefix : undefined,
+      menu_bar_quota_platform: isMacOS ? menuBarQuotaPlatform : undefined,
       floating_card_show_on_startup: floatingCardShowOnStartup,
       startup_minimized: startupMinimized,
       remember_main_window_state: rememberMainWindowState,
@@ -1054,6 +1099,7 @@ export function SettingsPage() {
       kiro_app_path: kiroAppPath,
       cursor_app_path: cursorAppPath,
       codebuddy_app_path: codebuddyAppPath,
+      codebuddy_share_sessions_on_switch: codebuddyShareSessionsOnSwitch,
       codebuddy_cn_app_path: codebuddyCnAppPath,
       qoder_app_path: qoderAppPath,
       zcode_app_path: zcodeAppPath,
@@ -1066,6 +1112,7 @@ export function SettingsPage() {
       trae_cn_app_scan_roots: traeCnAppScanRoots,
       trae_solo_cn_app_scan_roots: traeSoloCnAppScanRoots,
       workbuddy_app_path: workbuddyAppPath,
+      workbuddy_share_sessions_on_switch: workbuddyShareSessionsOnSwitch,
       zed_app_path: zedAppPath,
       opencode_sync_on_switch: opencodeSyncOnSwitch,
       opencode_auth_overwrite_on_switch: opencodeAuthOverwriteOnSwitch,
@@ -1223,6 +1270,7 @@ export function SettingsPage() {
     codexAutoRefresh,
     claudeAutoRefresh,
     codexSyncWsl,
+    codexAppUiInjectionEnabled,
     codexWslConfigDir,
     ghcpAutoRefresh,
     windsurfAutoRefresh,
@@ -1242,6 +1290,9 @@ export function SettingsPage() {
     minimizeBehavior,
     hideDockIcon,
     trayIconStyle,
+    menuBarQuotaEnabled,
+    menuBarShowAccountPrefix,
+    menuBarQuotaPlatform,
     isMacOS,
     floatingCardShowOnStartup,
     startupMinimized,
@@ -1272,6 +1323,7 @@ export function SettingsPage() {
     kiroAppPath,
     cursorAppPath,
     codebuddyAppPath,
+    codebuddyShareSessionsOnSwitch,
     codebuddyCnAppPath,
     qoderAppPath,
     zcodeAppPath,
@@ -1284,6 +1336,7 @@ export function SettingsPage() {
     traeCnAppScanRoots,
     traeSoloCnAppScanRoots,
     workbuddyAppPath,
+    workbuddyShareSessionsOnSwitch,
     zedAppPath,
     opencodeSyncOnSwitch,
     opencodeAuthOverwriteOnSwitch,
@@ -1563,7 +1616,12 @@ export function SettingsPage() {
       skipNextGeneralSaveRef.current = true;
       setGeneralConfigHydrationRevision((revision) => revision + 1);
       setLanguage(normalizeLanguage(config.language));
-      setDefaultTerminal(config.default_terminal || 'system');
+      const configuredTerminal = config.default_terminal || 'system';
+      setDefaultTerminal(
+        configuredTerminal.toLowerCase() === 'powershell'
+          ? 'PowerShell'
+          : configuredTerminal,
+      );
       setTheme(config.theme);
       setThemeColor((config.theme_color || 'default').trim() || 'default');
       setExternalNetworkEnabled(config.external_network_enabled ?? true);
@@ -1574,6 +1632,7 @@ export function SettingsPage() {
       setCodexAutoRefresh(String(config.codex_auto_refresh_minutes ?? 10));
       setClaudeAutoRefresh(String(config.claude_auto_refresh_minutes ?? 10));
       setCodexSyncWsl(Boolean(config.codex_sync_wsl ?? false));
+      setCodexAppUiInjectionEnabled(Boolean(config.codex_app_ui_injection_enabled ?? false));
       setCodexWslConfigDir(config.codex_wsl_config_dir || '');
       setGhcpAutoRefresh(String(config.ghcp_auto_refresh_minutes ?? 10));
       setWindsurfAutoRefresh(String(config.windsurf_auto_refresh_minutes ?? 10));
@@ -1585,6 +1644,9 @@ export function SettingsPage() {
       setMinimizeBehavior(config.minimize_behavior || 'dock_and_tray');
       setHideDockIcon(Boolean(config.hide_dock_icon));
       setTrayIconStyle(config.tray_icon_style === 'color' ? 'color' : 'template');
+      setMenuBarQuotaEnabled(config.menu_bar_quota_enabled ?? false);
+      setMenuBarShowAccountPrefix(config.menu_bar_show_account_prefix ?? true);
+      setMenuBarQuotaPlatform(config.menu_bar_quota_platform ?? 'codex');
       setFloatingCardShowOnStartup(config.floating_card_show_on_startup ?? false);
       setStartupMinimized(config.startup_minimized ?? false);
       setRememberMainWindowState(config.remember_main_window_state ?? false);
@@ -1605,6 +1667,7 @@ export function SettingsPage() {
       setKiroAppPath(config.kiro_app_path || '');
       setCursorAppPath(config.cursor_app_path || '');
       setCodebuddyAppPath(config.codebuddy_app_path || '');
+      setCodebuddyShareSessionsOnSwitch(config.codebuddy_share_sessions_on_switch ?? false);
       setCodebuddyCnAppPath(config.codebuddy_cn_app_path || '');
       setQoderAppPath(config.qoder_app_path || '');
       setZcodeAppPath(config.zcode_app_path || '');
@@ -1619,6 +1682,7 @@ export function SettingsPage() {
       setTraeLaunchCandidatesTarget('trae');
       setTraeLaunchCandidates([]);
       setWorkbuddyAppPath(config.workbuddy_app_path || '');
+      setWorkbuddyShareSessionsOnSwitch(config.workbuddy_share_sessions_on_switch ?? false);
       setZedAppPath(config.zed_app_path || '');
       setCodebuddyAutoRefresh(String(config.codebuddy_auto_refresh_minutes ?? 10));
       setCodebuddyCnAutoRefresh(String(config.codebuddy_cn_auto_refresh_minutes ?? 10));
@@ -3381,6 +3445,87 @@ export function SettingsPage() {
                       </select>
                     </div>
                   </div>
+
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">
+                        {t('settings.general.menuBarQuota', '菜单栏显示实时额度')}
+                      </div>
+                      <div className="row-desc">
+                        {t(
+                          'settings.general.menuBarQuotaDesc',
+                          '在图标旁显示当前账号的剩余额度；低额度红色、中等橙色、充足绿色'
+                        )}
+                      </div>
+                    </div>
+                    <div className="row-control">
+                      <select
+                        className="settings-select"
+                        value={menuBarQuotaEnabled ? 'true' : 'false'}
+                        onChange={(e) => setMenuBarQuotaEnabled(e.target.value === 'true')}
+                      >
+                        <option value="false">{t('common.disable', '停用')}</option>
+                        <option value="true">{t('common.enable', '启用')}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {menuBarQuotaEnabled && (
+                    <>
+                      <div className="settings-row">
+                        <div className="row-label">
+                          <div className="row-title">
+                            {t('settings.general.menuBarQuotaPlatform', '菜单栏额度账号平台')}
+                          </div>
+                          <div className="row-desc">
+                            {t(
+                              'settings.general.menuBarQuotaPlatformDesc',
+                              '跟随所选平台当前正在使用的账号，刷新或切换账号后自动更新'
+                            )}
+                          </div>
+                        </div>
+                        <div className="row-control">
+                          <select
+                            className="settings-select"
+                            value={menuBarQuotaPlatform}
+                            onChange={(e) => setMenuBarQuotaPlatform(e.target.value as PlatformId)}
+                          >
+                            {menuBarQuotaPlatformOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="settings-row">
+                        <div className="row-label">
+                          <div className="row-title">
+                            {t('settings.general.menuBarAccountPrefix', '显示账号邮箱前 4 位')}
+                          </div>
+                          <div className="row-desc">
+                            {t(
+                              'settings.general.menuBarAccountPrefixDesc',
+                              '关闭后菜单栏只显示图标和百分比数字'
+                            )}
+                          </div>
+                        </div>
+                        <div className="row-control">
+                          <select
+                            className="settings-select"
+                            value={menuBarShowAccountPrefix ? 'true' : 'false'}
+                            onChange={(e) =>
+                              setMenuBarShowAccountPrefix(e.target.value === 'true')
+                            }
+                          >
+                            <option value="true">{t('common.enable', '启用')}</option>
+                            <option value="false">{t('common.disable', '停用')}</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -4381,6 +4526,23 @@ export function SettingsPage() {
                   )}
                 </>
               )}
+
+              <div className="settings-row">
+                <div className="row-label">
+                  <div className="row-title">{t('settings.general.codexAppUiInjection')}</div>
+                  <div className="row-desc">{t('settings.general.codexAppUiInjectionDesc')}</div>
+                </div>
+                <div className="row-control">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={codexAppUiInjectionEnabled}
+                      onChange={(event) => setCodexAppUiInjectionEnabled(event.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+              </div>
 
               <CodexSshSyncSettingsControl variant="settings" />
 
@@ -5512,6 +5674,27 @@ export function SettingsPage() {
 
               <div className="settings-row">
                 <div className="row-label">
+                  <div className="row-title">
+                    {t('settings.general.codebuddyShareSessionsOnSwitch')}
+                  </div>
+                  <div className="row-desc">
+                    {t('settings.general.codebuddyShareSessionsOnSwitchDesc')}
+                  </div>
+                </div>
+                <div className="row-control">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={codebuddyShareSessionsOnSwitch}
+                      onChange={(event) => setCodebuddyShareSessionsOnSwitch(event.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="row-label">
                   <div className="row-title">{t('settings.general.codebuddyAppPath', 'CodeBuddy 启动路径')}</div>
                   <div className="row-desc">{t('settings.general.codebuddyAppPathDesc', '留空则使用默认路径')}</div>
                 </div>
@@ -6476,6 +6659,29 @@ export function SettingsPage() {
 
                   {renderCurrentAccountRefreshRow('workbuddy')}
                   {renderAccountLevelRefreshConfig('workbuddy')}
+
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">
+                        {t('settings.general.workbuddyShareSessionsOnSwitch')}
+                      </div>
+                      <div className="row-desc">
+                        {t('settings.general.workbuddyShareSessionsOnSwitchDesc')}
+                      </div>
+                    </div>
+                    <div className="row-control">
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={workbuddyShareSessionsOnSwitch}
+                          onChange={(event) =>
+                            setWorkbuddyShareSessionsOnSwitch(event.target.checked)
+                          }
+                        />
+                        <span className="slider"></span>
+                      </label>
+                    </div>
+                  </div>
 
                   <div className="settings-row">
                     <div className="row-label">

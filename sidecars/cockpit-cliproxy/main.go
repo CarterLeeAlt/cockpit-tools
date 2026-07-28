@@ -79,6 +79,7 @@ const ollamaBridgeVersion = "0.18.3"
 const maxImageUploadBytes int64 = 64 * 1024 * 1024
 const codexAlphaSearchPath = "/v1/alpha/search"
 const codexDirectAlphaSearchPath = "/backend-api/codex/alpha/search"
+const cockpitQuotaPath = "/v1/cockpit/quota"
 const defaultCodexAlphaSearchURL = "https://chatgpt.com/backend-api/codex/alpha/search"
 const maxCodexAlphaSearchRequestBytes = 16 << 20
 const maxCodexAlphaSearchResponseBytes = 32 << 20
@@ -91,12 +92,18 @@ var (
 	imageStreamIdleTimeout = 60 * time.Second
 )
 
+type accountModelRule struct {
+	AccountID      string   `json:"accountId"`
+	ExcludedModels []string `json:"excludedModels"`
+}
+
 type manifest struct {
 	APIKeys                    []apiKeySpec        `json:"apiKeys"`
 	Accounts                   []accountSpec       `json:"accounts"`
 	ModelIDs                   []string            `json:"modelIds"`
 	ModelAliases               []modelAliasSpec    `json:"modelAliases"`
 	ExcludedModels             []string            `json:"excludedModels"`
+	AccountModelRules          []accountModelRule  `json:"accountModelRules"`
 	RoutingStrategy            string              `json:"routingStrategy"`
 	CustomRoutingRules         []customRoutingRule `json:"customRoutingRules"`
 	ImmediateSSEResponse       bool                `json:"immediateSseResponse"`
@@ -238,6 +245,7 @@ type accountSpec struct {
 	Email                string            `json:"email"`
 	AuthID               string            `json:"authId,omitempty"`
 	AuthKind             string            `json:"authKind,omitempty"`
+	PlanType             string            `json:"planType,omitempty"`
 	AccessTokenOnly      bool              `json:"accessTokenOnly,omitempty"`
 	ChatGPTAccountID     string            `json:"chatgptAccountId,omitempty"`
 	UpstreamAPIKey       string            `json:"upstreamApiKey,omitempty"`
@@ -742,6 +750,10 @@ func loadManifest(path string) (*manifest, error) {
 	}
 	m.ModelIDs = normalizeStringList(m.ModelIDs)
 	m.ExcludedModels = normalizeStringList(m.ExcludedModels)
+	for index := range m.AccountModelRules {
+		m.AccountModelRules[index].AccountID = strings.TrimSpace(m.AccountModelRules[index].AccountID)
+		m.AccountModelRules[index].ExcludedModels = normalizeStringList(m.AccountModelRules[index].ExcludedModels)
+	}
 	return &m, nil
 }
 
@@ -1919,6 +1931,13 @@ type imageRequestSelector struct {
 	fallback      coreauth.Selector
 }
 
+// modelExclusionSelector filters account-level model exclusions before wrappers
+// such as session affinity can reuse a cached account binding.
+type modelExclusionSelector struct {
+	manifest *manifest
+	fallback coreauth.Selector
+}
+
 func (s *imageRequestSelector) Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*coreauth.Auth) (*coreauth.Auth, error) {
 	requestKind, _ := ctx.Value(requestKindContextKey).(string)
 	if isImageRequestKind(requestKind) && s.imageFallback != nil {
@@ -1931,6 +1950,35 @@ func (s *imageRequestSelector) Pick(ctx context.Context, provider, model string,
 }
 
 func (s *imageRequestSelector) Stop() {
+	if stoppable, ok := s.fallback.(coreauth.StoppableSelector); ok {
+		stoppable.Stop()
+	}
+}
+
+func (s *modelExclusionSelector) Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*coreauth.Auth) (*coreauth.Auth, error) {
+	if s == nil || s.fallback == nil {
+		return nil, fmt.Errorf("model exclusion selector is not initialized")
+	}
+	if strings.TrimSpace(model) == "" {
+		return s.fallback.Pick(ctx, provider, model, opts, auths)
+	}
+	filtered := make([]*coreauth.Auth, 0, len(auths))
+	for _, auth := range auths {
+		if authModelExcluded(s.manifest, auth, model) {
+			continue
+		}
+		filtered = append(filtered, auth)
+	}
+	if len(filtered) == 0 {
+		return nil, noAuthAvailableError(nil)
+	}
+	return s.fallback.Pick(ctx, provider, model, opts, filtered)
+}
+
+func (s *modelExclusionSelector) Stop() {
+	if s == nil || s.fallback == nil {
+		return
+	}
 	if stoppable, ok := s.fallback.(coreauth.StoppableSelector); ok {
 		stoppable.Stop()
 	}
@@ -3052,6 +3100,7 @@ func buildCoreAuthSelector(cfg *config.Config, selector coreauth.Selector, m *ma
 	if m != nil {
 		selector = &backupAccountSelector{manifest: m, fallback: selector}
 		selector = &quotaReserveSelector{manifest: m, fallback: selector, quota: quota}
+		selector = &modelExclusionSelector{manifest: m, fallback: selector}
 	}
 	return selector
 }
@@ -3424,12 +3473,23 @@ func readManifestCodexTokenAuth(account *accountSpec, authDir, path string) (*co
 		"at_token",
 		"access_token",
 	)
-	if accessToken == "" {
+	authMode := firstMetadataString(metadata, "auth_mode", "openai_auth_mode")
+	isAgentIdentity := strings.EqualFold(authMode, "agentIdentity") || manifestAccountAuthKind(account) == "agent_identity"
+	if accessToken == "" && !isAgentIdentity {
 		return nil, fmt.Errorf("codex token auth file %s is missing access_token", path)
 	}
-	metadata["access_token"] = accessToken
-	if strings.TrimSpace(metadataString(metadata, "token_type")) == "" {
-		metadata["token_type"] = "Bearer"
+	if isAgentIdentity {
+		if firstMetadataString(metadata, "agent_runtime_id", "agentRuntimeId") == "" ||
+			firstMetadataString(metadata, "agent_private_key", "agentPrivateKey") == "" {
+			return nil, fmt.Errorf("codex Agent Identity auth file %s is missing runtime or private key", path)
+		}
+		metadata["auth_mode"] = "agentIdentity"
+		metadata["openai_auth_mode"] = "agentIdentity"
+	} else {
+		metadata["access_token"] = accessToken
+		if strings.TrimSpace(metadataString(metadata, "token_type")) == "" {
+			metadata["token_type"] = "Bearer"
+		}
 	}
 	if account != nil &&
 		(account.AccessTokenOnly || manifestAccountAuthKind(account) == "access_token") {
@@ -3458,6 +3518,10 @@ func readManifestCodexTokenAuth(account *accountSpec, authDir, path string) (*co
 	if disabled {
 		status = coreauth.StatusDisabled
 	}
+	runtimeAuthKind := manifestAccountAuthKind(account)
+	if isAgentIdentity {
+		runtimeAuthKind = coreauth.AuthKindOAuth
+	}
 	auth := &coreauth.Auth{
 		ID:       id,
 		Provider: "codex",
@@ -3467,7 +3531,7 @@ func readManifestCodexTokenAuth(account *accountSpec, authDir, path string) (*co
 		Disabled: disabled,
 		Attributes: map[string]string{
 			"path":       path,
-			"auth_kind":  manifestAccountAuthKind(account),
+			"auth_kind":  runtimeAuthKind,
 			"websockets": "true",
 		},
 		Metadata:        metadata,
@@ -3689,7 +3753,7 @@ func registerManifestModelsForAuth(manager *coreauth.Manager, m *manifest, auth 
 	if manager == nil || m == nil || auth == nil || strings.TrimSpace(auth.ID) == "" {
 		return
 	}
-	models := manifestRegistryModels(m)
+	models := filterRegistryModelsByExcluded(manifestRegistryModels(m), excludedModelsForAuth(m, auth))
 	if len(models) == 0 {
 		cliproxy.GlobalModelRegistry().UnregisterClient(auth.ID)
 		manager.RefreshSchedulerEntry(auth.ID)
@@ -3698,6 +3762,115 @@ func registerManifestModelsForAuth(manager *coreauth.Manager, m *manifest, auth 
 	cliproxy.GlobalModelRegistry().RegisterClient(auth.ID, "codex", models)
 	manager.ReconcileRegistryModelStates(context.Background(), auth.ID)
 	manager.RefreshSchedulerEntry(auth.ID)
+}
+
+func excludedModelsForAuth(m *manifest, auth *coreauth.Auth) []string {
+	seen := make(map[string]struct{})
+	add := func(items []string) {
+		for _, item := range items {
+			trimmed := strings.TrimSpace(item)
+			if trimmed == "" {
+				continue
+			}
+			key := strings.ToLower(trimmed)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+		}
+	}
+	if m != nil {
+		add(m.ExcludedModels)
+		if account := accountForAuthInManifest(m, auth); account != nil {
+			add(accountExcludedModelsFromManifest(m, account.ID))
+		}
+	}
+	if auth != nil {
+		add(extractExcludedModelsFromMetadataMap(auth.Metadata))
+		if auth.Attributes != nil {
+			add(strings.Split(auth.Attributes["excluded_models"], ","))
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(seen))
+	for item := range seen {
+		out = append(out, item)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func accountExcludedModelsFromManifest(m *manifest, accountID string) []string {
+	if m == nil || strings.TrimSpace(accountID) == "" {
+		return nil
+	}
+	for _, rule := range m.AccountModelRules {
+		if strings.TrimSpace(rule.AccountID) == accountID {
+			return append([]string(nil), rule.ExcludedModels...)
+		}
+	}
+	return nil
+}
+
+func extractExcludedModelsFromMetadataMap(metadata map[string]any) []string {
+	if metadata == nil {
+		return nil
+	}
+	raw, ok := metadata["excluded_models"]
+	if !ok {
+		raw, ok = metadata["excluded-models"]
+	}
+	if !ok || raw == nil {
+		return nil
+	}
+	switch values := raw.(type) {
+	case string:
+		return strings.Split(values, ",")
+	case []string:
+		return append([]string(nil), values...)
+	case []any:
+		out := make([]string, 0, len(values))
+		for _, item := range values {
+			if value, ok := item.(string); ok {
+				out = append(out, value)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func filterRegistryModelsByExcluded(models []*cliproxy.ModelInfo, excluded []string) []*cliproxy.ModelInfo {
+	if len(models) == 0 || len(excluded) == 0 {
+		return models
+	}
+	filtered := make([]*cliproxy.ModelInfo, 0, len(models))
+	for _, model := range models {
+		if model == nil || strings.TrimSpace(model.ID) == "" || modelMatchesAnyRule(model.ID, excluded) {
+			continue
+		}
+		filtered = append(filtered, model)
+	}
+	return filtered
+}
+
+func authModelExcluded(m *manifest, auth *coreauth.Auth, model string) bool {
+	model = strings.TrimSpace(model)
+	if model == "" || auth == nil {
+		return false
+	}
+	excluded := excludedModelsForAuth(m, auth)
+	if len(excluded) == 0 {
+		return false
+	}
+	if modelMatchesAnyRule(model, excluded) {
+		return true
+	}
+	canonical := resolveSupportedModelAlias(m, model)
+	return canonical != "" && modelMatchesAnyRule(canonical, excluded)
 }
 
 func manifestRegistryModels(m *manifest) []*cliproxy.ModelInfo {
@@ -3820,6 +3993,7 @@ type relayServer struct {
 	emitter            *eventEmitter
 	policy             *requestPolicy
 	responsesWebsocket gin.HandlerFunc
+	quotaPoolStatePath string
 }
 
 func (s *relayServer) router() *gin.Engine {
@@ -3828,6 +4002,7 @@ func (s *relayServer) router() *gin.Engine {
 	router.Use(corsMiddleware())
 	router.Use(s.policy.middleware())
 	router.GET("/v1/models", s.handleModels)
+	router.GET(cockpitQuotaPath, s.handleCockpitQuota)
 	router.POST("/v1/cockpit/auth/reset", s.handleResetAuthState)
 	// Codex Responses WebSocket upgrade uses GET /v1/responses (not POST/SSE).
 	router.GET("/v1/responses", s.handleResponsesWebsocket)
@@ -3855,6 +4030,318 @@ func (s *relayServer) router() *gin.Engine {
 		writeAPIError(c, http.StatusNotFound, "endpoint not supported", "not_found")
 	})
 	return router
+}
+
+type quotaPoolWindowState struct {
+	Present          *bool  `json:"present,omitempty"`
+	RemainingPercent *int   `json:"remainingPercent,omitempty"`
+	WindowMinutes    *int64 `json:"windowMinutes,omitempty"`
+	ResetAt          *int64 `json:"resetAt,omitempty"`
+}
+
+type quotaPoolAccountState struct {
+	Primary   *quotaPoolWindowState `json:"primary,omitempty"`
+	Secondary *quotaPoolWindowState `json:"secondary,omitempty"`
+	UpdatedAt *int64                `json:"updatedAt,omitempty"`
+}
+
+type quotaPoolStateFile struct {
+	Accounts map[string]quotaPoolAccountState `json:"accounts"`
+}
+
+type cockpitQuotaResponse struct {
+	Version                  int                       `json:"version"`
+	Scope                    string                    `json:"scope"`
+	RemainingPercent         *int                      `json:"remainingPercent,omitempty"`
+	WeeklyRemainingPercent   *int                      `json:"weeklyRemainingPercent,omitempty"`
+	FiveHourRemainingPercent *int                      `json:"fiveHourRemainingPercent,omitempty"`
+	AccountCount             int                       `json:"accountCount"`
+	IncludedAccountCount     int                       `json:"includedAccountCount"`
+	MissingAccountCount      int                       `json:"missingAccountCount"`
+	AvailableAccountCount    int                       `json:"availableAccountCount"`
+	AbnormalAccountCount     int                       `json:"abnormalAccountCount"`
+	CooldownAccountCount     int                       `json:"cooldownAccountCount"`
+	Plans                    []cockpitQuotaPlanSummary `json:"plans,omitempty"`
+	UpdatedAt                int64                     `json:"updatedAt,omitempty"`
+	Stale                    bool                      `json:"stale"`
+}
+
+type cockpitQuotaPlanSummary struct {
+	Plan                     string `json:"plan"`
+	Count                    int    `json:"count"`
+	WeeklyRemainingPercent   *int   `json:"weeklyRemainingPercent,omitempty"`
+	FiveHourRemainingPercent *int   `json:"fiveHourRemainingPercent,omitempty"`
+}
+
+func readQuotaPoolState(path string) (quotaPoolStateFile, error) {
+	content, err := os.ReadFile(strings.TrimSpace(path))
+	if err != nil {
+		return quotaPoolStateFile{}, err
+	}
+	var state quotaPoolStateFile
+	if err := json.Unmarshal(content, &state); err != nil {
+		return quotaPoolStateFile{}, err
+	}
+	if state.Accounts == nil {
+		state.Accounts = make(map[string]quotaPoolAccountState)
+	}
+	return state, nil
+}
+
+func quotaWindowPresent(window *quotaPoolWindowState) bool {
+	return window != nil && (window.Present == nil || *window.Present)
+}
+
+func quotaWindowValue(window *quotaPoolWindowState) (int, int64, bool) {
+	if !quotaWindowPresent(window) || window.RemainingPercent == nil {
+		return 0, 0, false
+	}
+	minutes := int64(10080)
+	if window.WindowMinutes != nil && *window.WindowMinutes > 0 {
+		minutes = *window.WindowMinutes
+	}
+	return *window.RemainingPercent, minutes, true
+}
+
+func quotaPlanLabel(account *accountSpec) string {
+	if account == nil {
+		return "UNKNOWN"
+	}
+	if strings.EqualFold(strings.TrimSpace(account.AuthKind), "api_key") {
+		return "API_KEY"
+	}
+	plan := strings.TrimSpace(account.PlanType)
+	if plan == "" {
+		return "UNKNOWN"
+	}
+	return strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(plan, "-", "_"), " ", "_"))
+}
+
+func addQuotaPercent(current *int, value int) *int {
+	result := value
+	if current != nil {
+		result += *current
+	}
+	return &result
+}
+
+func buildCockpitQuotaResponse(spec *apiKeySpec, state quotaPoolStateFile, now time.Time) cockpitQuotaResponse {
+	return buildCockpitQuotaResponseWithAccounts(spec, state, now, nil)
+}
+
+func buildCockpitQuotaResponseWithAccounts(spec *apiKeySpec, state quotaPoolStateFile, now time.Time, accounts map[string]*accountSpec) cockpitQuotaResponse {
+	accountIDs := make([]string, 0)
+	if spec != nil {
+		accountIDs = normalizeStringList(spec.AccountIDs)
+	}
+	quotaAccountIDs := accountIDs
+	if accounts != nil {
+		quotaAccountIDs = make([]string, 0, len(accountIDs))
+		for _, accountID := range accountIDs {
+			if account := accounts[accountID]; account != nil && strings.EqualFold(strings.TrimSpace(account.AuthKind), "api_key") {
+				continue
+			}
+			quotaAccountIDs = append(quotaAccountIDs, accountID)
+		}
+	}
+	result := cockpitQuotaResponse{
+		Version:      1,
+		Scope:        "api_key_account_pool",
+		AccountCount: len(quotaAccountIDs),
+	}
+	planIndex := make(map[string]int)
+	for _, accountID := range accountIDs {
+		var account *accountSpec
+		if accounts != nil {
+			account = accounts[accountID]
+		}
+		plan := quotaPlanLabel(account)
+		index, exists := planIndex[plan]
+		if !exists {
+			index = len(result.Plans)
+			planIndex[plan] = index
+			result.Plans = append(result.Plans, cockpitQuotaPlanSummary{Plan: plan})
+		}
+		result.Plans[index].Count++
+	}
+	total := 0
+	hasValue := false
+	weeklyTotal := 0
+	fiveHourTotal := 0
+	hasWeekly := false
+	hasFiveHour := false
+	for _, accountID := range quotaAccountIDs {
+		item, ok := state.Accounts[accountID]
+		if !ok {
+			result.MissingAccountCount++
+			result.AbnormalAccountCount++
+			continue
+		}
+		primaryValue, primaryMinutes, primaryOK := quotaWindowValue(item.Primary)
+		secondaryValue, secondaryMinutes, secondaryOK := quotaWindowValue(item.Secondary)
+		value, ok := 0, false
+		switch {
+		case primaryOK && secondaryOK && primaryMinutes <= secondaryMinutes:
+			value, ok = primaryValue, true
+		case primaryOK && secondaryOK:
+			value, ok = secondaryValue, true
+		case primaryOK:
+			value, ok = primaryValue, true
+		case secondaryOK:
+			value, ok = secondaryValue, true
+		}
+		if !ok {
+			result.MissingAccountCount++
+			result.AbnormalAccountCount++
+			continue
+		}
+		result.AvailableAccountCount++
+		total += value
+		hasValue = true
+		if primaryOK && primaryMinutes >= 5*24*60 {
+			weeklyTotal += primaryValue
+			hasWeekly = true
+		}
+		if secondaryOK && secondaryMinutes >= 5*24*60 {
+			weeklyTotal += secondaryValue
+			hasWeekly = true
+		}
+		if primaryOK && primaryMinutes > 0 && primaryMinutes <= 6*60 {
+			fiveHourTotal += primaryValue
+			hasFiveHour = true
+		}
+		if secondaryOK && secondaryMinutes > 0 && secondaryMinutes <= 6*60 {
+			fiveHourTotal += secondaryValue
+			hasFiveHour = true
+		}
+		var account *accountSpec
+		if accounts != nil {
+			account = accounts[accountID]
+		}
+		if index, exists := planIndex[quotaPlanLabel(account)]; exists {
+			planSummary := &result.Plans[index]
+			if primaryOK && primaryMinutes >= 5*24*60 {
+				planSummary.WeeklyRemainingPercent = addQuotaPercent(planSummary.WeeklyRemainingPercent, primaryValue)
+			}
+			if secondaryOK && secondaryMinutes >= 5*24*60 {
+				planSummary.WeeklyRemainingPercent = addQuotaPercent(planSummary.WeeklyRemainingPercent, secondaryValue)
+			}
+			if primaryOK && primaryMinutes > 0 && primaryMinutes <= 6*60 {
+				planSummary.FiveHourRemainingPercent = addQuotaPercent(planSummary.FiveHourRemainingPercent, primaryValue)
+			}
+			if secondaryOK && secondaryMinutes > 0 && secondaryMinutes <= 6*60 {
+				planSummary.FiveHourRemainingPercent = addQuotaPercent(planSummary.FiveHourRemainingPercent, secondaryValue)
+			}
+		}
+		result.IncludedAccountCount++
+		if item.UpdatedAt != nil {
+			if *item.UpdatedAt > result.UpdatedAt {
+				result.UpdatedAt = *item.UpdatedAt
+			}
+			if now.Unix()-*item.UpdatedAt > 15*60 {
+				result.Stale = true
+			}
+		}
+	}
+	if hasValue {
+		result.RemainingPercent = &total
+	}
+	if hasWeekly {
+		result.WeeklyRemainingPercent = &weeklyTotal
+	}
+	if hasFiveHour {
+		result.FiveHourRemainingPercent = &fiveHourTotal
+	}
+	return result
+}
+
+func applyCockpitQuotaAuthHealth(result *cockpitQuotaResponse, spec *apiKeySpec, state quotaPoolStateFile, auths []*coreauth.Auth, now time.Time) {
+	if result == nil || spec == nil || len(auths) == 0 {
+		return
+	}
+	targets := make(map[string]struct{}, len(spec.AccountIDs))
+	for _, accountID := range normalizeStringList(spec.AccountIDs) {
+		targets[accountID] = struct{}{}
+	}
+	seen := make(map[string]struct{})
+	for _, auth := range auths {
+		if auth == nil || auth.Attributes == nil {
+			continue
+		}
+		accountID := strings.TrimSpace(auth.Attributes["account_id"])
+		if _, ok := targets[accountID]; !ok {
+			continue
+		}
+		if _, ok := seen[accountID]; ok {
+			continue
+		}
+		seen[accountID] = struct{}{}
+		isCooldown := auth.Unavailable && auth.NextRetryAfter.After(now)
+		isAbnormal := auth.Disabled || auth.Status == coreauth.StatusDisabled || (auth.Unavailable && !isCooldown)
+		if !isCooldown && !isAbnormal {
+			continue
+		}
+		item, hasState := state.Accounts[accountID]
+		_, _, primaryOK := quotaWindowValue(item.Primary)
+		_, _, secondaryOK := quotaWindowValue(item.Secondary)
+		wasAvailable := hasState && (primaryOK || secondaryOK)
+		if wasAvailable && result.AvailableAccountCount > 0 {
+			result.AvailableAccountCount--
+		}
+		if isCooldown {
+			result.CooldownAccountCount++
+			if !wasAvailable && result.AbnormalAccountCount > 0 {
+				result.AbnormalAccountCount--
+			}
+		} else if wasAvailable {
+			result.AbnormalAccountCount++
+		}
+	}
+}
+
+func (s *relayServer) handleCockpitQuota(c *gin.Context) {
+	spec, ok := s.requireAPIKey(c)
+	if !ok {
+		return
+	}
+	if strings.TrimSpace(s.quotaPoolStatePath) == "" {
+		c.JSON(http.StatusOK, cockpitQuotaResponse{Version: 1, Scope: "api_key_account_pool"})
+		return
+	}
+	state, err := readQuotaPoolState(s.quotaPoolStatePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			c.JSON(http.StatusOK, cockpitQuotaResponse{Version: 1, Scope: "api_key_account_pool"})
+			return
+		}
+		writeAPIError(c, http.StatusServiceUnavailable, "quota state unavailable", "quota_state_unavailable")
+		return
+	}
+	response := buildCockpitQuotaResponseWithAccounts(spec, state, time.Now(), s.manifest.accountByID)
+	if s.authManager != nil {
+		applyCockpitQuotaAuthHealth(&response, spec, state, s.authManager.List(), time.Now())
+	}
+	if response.RemainingPercent == nil && spec != nil && spec.ProviderGateway != nil {
+		upstreamURL, urlErr := providerGatewayURL(spec.ProviderGateway.BaseURL, cockpitQuotaPath)
+		if urlErr == nil {
+			request, requestErr := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, upstreamURL, nil)
+			if requestErr == nil {
+				request.Header.Set("Authorization", "Bearer "+spec.ProviderGateway.APIKey)
+				client := &http.Client{Timeout: 2 * time.Second}
+				if upstream, doErr := client.Do(request); doErr == nil {
+					defer upstream.Body.Close()
+					if upstream.StatusCode == http.StatusOK {
+						var upstreamResponse cockpitQuotaResponse
+						if json.NewDecoder(upstream.Body).Decode(&upstreamResponse) == nil {
+							c.JSON(http.StatusOK, upstreamResponse)
+							return
+						}
+					}
+				}
+			}
+		}
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 type resetAuthStateRequest struct {
@@ -5236,7 +5723,7 @@ func (s *relayServer) writeProviderGatewayChatStream(c *gin.Context, body io.Rea
 	}
 	if err := scanner.Err(); err != nil {
 		s.emitExecutorDiagnostic(c, "provider_gateway_stream_scan_failed", model, "provider_gateway_chat_stream", startedAt, err.Error())
-		writeStreamTerminalError(c, err)
+		writeStreamTerminalErrorForFormat(c, err, sdktranslator.FormatOpenAIResponse)
 		flusher.Flush()
 		return
 	}
@@ -5314,7 +5801,7 @@ func (s *relayServer) writeProviderGatewayTranslatedChatStream(c *gin.Context, b
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		writeStreamTerminalError(c, err)
+		writeStreamTerminalErrorForFormat(c, err, targetFormat)
 		flusher.Flush()
 	}
 }
@@ -5482,7 +5969,7 @@ func (s *relayServer) handleStream(c *gin.Context, body []byte, model string, so
 	if err != nil {
 		s.emitExecutorDiagnostic(c, "executor_failed", model, "execute_stream", startedAt, err.Error())
 		if immediateSSE {
-			writeStreamTerminalError(c, err)
+			writeStreamTerminalErrorForFormat(c, err, sourceFormat)
 			immediateFlusher.Flush()
 			return
 		}
@@ -5492,7 +5979,7 @@ func (s *relayServer) handleStream(c *gin.Context, body []byte, model string, so
 	if result == nil || result.Chunks == nil {
 		s.emitExecutorDiagnostic(c, "executor_failed", model, "execute_stream", startedAt, "upstream stream is unavailable")
 		if immediateSSE {
-			writeStreamTerminalError(c, relayStatusError{status: http.StatusBadGateway, message: "upstream stream is unavailable"})
+			writeStreamTerminalErrorForFormat(c, relayStatusError{status: http.StatusBadGateway, message: "upstream stream is unavailable"}, sourceFormat)
 			immediateFlusher.Flush()
 		} else {
 			writeAPIError(c, http.StatusBadGateway, "upstream stream is unavailable", "bad_gateway")
@@ -5538,7 +6025,7 @@ func (s *relayServer) handleStream(c *gin.Context, body []byte, model string, so
 			endReason = "stream_idle_timeout"
 			err := relayTimeoutError{phase: "stream_idle", timeout: timeouts.idle}
 			s.emitExecutorDiagnostic(c, "stream_idle_timeout", model, "stream_loop", startedAt, err.Error())
-			writeStreamTerminalError(c, err)
+			writeStreamTerminalErrorForFormat(c, err, sourceFormat)
 			flusher.Flush()
 			return
 		case <-c.Request.Context().Done():
@@ -5576,7 +6063,7 @@ func (s *relayServer) handleStream(c *gin.Context, body []byte, model string, so
 			if chunk.Err != nil {
 				endReason = "stream_error"
 				s.emitExecutorDiagnostic(c, "stream_error", model, "stream_loop", startedAt, chunk.Err.Error())
-				writeStreamTerminalError(c, chunk.Err)
+				writeStreamTerminalErrorForFormat(c, chunk.Err, sourceFormat)
 				flusher.Flush()
 				return
 			}
@@ -7092,6 +7579,19 @@ func writeStreamTerminalError(c *gin.Context, err error) {
 	_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", string(payload))
 }
 
+func writeStreamTerminalErrorForFormat(c *gin.Context, err error, sourceFormat sdktranslator.Format) {
+	if c == nil {
+		return
+	}
+	if !sourceFormatEqual(sourceFormat, sdktranslator.FormatOpenAIResponse) {
+		writeStreamTerminalError(c, err)
+		return
+	}
+	status := statusCodeFromError(err)
+	eventName, payload := sdkhandlers.BuildOpenAIResponsesStreamTerminalEvent(status, err, 0)
+	_, _ = fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", eventName, string(payload))
+}
+
 type relayStreamFrameMode int
 
 const (
@@ -7528,6 +8028,7 @@ func main() {
 	configPath := flag.String("config", "", "CLIProxyAPI config file")
 	manifestPath := flag.String("manifest", "", "Cockpit sidecar manifest file")
 	quotaReserveStatePath := flag.String("quota-reserve-state", "", "Cockpit OAuth quota reserve state file")
+	quotaPoolStatePath := flag.String("quota-pool-state", "", "Cockpit account-pool quota state file")
 	parentPID := flag.Int("parent-pid", 0, "Cockpit Tools parent process id")
 	flag.Parse()
 
@@ -7610,6 +8111,7 @@ func main() {
 		emitter:            emitter,
 		policy:             policy,
 		responsesWebsocket: responsesHandler.ResponsesWebsocket,
+		quotaPoolStatePath: *quotaPoolStatePath,
 	}
 	if err := runRelayHTTPServer(ctx, cfg, relay.router(), emitter); err != nil && !errors.Is(err, context.Canceled) {
 		emitter.emit(map[string]any{"type": "error", "message": err.Error()})

@@ -54,6 +54,7 @@ import {
   getTraePlanDisplayName,
   getTraeUsage,
   hasTraeQuotaData,
+  isTraeCnAccountPlatform,
   TRAE_PRODUCT_TYPE,
 } from '../types/trae';
 import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
@@ -589,6 +590,10 @@ export function TraeAccountsPage({ platformId = 'trae' }: TraeAccountsPageProps)
   const resolveQuotaSummary = useCallback(
     (account: TraeAccount): TraeQuotaSummary => {
       const usage = getTraeUsage(account);
+      const isCnAccount =
+        platformId === 'trae_cn' ||
+        platformId === 'trae_solo_cn' ||
+        isTraeCnAccountPlatform(account);
       const percentage =
         typeof usage.usedPercent === 'number' && Number.isFinite(usage.usedPercent)
           ? Math.max(0, Math.min(100, Math.round(usage.usedPercent)))
@@ -599,53 +604,139 @@ export function TraeAccountsPage({ platformId = 'trae' }: TraeAccountsPageProps)
         .toLowerCase()
         .includes('free');
 
-      const statusTone: TraeQuotaSummary['statusTone'] = !account.trae_usage_raw
-        ? 'unknown'
-        : usage.usageExhausted
-          ? usage.payAsYouGoOpen && !isFreePlan
-            ? 'normal'
-            : 'warning'
-          : 'normal';
+      const hasUsageRaw = account.trae_usage_raw != null || account.trae_entitlement_raw != null;
+      const hasFastRequest =
+        usage.usageModel === 'fast_request' && usage.fastRequestAvailable != null;
+      const formatFastTimes = (value: number) =>
+        value === -1
+          ? t('trae.quota.fastUnlimited', '无限次')
+          : t('trae.quota.fastTimes', '{{count}} 次', {
+              count: value,
+            });
 
-      const statusText = !account.trae_usage_raw
-        ? t('trae.quota.statusUnknown', 'Status: --')
-        : usage.usageExhausted
-          ? isFreePlan
-            ? t(
-                'trae.quota.statusExhaustedFree',
-                'Status: Usage exhausted, upgrade recommended',
-              )
-            : usage.payAsYouGoOpen
-              ? t('trae.quota.statusNormal', 'Status: Normal')
-              : t(
-                  'trae.quota.statusExhaustedPro',
-                  'Status: Usage exhausted, upgrade or enable on-demand usage',
-                )
-          : t('trae.quota.statusNormal', 'Status: Normal');
-
-      return {
-        percentage,
-        percentageText: percentage == null ? '--' : `${percentage}%`,
-        quotaClass: computeQuotaClass(percentage),
-        costText:
+      // CN：优先速通次数展示，无可靠剩余时不猜测（对齐社区 #1281）
+      let costText: string;
+      if (isCnAccount) {
+        if (hasFastRequest) {
+          costText = t('trae.quota.fastAvailable', '速通可用 {{times}}', {
+            times: formatFastTimes(usage.fastRequestAvailable ?? 0),
+          });
+        } else if ((usage.fastRequestPerMonth ?? 0) > 0) {
+          costText = t('trae.quota.fastPerMonth', '快请求/月：{{count}}', {
+            count: usage.fastRequestPerMonth ?? 0,
+          });
+        } else if (isFreePlan) {
+          costText = hasUsageRaw
+            ? t('trae.quota.freeRemainingUnknown', '免费剩余：--')
+            : t('trae.quota.usageUnknown', 'Usage: --');
+        } else if (usage.spentUsd != null && usage.totalUsd != null && (usage.totalUsd ?? 0) > 0) {
+          costText = t('trae.quota.usedOfTotal', {
+            used: formatNumber(usage.spentUsd),
+            total: formatNumber(usage.totalUsd),
+            defaultValue: '${{used}} / ${{total}}',
+          });
+        } else {
+          costText = hasUsageRaw
+            ? t('trae.quota.timesRemainingUnknown', '剩余次数：--')
+            : t('trae.quota.usageUnknown', 'Usage: --');
+        }
+      } else {
+        costText =
           usage.spentUsd != null && usage.totalUsd != null
             ? t('trae.quota.usedOfTotal', {
                 used: formatNumber(usage.spentUsd),
                 total: formatNumber(usage.totalUsd),
                 defaultValue: '${{used}} / ${{total}}',
               })
-            : t('trae.quota.usageUnknown', 'Usage: --'),
+            : t('trae.quota.usageUnknown', 'Usage: --');
+      }
+
+      const statusTone: TraeQuotaSummary['statusTone'] = !hasUsageRaw
+        ? 'unknown'
+        : isCnAccount
+          ? hasFastRequest
+            ? usage.usageExhausted
+              ? 'warning'
+              : 'normal'
+            : 'unknown'
+          : usage.usageExhausted
+            ? usage.payAsYouGoOpen && !isFreePlan
+              ? 'normal'
+              : 'warning'
+            : 'normal';
+
+      const statusText = !hasUsageRaw
+        ? t('trae.quota.statusUnknown', 'Status: --')
+        : isCnAccount
+          ? hasFastRequest
+            ? usage.usageExhausted
+              ? t('trae.quota.statusExhaustedFree', 'Status: Usage exhausted, upgrade recommended')
+              : t('trae.quota.statusSynced', '状态：已同步')
+            : t('trae.quota.statusSyncedPending', '状态：已同步，剩余额待确认')
+          : usage.usageExhausted
+            ? isFreePlan
+              ? t(
+                  'trae.quota.statusExhaustedFree',
+                  'Status: Usage exhausted, upgrade recommended',
+                )
+              : usage.payAsYouGoOpen
+                ? t('trae.quota.statusNormal', 'Status: Normal')
+                : t(
+                    'trae.quota.statusExhaustedPro',
+                    'Status: Usage exhausted, upgrade or enable on-demand usage',
+                  )
+            : t('trae.quota.statusNormal', 'Status: Normal');
+
+      const bonusText = isCnAccount
+        ? hasFastRequest
+          ? ''
+          : (usage.fastRequestPerMonth ?? 0) > 0
+            ? t('trae.quota.fastChannelPerMonth', '快通道: {{count}}/月', {
+                count: usage.fastRequestPerMonth ?? 0,
+              })
+            : usage.canGetExpressStatus != null
+              ? t('trae.quota.fastChannelStatus', '快通道: {{status}}', {
+                  status: usage.canGetExpressStatus,
+                })
+              : t('trae.quota.bonusEmpty', 'Bonus: --')
+        : (usage.bonusUsage ?? 0) > 0
+          ? t('trae.quota.bonusUsed', {
+              amount: formatTraeMoney(usage.bonusUsage),
+              defaultValue: 'Bonus: +{{amount}}',
+            })
+          : (usage.bonusQuota ?? 0) > 0
+            ? t('trae.quota.bonusIncluded', 'Bonus: Included')
+            : t('trae.quota.bonusEmpty', 'Bonus: --');
+
+      const packageText = isCnAccount
+        ? usage.hasSoloPackage || usage.hasPackage
+          ? usage.soloParallelLimit != null
+            ? t('trae.quota.soloParallel', '权益包: Solo 并发 {{count}}', {
+                count: usage.soloParallelLimit,
+              })
+            : t('trae.quota.packageAvailable', 'Package: Available')
+          : t('trae.quota.packageEmpty', 'Package: --')
+        : usage.hasPackage
+          ? usage.consumingProductType === TRAE_PRODUCT_TYPE.PACKAGE
+            ? t('trae.quota.packageConsuming', 'Package: Consuming')
+            : t('trae.quota.packageAvailable', 'Package: Available')
+          : t('trae.quota.packageEmpty', 'Package: --');
+
+      return {
+        percentage: isCnAccount && !hasFastRequest && usage.usageModel !== 'usd' ? null : percentage,
+        percentageText:
+          isCnAccount && !hasFastRequest && usage.usageModel !== 'usd'
+            ? '--'
+            : percentage == null
+              ? '--'
+              : `${percentage}%`,
+        quotaClass: computeQuotaClass(
+          isCnAccount && !hasFastRequest && usage.usageModel !== 'usd' ? null : percentage,
+        ),
+        costText,
         statusText,
         statusTone,
-        bonusText:
-          (usage.bonusUsage ?? 0) > 0
-            ? t('trae.quota.bonusUsed', {
-                amount: formatTraeMoney(usage.bonusUsage),
-                defaultValue: 'Bonus: +{{amount}}',
-              })
-            : (usage.bonusQuota ?? 0) > 0
-              ? t('trae.quota.bonusIncluded', 'Bonus: Included')
-              : t('trae.quota.bonusEmpty', 'Bonus: --'),
+        bonusText,
         resetText:
           (usage.resetAt ?? account.plan_reset_at ?? null) != null
             ? t('trae.quota.resetAt', {
@@ -653,19 +744,17 @@ export function TraeAccountsPage({ platformId = 'trae' }: TraeAccountsPageProps)
                 defaultValue: '重置时间：{{date}}',
               })
             : t('trae.quota.resetUnknown', '重置时间未知'),
-        packageText: usage.hasPackage
-          ? usage.consumingProductType === TRAE_PRODUCT_TYPE.PACKAGE
-            ? t('trae.quota.packageConsuming', 'Package: Consuming')
-            : t('trae.quota.packageAvailable', 'Package: Available')
-          : t('trae.quota.packageEmpty', 'Package: --'),
-        payAsYouGoText: usage.payAsYouGoOpen
-          ? usage.consumingProductType === TRAE_PRODUCT_TYPE.PAY_GO
-            ? t('trae.quota.payAsYouGoConsuming', 'On-Demand Usage: Consuming')
-            : t('trae.quota.payAsYouGoEnabled', 'On-Demand Usage: Enabled')
-          : t('trae.quota.payAsYouGoEmpty', 'On-Demand Usage: --'),
+        packageText,
+        payAsYouGoText: isCnAccount
+          ? t('trae.quota.payAsYouGoEmpty', 'On-Demand Usage: --')
+          : usage.payAsYouGoOpen
+            ? usage.consumingProductType === TRAE_PRODUCT_TYPE.PAY_GO
+              ? t('trae.quota.payAsYouGoConsuming', 'On-Demand Usage: Consuming')
+              : t('trae.quota.payAsYouGoEnabled', 'On-Demand Usage: Enabled')
+            : t('trae.quota.payAsYouGoEmpty', 'On-Demand Usage: --'),
       };
     },
-    [t],
+    [platformId, t],
   );
 
   const resolveDisplayName = useCallback(
@@ -1678,13 +1767,22 @@ export function TraeAccountsPage({ platformId = 'trae' }: TraeAccountsPageProps)
                   ) : addTab === 'token' ? (
                     <div className="add-section">
                       <p className="section-desc">
-                        {t('accounts.importJsonHint', '导入由本工具导出的 Trae JSON 文件。')}
+                        {platformId === 'trae_cn' || platformId === 'trae_solo_cn'
+                          ? t(
+                              'trae.token.jsonOnlyDesc',
+                              '粘贴完整 Trae CN 账号 JSON。暂不支持裸 Token，避免导入后无法稳定识别账号或写入不可用登录态。',
+                            )
+                          : t('accounts.importJsonHint', '导入由本工具导出的 Trae JSON 文件。')}
                       </p>
                       <textarea
                         className="token-input"
                         value={tokenInput}
                         onChange={(event) => setTokenInput(event.target.value)}
-                        placeholder={t('common.shared.token.placeholder', '粘贴 Token 或 JSON...')}
+                        placeholder={
+                          platformId === 'trae_cn' || platformId === 'trae_solo_cn'
+                            ? t('trae.token.jsonOnlyPlaceholder', '粘贴完整 Trae CN JSON...')
+                            : t('common.shared.token.placeholder', '粘贴 Token 或 JSON...')
+                        }
                       />
                       <button
                         className="btn btn-primary btn-full"

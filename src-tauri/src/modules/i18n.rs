@@ -13,6 +13,7 @@ static LOCALES: std::sync::LazyLock<HashMap<&'static str, Value>> =
             ("en", include_str!("../../../src/locales/en.json")),
             ("es", include_str!("../../../src/locales/es.json")),
             ("fr", include_str!("../../../src/locales/fr.json")),
+            ("id", include_str!("../../../src/locales/id.json")),
             ("it", include_str!("../../../src/locales/it.json")),
             ("ja", include_str!("../../../src/locales/ja.json")),
             ("ko", include_str!("../../../src/locales/ko.json")),

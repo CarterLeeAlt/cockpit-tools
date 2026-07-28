@@ -593,6 +593,7 @@
       "defaultTerminal": "기본 터미널",
       "defaultTerminalDesc": "CLI를 열 때 사용되는 터미널",
       "terminalSystem": "시스템 기본값",
+      "terminalSystemWindowsCompatibility": "시스템 호환(PowerShell)",
       "accountManagement": "계정 관리",
       "autoRefresh": "Antigravity IDE 자동 새로고침 할당량",
       "codexAutoRefresh": "Codex 자동 새로고침 할당량",
@@ -653,6 +654,11 @@
       "codexPathReset": "기본값으로 재설정",
       "codexSyncWsl": "Codex를 WSL에 동기화",
       "codexSyncWslDesc": "기본 Codex 계정을 전환한 뒤 auth.json과 config.toml도 WSL의 Codex 디렉터리에 씁니다.",
+      "codexAppUiInjection": "API 서비스 할당량",
+      "codexAppUiInjectionDesc": "Codex 인스턴스를 다시 시작하면 입력창 아래에 Cockpit Tools API 서비스의 계정 수와 주간 및 5시간 할당량을 표시합니다. Cockpit Tools를 백그라운드에서 계속 실행해야 하며, 완전히 종료하거나 네트워크를 사용할 수 없으면 업데이트가 중지됩니다.",
+      "codexAppUiInjectionPoolLabel": "계정",
+      "codexAppUiInjectionWeeklyLabel": "주",
+      "codexAppUiInjectionFiveHourLabel": "5시간",
       "codexWslConfigDir": "WSL Codex 디렉터리",
       "codexWslConfigDirDesc": "WSL 안의 .codex 디렉터리를 입력하세요. \\\\wsl.localhost\\ 경로를 지원합니다.",
       "codexWslConfigDirPlaceholder": "예: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -699,6 +705,10 @@
       "codebuddySettingsTitle": "CodeBuddy 설정",
       "codebuddyAutoRefresh": "CodeBuddy 자동 할당량 새로고침",
       "codebuddyAutoRefreshDesc": "백그라운드 자동 업데이트 주기",
+      "codebuddyShareSessionsOnSwitch": "계정 전환 시 로컬 대화 공유",
+    "codebuddyShareSessionsOnSwitchDesc": "이 기기의 CodeBuddy 계정 간에 로컬 대화와 복원 상태를 병합합니다. 대화 내용은 로컬에서만 읽고 쓰며 업로드하지 않습니다.",
+    "workbuddyShareSessionsOnSwitch": "계정 전환 시 로컬 대화 공유",
+    "workbuddyShareSessionsOnSwitchDesc": "이 기기의 WorkBuddy 계정 간에 로컬 대화와 복원 상태를 병합합니다. 대화 내용은 로컬에서만 읽고 쓰며 업로드하지 않습니다.",
       "codebuddyAppPath": "CodeBuddy 실행 경로",
       "codebuddyAppPathDesc": "비워 두면 기본 경로를 사용합니다",
       "codebuddyAppPathPlaceholder": "기본 경로",
@@ -1824,11 +1834,23 @@
       "formatRefreshOnlyLabel": "refresh_token만",
       "formatBatchLabel": "일괄 예시"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Web Session 가져오기 안내",
+      "noticeMessage": "Web Session 계정 {{count}}개를 감지했습니다. 계속하면 Agent Identity로 자동 등록됩니다.",
+      "noticeApiOnly": "이 계정은 API 서비스 전용이며 해당 계정 풀에 자동으로 추가됩니다.",
+      "noticeNoSwitch": "일반 Codex 계정 전환, 공식 클라이언트 또는 CLI 직접 실행, OAuth 연결 계정으로는 사용할 수 없습니다.",
+      "noticeCredential": "앱이 Agent Identity 개인 키를 로컬에서 생성하고 저장합니다. 내보낸 백업은 비밀번호처럼 보호하세요.",
+      "noticeConfirm": "확인하고 계속",
+      "apiOnlyActionError": "Agent Identity 계정은 API 서비스에서만 사용할 수 있으며 일반 전환이나 직접 실행은 지원하지 않습니다.",
+      "oauthBindingUnsupported": "Agent Identity 계정은 API 서비스 전용이며 OAuth 연결 계정으로 사용할 수 없습니다."
+    },
     "exportFormat": {
       "label": "내보내기 형식",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "sub2api 형식",
       "cpa": "cpa 형식",
+      "agentIdentityCpaUnsupported": "Agent Identity 계정은 cpa 형식으로 내보낼 수 없습니다. Cockpit Tools 또는 sub2api를 사용하세요.",
+      "agentIdentityPrivateKeyNotice": "이 내보내기에는 다른 기기에서 계정을 복원할 수 있는 Agent Identity 개인 키가 포함됩니다. 비밀번호처럼 안전하게 보관하세요.",
       "downloadAll": "모두 다운로드",
       "cpaCardTitle": "계정 {{index}}",
       "savedFolder": "저장 폴더",
@@ -1878,6 +1900,8 @@
         "freeNotice": "무료 계정은 아직 지원되지 않습니다. 무료 계정은 선택할 수 없습니다.",
         "freeUnsupported": "무료 계정은 아직 지원되지 않습니다",
         "restrictFreeToggle": "Free 계정 제한",
+        "sessionAffinityConfirmTitle": "세션 선호를 켤까요?",
+        "sessionAffinityDescription": "켜면 같은 대화가 가능한 한 같은 계정을 계속 사용합니다. 계정을 사용할 수 없으면 라우팅에 따라 전환되며, 만료 후에는 계정을 다시 선택합니다.",
         "chatApiKeyUnsupported": "Chat Completions 미지원",
         "pendingOauthUnsupported": "미인증 추가 불가",
         "freeNoticeRestricted": "Free 계정은 제한됩니다. 선택하려면 이 옵션을 끄세요.",
@@ -1907,7 +1931,10 @@
       "testConnectFailed": "{{url}}에 연결할 수 없습니다. API 서비스가 실행 중인지, 포트가 변경되지 않았는지, 차단되지 않았는지 확인하세요.",
       "testAuthFailed": "서비스에 연결되었지만 인증에 실패했습니다: {{detail}}. API 서비스 키 또는 계정 로그인 상태를 확인하세요.",
       "testServiceUnavailable": "서비스에 연결되었지만 현재 사용할 수 없습니다: {{detail}}. 서비스가 활성화되어 있는지, 계정 모음이 비어 있지 않은지, 계정을 사용할 수 있는지 확인하세요.",
-      "gatewayErrors": {"authUnavailable": "현재 라우팅할 수 있는 계정이 없습니다. 계정이 대기 중이거나 인증되지 않았거나 할당량이 제한되었을 수 있습니다. Cockpit Tools API 서비스에서 상태를 확인하세요.", "authNotFound": "계정 풀에 사용 가능한 계정이 설정되어 있지 않습니다. Cockpit Tools API 서비스에서 계정을 추가하거나 활성화하세요."},
+      "gatewayErrors": {
+        "authUnavailable": "현재 라우팅할 수 있는 계정이 없습니다. 계정이 대기 중이거나 인증되지 않았거나 할당량이 제한되었을 수 있습니다. Cockpit Tools API 서비스에서 상태를 확인하세요.",
+        "authNotFound": "계정 풀에 사용 가능한 계정이 설정되어 있지 않습니다. Cockpit Tools API 서비스에서 계정을 추가하거나 활성화하세요."
+      },
       "testRateLimited": "서비스에 연결되었지만 업스트림 제한 또는 할당량 부족입니다: {{detail}}.",
       "testHttpFailed": "서비스에 연결되었지만 요청이 HTTP {{status}}를 반환했습니다: {{detail}}.",
       "activateAction": "API 서비스 시작",
@@ -3360,7 +3387,7 @@
       "routing": {
         "optionsTitle": "라우팅 옵션",
         "sessionAffinity": "세션 고정",
-        "sessionAffinityTtl": "고정 TTL",
+        "sessionAffinityTtl": "만료 시간(초)",
         "responsesWebsockets": "WebSocket Responses 전송",
         "maxRetryCredentials": "재시도 계정",
         "maxRetryInterval": "재시도 대기",
@@ -4666,7 +4693,18 @@
       "payAsYouGoConsuming": "종량제 사용: 사용 중",
       "payAsYouGoEnabled": "종량제 사용: 활성화됨",
       "payAsYouGoEmpty": "종량제 사용: --",
-      "payAsYouGoLabel": "종량제 사용"
+      "payAsYouGoLabel": "종량제 사용",
+      "statusSynced": "상태: 동기화됨",
+      "statusSyncedPending": "상태: 동기화됨, 잔여량 확인 중",
+      "fastAvailable": "빠른 요청 {{times}}",
+      "fastTimes": "{{count}}회",
+      "fastUnlimited": "무제한",
+      "fastPerMonth": "빠른 요청/월: {{count}}",
+      "fastChannelPerMonth": "빠른 채널: {{count}}/월",
+      "fastChannelStatus": "빠른 채널: {{status}}",
+      "freeRemainingUnknown": "무료 잔여: --",
+      "timesRemainingUnknown": "남은 횟수: --",
+      "soloParallel": "혜택: Solo 병렬 {{count}}"
     },
     "flowNotice": {
       "title": "Trae 계정 안내 (클릭하여 펼치기/접기)",
@@ -4678,6 +4716,10 @@
       "permissionWithPlatform": "권한 범위: 계정 가져오기, 계정 전환 주입, 플랜 표시를 위해 로컬 {{platform}} storage.json의 로그인 관련 필드를 읽고 씁니다. 모든 데이터는 로컬에서만 처리됩니다.",
       "networkGlobal": "네트워크 범위: {{platform}} OAuth 로그인, 토큰 갱신, 플랜 조회는 공식 trae.ai / traeapi.us API를 호출합니다. 로컬 계정 파일과 원본 저장 내용은 타사 서비스로 업로드되지 않습니다.",
       "networkCn": "네트워크 범위: {{platform}} OAuth 로그인, 토큰 갱신, 플랜 조회는 공식 trae.cn / trae.com.cn API를 호출합니다. 로컬 계정 파일과 원본 저장 내용은 타사 서비스로 업로드되지 않습니다."
+    },
+    "token": {
+      "jsonOnlyDesc": "전체 Trae CN 계정 JSON을 붙여넣으세요. 불안정한 식별·로그인 상태를 피하기 위해 원시 토큰은 지원하지 않습니다.",
+      "jsonOnlyPlaceholder": "전체 Trae CN JSON 붙여넣기..."
     }
   },
   "codebuddyCn": {
@@ -4836,7 +4878,19 @@
       "queryFailed": "조회 실패",
       "retry": "재시도",
       "inactive": "사용 불가",
-      "inactiveHint": "이 계정에서는 출석체크를 사용할 수 없습니다"
+      "inactiveHint": "이 계정에서는 출석체크를 사용할 수 없습니다",
+      "autoCheckinSettings": "자동 출석 체크 설정",
+      "autoCheckinLabel": "자동 출석 체크",
+      "autoCheckinOff": "자동 출석 체크 꺼짐",
+      "autoCheckinEnabledHint": "자동 출석 체크 활성화: {{start}} ~ {{end}} 사이 무작위 체크인",
+      "autoCheckinDisabledHint": "자동 출석 체크 비활성화",
+      "enableAutoCheckin": "자동 출석 체크 활성화",
+      "enableAutoCheckinDesc": "지정된 시간 내에서 매일 무작위로 자동 출석 체크를 진행합니다",
+      "randomTimeRange": "무작위 출석 체크 시간대",
+      "startTime": "시작 시간",
+      "endTime": "종료 시간",
+      "timeRangeHint": "매일 이 시간대 내에서 무작위 시간을 선택하여 백그라운드 출석 체크를 완료합니다.",
+      "timeRangeError": "시작 시간은 종료 시간보다 늦을 수 없습니다"
     }
   },
   "zcode": {

@@ -650,6 +650,11 @@
       "codexPathReset": "Ripristina predefinito",
       "codexSyncWsl": "Sincronizza Codex con WSL",
       "codexSyncWslDesc": "Dopo il cambio dell'account Codex predefinito, anche auth.json e config.toml vengono scritti nella directory Codex in WSL.",
+      "codexAppUiInjection": "Quota del servizio API",
+      "codexAppUiInjectionDesc": "Dopo il riavvio di un’istanza Codex, mostra sotto il composer il numero di account e le quote settimanale e di 5 ore del servizio API Cockpit Tools. Cockpit Tools deve restare in esecuzione in background; gli aggiornamenti si interrompono se viene chiuso del tutto o se la rete non è disponibile.",
+      "codexAppUiInjectionPoolLabel": "Account",
+      "codexAppUiInjectionWeeklyLabel": "Settimana",
+      "codexAppUiInjectionFiveHourLabel": "5 h",
       "codexWslConfigDir": "Directory Codex WSL",
       "codexWslConfigDirDesc": "Inserisci la directory .codex in WSL. I percorsi \\\\wsl.localhost\\ sono supportati.",
       "codexWslConfigDirPlaceholder": "Esempio: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -696,6 +701,10 @@
       "codebuddySettingsTitle": "Impostazioni CodeBuddy",
       "codebuddyAutoRefresh": "Aggiornamento automatico quota CodeBuddy",
       "codebuddyAutoRefreshDesc": "Intervallo di aggiornamento automatico in background",
+      "codebuddyShareSessionsOnSwitch": "Condividi sessioni locali al cambio",
+    "codebuddyShareSessionsOnSwitchDesc": "Unisce le sessioni locali e lo stato di ripristino tra gli account CodeBuddy su questo dispositivo. I contenuti vengono letti e scritti solo in locale e non vengono caricati.",
+    "workbuddyShareSessionsOnSwitch": "Condividi sessioni locali al cambio",
+    "workbuddyShareSessionsOnSwitchDesc": "Unisce le sessioni locali e lo stato di ripristino tra gli account WorkBuddy su questo dispositivo. I contenuti vengono letti e scritti solo in locale e non vengono caricati.",
       "codebuddyAppPath": "Percorso di avvio di CodeBuddy",
       "codebuddyAppPathDesc": "Lascia vuoto per usare il percorso predefinito",
       "codebuddyAppPathPlaceholder": "Percorso predefinito",
@@ -762,6 +771,7 @@
       "defaultTerminal": "Terminal predefinito",
       "defaultTerminalDesc": "Il terminale utilizzato all'apertura di CLI",
       "terminalSystem": "Predefinito di sistema",
+      "terminalSystemWindowsCompatibility": "Compatibilità di sistema (PowerShell)",
       "currentAccountRefreshRequiresAutoRefresh": "Attiva prima \"Aggiornamento automatico della quota\" per configurare l'aggiornamento dell'account corrente.",
       "codebuddyCnAppPath": "Percorso app CodeBuddy CN",
       "codebuddyCnAppPathDesc": "Lasciare vuoto per usare il percorso predefinito",
@@ -1824,11 +1834,23 @@
       "formatRefreshOnlyLabel": "Solo refresh_token",
       "formatBatchLabel": "Esempio batch"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Avviso importazione Web Session",
+      "noticeMessage": "Rilevati {{count}} account Web Session. Continuando verranno registrati automaticamente come Agent Identity.",
+      "noticeApiOnly": "Questi account sono destinati solo al Servizio API e verranno aggiunti automaticamente al relativo pool.",
+      "noticeNoSwitch": "Non possono essere usati per il normale cambio account Codex, per avviare direttamente il client ufficiale o la CLI né come account associato tramite OAuth.",
+      "noticeCredential": "L'app genera e salva localmente una chiave privata Agent Identity. Proteggi i backup esportati come password.",
+      "noticeConfirm": "Ho capito, continua",
+      "apiOnlyActionError": "Gli account Agent Identity sono disponibili solo tramite il Servizio API e non possono essere selezionati o avviati direttamente.",
+      "oauthBindingUnsupported": "Gli account Agent Identity sono destinati solo al Servizio API e non possono essere usati come account associati tramite OAuth."
+    },
     "exportFormat": {
       "label": "Formato di esportazione",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "Formato sub2api",
       "cpa": "Formato cpa",
+      "agentIdentityCpaUnsupported": "Gli account Agent Identity non possono essere esportati nel formato cpa. Usa Cockpit Tools o sub2api.",
+      "agentIdentityPrivateKeyNotice": "Questa esportazione contiene una chiave privata Agent Identity che consente di ripristinare l'account su un altro dispositivo. Proteggila come una password.",
       "downloadAll": "Scarica tutto",
       "cpaCardTitle": "Account {{index}}​",
       "savedFolder": "Cartella salvata",
@@ -1878,6 +1900,8 @@
         "freeNotice": "Gli account gratuiti non sono ancora supportati. Non è possibile selezionare account gratuiti.",
         "freeUnsupported": "Gli account gratuiti non sono ancora supportati",
         "restrictFreeToggle": "Limita account Free",
+        "sessionAffinityConfirmTitle": "Attivare l’affinità di sessione?",
+        "sessionAffinityDescription": "Una volta attivata, la stessa conversazione proverà a mantenere lo stesso account. Se non è disponibile, il routing può cambiarlo; dopo la scadenza verrà scelto di nuovo un account.",
         "chatApiKeyUnsupported": "Chat Completions non supportato",
         "pendingOauthUnsupported": "Auth in sospeso esclusa",
         "freeNoticeRestricted": "Gli account Free sono limitati. Disattiva questa opzione per selezionarli.",
@@ -1907,7 +1931,10 @@
       "testConnectFailed": "Impossibile connettersi a {{url}}. Verifica che il servizio API sia in esecuzione, che la porta non sia cambiata e che non sia bloccata.",
       "testAuthFailed": "Il servizio è raggiungibile, ma l’autenticazione non è riuscita: {{detail}}. Controlla la chiave del servizio API o lo stato di accesso dell’account.",
       "testServiceUnavailable": "Il servizio è raggiungibile, ma al momento non disponibile: {{detail}}. Controlla se il servizio è abilitato, se la raccolta account è vuota o se gli account sono utilizzabili.",
-      "gatewayErrors": {"authUnavailable": "Nessun account del gruppo è attualmente utilizzabile. L’account potrebbe essere in pausa, non autorizzato o limitato dalla quota. Controlla lo stato nel servizio API di Cockpit Tools.", "authNotFound": "Nel gruppo non è configurato alcun account utilizzabile. Aggiungi o abilita un account nel servizio API di Cockpit Tools."},
+      "gatewayErrors": {
+        "authUnavailable": "Nessun account del gruppo è attualmente utilizzabile. L’account potrebbe essere in pausa, non autorizzato o limitato dalla quota. Controlla lo stato nel servizio API di Cockpit Tools.",
+        "authNotFound": "Nel gruppo non è configurato alcun account utilizzabile. Aggiungi o abilita un account nel servizio API di Cockpit Tools."
+      },
       "testRateLimited": "Il servizio è raggiungibile, ma l’upstream è limitato o la quota è esaurita: {{detail}}.",
       "testHttpFailed": "Il servizio è raggiungibile, ma la richiesta ha restituito HTTP {{status}}: {{detail}}.",
       "activateAction": "Avvia servizio API",
@@ -3360,7 +3387,7 @@
       "routing": {
         "optionsTitle": "Opzioni routing",
         "sessionAffinity": "Affinità sessione",
-        "sessionAffinityTtl": "TTL affinità",
+        "sessionAffinityTtl": "Scadenza (secondi)",
         "responsesWebsockets": "Responses tramite WebSocket",
         "maxRetryCredentials": "Account retry",
         "maxRetryInterval": "Attesa retry",
@@ -4666,7 +4693,18 @@
       "payAsYouGoConsuming": "Consumo on-demand: in consumo",
       "payAsYouGoEnabled": "Consumo on-demand: attivo",
       "payAsYouGoEmpty": "Consumo on-demand: --",
-      "payAsYouGoLabel": "Utilizzo on-demand"
+      "payAsYouGoLabel": "Utilizzo on-demand",
+      "statusSynced": "Stato: sync",
+      "statusSyncedPending": "Stato: sync, residuo da conf.",
+      "fastAvailable": "Fast: {{times}}",
+      "fastTimes": "{{count}}",
+      "fastUnlimited": "Illimitato",
+      "fastPerMonth": "Fast/mese: {{count}}",
+      "fastChannelPerMonth": "Express: {{count}}/mese",
+      "fastChannelStatus": "Canale rapido: {{status}}",
+      "freeRemainingUnknown": "Free residuo: --",
+      "timesRemainingUnknown": "Residuo: --",
+      "soloParallel": "Pack: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "Guida account Trae (clicca per espandere/ridurre)",
@@ -4678,6 +4716,10 @@
       "permissionWithPlatform": "Ambito permessi: legge e scrive i campi di accesso nello storage.json locale di {{platform}} per import account, iniezione del cambio account e visualizzazione del piano. Tutti i dati vengono elaborati localmente.",
       "networkGlobal": "Ambito rete: accesso OAuth, aggiornamento token e query piano di {{platform}} chiamano le API ufficiali trae.ai / traeapi.us. I file account locali e il contenuto grezzo non vengono caricati su servizi terzi.",
       "networkCn": "Ambito rete: accesso OAuth, aggiornamento token e query piano di {{platform}} chiamano le API ufficiali trae.cn / trae.com.cn. I file account locali e il contenuto grezzo non vengono caricati su servizi terzi."
+    },
+    "token": {
+      "jsonOnlyDesc": "Incolla il JSON completo dell'account Trae CN. Token grezzi non supportati.",
+      "jsonOnlyPlaceholder": "JSON Trae CN completo..."
     }
   },
   "codebuddyCn": {
@@ -4836,7 +4878,19 @@
       "queryFailed": "Query non riuscita",
       "retry": "Riprova",
       "inactive": "Non disponibile",
-      "inactiveHint": "Check-in non attivo per questo account"
+      "inactiveHint": "Check-in non attivo per questo account",
+      "autoCheckinSettings": "Impostazioni check-in automatico",
+      "autoCheckinLabel": "Check-in automatico",
+      "autoCheckinOff": "Check-in automatico disattivato",
+      "autoCheckinEnabledHint": "Check-in automatico attivo: check-in casuale tra {{start}} e {{end}}",
+      "autoCheckinDisabledHint": "Check-in automatico disattivato",
+      "enableAutoCheckin": "Attiva check-in automatico",
+      "enableAutoCheckinDesc": "Esegue il check-in giornaliero in modo casuale nella fascia oraria specificata",
+      "randomTimeRange": "Fascia oraria check-in casuale",
+      "startTime": "Ora di inizio",
+      "endTime": "Ora di fine",
+      "timeRangeHint": "Seleziona ogni giorno un orario casuale in questo intervallo per completare il check-in.",
+      "timeRangeError": "L'ora di inizio non può essere successiva all'ora di fine"
     }
   },
   "zcode": {

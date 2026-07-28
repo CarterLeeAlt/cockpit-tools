@@ -454,7 +454,10 @@ export function FloatingCardWindow() {
     [instanceContext?.instanceName, isInstanceFloatingCardWindow, isPrimaryFloatingCardWindow, t],
   );
 
-  const fetchPlatformData = useCallback(async (platformId: PlatformId) => {
+  const fetchPlatformData = useCallback(async (
+    platformId: PlatformId,
+    options?: { allowEmpty?: boolean },
+  ) => {
     setPlatformLoading(true);
     try {
       switch (platformId) {
@@ -470,8 +473,12 @@ export function FloatingCardWindow() {
         }
         case 'codex':
           await Promise.allSettled([
-            useCodexAccountStore.getState().fetchAccounts(),
-            useCodexAccountStore.getState().fetchCurrentAccount(),
+            useCodexAccountStore.getState().fetchAccounts({
+              allowEmpty: options?.allowEmpty,
+            }),
+            useCodexAccountStore.getState().fetchCurrentAccount({
+              allowEmpty: options?.allowEmpty,
+            }),
           ]);
           break;
         case 'codex_api_service':
@@ -549,7 +556,9 @@ export function FloatingCardWindow() {
           ) {
             return;
           }
-          await fetchPlatformData(payload.platformId);
+          await fetchPlatformData(payload.platformId, {
+            allowEmpty: payload.reason === 'delete',
+          });
         },
       );
 

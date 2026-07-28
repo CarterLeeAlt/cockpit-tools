@@ -452,10 +452,13 @@ Every bit of support helps sustain open-source development. Thank you!
 - Grok icon shape references: [LobeHub/lobe-icons](https://github.com/lobehub/lobe-icons) (MIT)
 - Grok CLI task-usage querying and compatibility parsing direction references: [junhoyeo/tokscale](https://github.com/junhoyeo/tokscale) (MIT)
 - Codex API service protocol compatibility direction references: [codex-proxy](https://github.com/icebear0828/codex-proxy)
+- Codex Agent Identity import, dynamic signing, and task-recovery direction references: [sub2api](https://github.com/Wei-Shaw/sub2api)
+- Codex Agent Identity runtime registration protocol and Ed25519 key format reference the official implementation: [openai/codex](https://github.com/openai/codex) (Apache-2.0)
 - Codex, Claude CLI, and Claude Desktop Gateway third-party provider presets and model mapping direction reference: [CC Switch](https://github.com/farion1231/cc-switch)
 - Codex model catalog and frontend model display ideas reference: [CodexPlusPlus](https://github.com/BigPizzaV3/CodexPlusPlus)
 - Claude optional sign-in helper runtime is based on: [Electron](https://github.com/electron/electron)
 - Thanks [@longwQaQ](https://github.com/longwQaQ) for contributing per-provider Codex Responses WebSocket configuration ([#1512](https://github.com/jlcodes99/cockpit-tools/pull/1512)).
+- Thanks [@sqmw](https://github.com/sqmw) for Trae CN account-support work (OAuth/local import direction, pay v2 quota and fast-request display, CN product types), integrated into the unified Trae suite ([#1281](https://github.com/jlcodes99/cockpit-tools/pull/1281)).
 
 Thanks to the project author for their open-source contributions! If these projects have helped you, please give them a ⭐ Star to show your support!
 

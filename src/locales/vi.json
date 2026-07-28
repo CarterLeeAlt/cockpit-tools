@@ -588,6 +588,7 @@
       "defaultTerminal": "Terminal mặc định",
       "defaultTerminalDesc": "Terminal được sử dụng khi mở CLI",
       "terminalSystem": "Mặc định hệ thống",
+      "terminalSystemWindowsCompatibility": "Tương thích hệ thống (PowerShell)",
       "themeLight": "Sáng (Light)",
       "themeDark": "Tối (Dark)",
       "themeSystem": "Theo hệ thống",
@@ -653,6 +654,11 @@
       "codexPathReset": "Đặt lại mặc định",
       "codexSyncWsl": "Đồng bộ Codex sang WSL",
       "codexSyncWslDesc": "Sau khi chuyển tài khoản Codex mặc định, auth.json và config.toml cũng được ghi vào thư mục Codex trong WSL.",
+      "codexAppUiInjection": "Hạn mức dịch vụ API",
+      "codexAppUiInjectionDesc": "Sau khi khởi động lại phiên Codex, hiển thị số tài khoản cùng hạn mức tuần và 5 giờ của dịch vụ API Cockpit Tools bên dưới trình soạn thảo. Cần giữ Cockpit Tools chạy trong nền; dữ liệu sẽ ngừng cập nhật khi thoát hoàn toàn hoặc khi mạng không khả dụng.",
+      "codexAppUiInjectionPoolLabel": "Tài khoản",
+      "codexAppUiInjectionWeeklyLabel": "Tuần",
+      "codexAppUiInjectionFiveHourLabel": "5 giờ",
       "codexWslConfigDir": "Thư mục Codex WSL",
       "codexWslConfigDirDesc": "Nhập thư mục .codex trong WSL. Hỗ trợ đường dẫn \\\\wsl.localhost\\.",
       "codexWslConfigDirPlaceholder": "Ví dụ: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -699,6 +705,10 @@
       "codebuddySettingsTitle": "Cài đặt CodeBuddy",
       "codebuddyAutoRefresh": "Tự động làm mới hạn ngạch CodeBuddy",
       "codebuddyAutoRefreshDesc": "Tần suất tự động cập nhật nền",
+      "codebuddyShareSessionsOnSwitch": "Chia sẻ phiên cục bộ khi chuyển tài khoản",
+    "codebuddyShareSessionsOnSwitchDesc": "Hợp nhất phiên cục bộ và trạng thái khôi phục giữa các tài khoản CodeBuddy trên thiết bị này. Nội dung chỉ được đọc và ghi cục bộ, không được tải lên.",
+    "workbuddyShareSessionsOnSwitch": "Chia sẻ phiên cục bộ khi chuyển tài khoản",
+    "workbuddyShareSessionsOnSwitchDesc": "Hợp nhất phiên cục bộ và trạng thái khôi phục giữa các tài khoản WorkBuddy trên thiết bị này. Nội dung chỉ được đọc và ghi cục bộ, không được tải lên.",
       "codebuddyAppPath": "Đường dẫn khởi động CodeBuddy",
       "codebuddyAppPathDesc": "Để trống để dùng đường dẫn mặc định",
       "codebuddyAppPathPlaceholder": "Đường dẫn mặc định",
@@ -1824,11 +1834,23 @@
       "formatRefreshOnlyLabel": "Chỉ refresh_token",
       "formatBatchLabel": "Ví dụ hàng loạt"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Lưu ý khi nhập Web Session",
+      "noticeMessage": "Đã phát hiện {{count}} tài khoản Web Session. Khi tiếp tục, các tài khoản sẽ tự động được đăng ký dưới dạng Agent Identity.",
+      "noticeApiOnly": "Các tài khoản này chỉ dành cho Dịch vụ API và sẽ tự động được thêm vào nhóm tài khoản của dịch vụ.",
+      "noticeNoSwitch": "Không thể dùng chúng để chuyển tài khoản Codex thông thường, khởi chạy trực tiếp ứng dụng chính thức hay CLI hoặc làm tài khoản liên kết OAuth.",
+      "noticeCredential": "Ứng dụng tạo và lưu cục bộ khóa riêng Agent Identity. Hãy bảo vệ bản sao xuất ra như mật khẩu.",
+      "noticeConfirm": "Tôi đã hiểu, tiếp tục",
+      "apiOnlyActionError": "Tài khoản Agent Identity chỉ khả dụng qua Dịch vụ API và không thể chuyển sang hoặc khởi chạy trực tiếp.",
+      "oauthBindingUnsupported": "Tài khoản Agent Identity chỉ dành cho Dịch vụ API và không thể dùng làm tài khoản liên kết OAuth."
+    },
     "exportFormat": {
       "label": "Định dạng xuất",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "Định dạng sub2api",
       "cpa": "Định dạng cpa",
+      "agentIdentityCpaUnsupported": "Không thể xuất tài khoản Agent Identity ở định dạng cpa. Hãy dùng Cockpit Tools hoặc sub2api.",
+      "agentIdentityPrivateKeyNotice": "Bản xuất này chứa khóa riêng Agent Identity có thể khôi phục tài khoản trên thiết bị khác. Hãy bảo vệ khóa như mật khẩu.",
       "downloadAll": "Tải xuống tất cả",
       "cpaCardTitle": "Tài khoản {{index}}",
       "savedFolder": "Thư mục đã lưu",
@@ -1878,6 +1900,8 @@
         "freeNotice": "Tài khoản miễn phí chưa được hỗ trợ. Tài khoản miễn phí không thể được chọn.",
         "freeUnsupported": "Tài khoản miễn phí chưa được hỗ trợ",
         "restrictFreeToggle": "Giới hạn tài khoản Free",
+        "sessionAffinityConfirmTitle": "Bật gắn kết phiên?",
+        "sessionAffinityDescription": "Khi bật, cùng một cuộc trò chuyện sẽ cố gắng tiếp tục dùng cùng một tài khoản. Nếu tài khoản không khả dụng, định tuyến vẫn có thể chuyển đổi; sau khi hết hạn, tài khoản sẽ được chọn lại.",
         "chatApiKeyUnsupported": "Không hỗ trợ Chat Completions",
         "pendingOauthUnsupported": "Chờ xác thực: không",
         "freeNoticeRestricted": "Tài khoản Free bị giới hạn. Tắt tùy chọn này để chọn chúng.",
@@ -1907,7 +1931,10 @@
       "testConnectFailed": "Không thể kết nối tới {{url}}. Hãy xác nhận dịch vụ API đang chạy, cổng chưa bị đổi và không bị chặn.",
       "testAuthFailed": "Dịch vụ truy cập được nhưng xác thực thất bại: {{detail}}. Hãy kiểm tra khóa dịch vụ API hoặc trạng thái đăng nhập tài khoản.",
       "testServiceUnavailable": "Dịch vụ truy cập được nhưng hiện không khả dụng: {{detail}}. Hãy kiểm tra dịch vụ đã bật chưa, bộ sưu tập tài khoản có trống không hoặc tài khoản có dùng được không.",
-      "gatewayErrors": {"authUnavailable": "Hiện không có tài khoản nào có thể định tuyến. Tài khoản có thể đang tạm nghỉ, mất xác thực hoặc bị giới hạn hạn mức. Kiểm tra trạng thái trong dịch vụ API của Cockpit Tools.", "authNotFound": "Chưa cấu hình tài khoản khả dụng trong nhóm tài khoản. Hãy thêm hoặc bật tài khoản trong dịch vụ API của Cockpit Tools."},
+      "gatewayErrors": {
+        "authUnavailable": "Hiện không có tài khoản nào có thể định tuyến. Tài khoản có thể đang tạm nghỉ, mất xác thực hoặc bị giới hạn hạn mức. Kiểm tra trạng thái trong dịch vụ API của Cockpit Tools.",
+        "authNotFound": "Chưa cấu hình tài khoản khả dụng trong nhóm tài khoản. Hãy thêm hoặc bật tài khoản trong dịch vụ API của Cockpit Tools."
+      },
       "testRateLimited": "Dịch vụ truy cập được nhưng upstream bị giới hạn hoặc hết hạn mức: {{detail}}.",
       "testHttpFailed": "Dịch vụ truy cập được nhưng yêu cầu trả về HTTP {{status}}: {{detail}}.",
       "activateAction": "Khởi động dịch vụ API",
@@ -3360,7 +3387,7 @@
       "routing": {
         "optionsTitle": "Tùy chọn định tuyến",
         "sessionAffinity": "Gắn phiên",
-        "sessionAffinityTtl": "TTL gắn phiên",
+        "sessionAffinityTtl": "Thời gian hết hạn (giây)",
         "responsesWebsockets": "Responses qua WebSocket",
         "maxRetryCredentials": "Tài khoản retry",
         "maxRetryInterval": "Chờ retry",
@@ -4666,7 +4693,18 @@
       "payAsYouGoConsuming": "Thanh toan theo muc dung: dang tieu thu",
       "payAsYouGoEnabled": "Thanh toan theo muc dung: da bat",
       "payAsYouGoEmpty": "Thanh toan theo muc dung: --",
-      "payAsYouGoLabel": "Su dung theo nhu cau"
+      "payAsYouGoLabel": "Su dung theo nhu cau",
+      "statusSynced": "Trạng thái: đã đồng bộ",
+      "statusSyncedPending": "Trạng thái: đã đồng bộ, còn lại chưa xác nhận",
+      "fastAvailable": "Nhanh còn {{times}}",
+      "fastTimes": "{{count}} lần",
+      "fastUnlimited": "Không giới hạn",
+      "fastPerMonth": "Nhanh/tháng: {{count}}",
+      "fastChannelPerMonth": "Express: {{count}}/tháng",
+      "fastChannelStatus": "Kênh nhanh: {{status}}",
+      "freeRemainingUnknown": "Free còn: --",
+      "timesRemainingUnknown": "Còn lại: --",
+      "soloParallel": "Gói: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "Huong dan tai khoan Trae (nhan de mo rong/thu gon)",
@@ -4678,6 +4716,10 @@
       "permissionWithPlatform": "Phạm vi quyền: đọc và ghi các trường đăng nhập trong storage.json cục bộ của {{platform}} để nhập tài khoản, ghi chuyển tài khoản và hiển thị gói. Tất cả dữ liệu chỉ được xử lý trên máy.",
       "networkGlobal": "Phạm vi mạng: đăng nhập OAuth, làm mới token và truy vấn gói của {{platform}} gọi API chính thức trae.ai / traeapi.us. Không tải tệp tài khoản cục bộ hoặc nội dung lưu trữ thô lên dịch vụ bên thứ ba.",
       "networkCn": "Phạm vi mạng: đăng nhập OAuth, làm mới token và truy vấn gói của {{platform}} gọi API chính thức trae.cn / trae.com.cn. Không tải tệp tài khoản cục bộ hoặc nội dung lưu trữ thô lên dịch vụ bên thứ ba."
+    },
+    "token": {
+      "jsonOnlyDesc": "Dán JSON tài khoản Trae CN đầy đủ. Không hỗ trợ token thô.",
+      "jsonOnlyPlaceholder": "JSON Trae CN đầy đủ..."
     }
   },
   "codebuddyCn": {
@@ -4836,7 +4878,19 @@
       "queryFailed": "Truy vấn thất bại",
       "retry": "Thử lại",
       "inactive": "Không khả dụng",
-      "inactiveHint": "Check-in không hoạt động với tài khoản này"
+      "inactiveHint": "Check-in không hoạt động với tài khoản này",
+      "autoCheckinSettings": "Cài đặt điểm danh tự động",
+      "autoCheckinLabel": "Điểm danh tự động",
+      "autoCheckinOff": "Điểm danh tự động tắt",
+      "autoCheckinEnabledHint": "Điểm danh tự động bật: Điểm danh ngẫu nhiên từ {{start}} đến {{end}}",
+      "autoCheckinDisabledHint": "Điểm danh tự động tắt",
+      "enableAutoCheckin": "Bật điểm danh tự động",
+      "enableAutoCheckinDesc": "Tự động điểm danh ngẫu nhiên mỗi ngày trong khoảng thời gian quy định",
+      "randomTimeRange": "Khoảng thời gian điểm danh ngẫu nhiên",
+      "startTime": "Thời gian bắt đầu",
+      "endTime": "Thời gian kết thúc",
+      "timeRangeHint": "Tự động chọn một thời điểm ngẫu nhiên mỗi ngày trong khoảng này để điểm danh chạy ngầm.",
+      "timeRangeError": "Thời gian bắt đầu không thể sau thời gian kết thúc"
     }
   },
   "zcode": {

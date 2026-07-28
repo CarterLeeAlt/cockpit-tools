@@ -593,6 +593,7 @@
       "defaultTerminal": "Domyślny terminal",
       "defaultTerminalDesc": "Terminal używany podczas otwierania CLI",
       "terminalSystem": "Domyślny systemowy",
+      "terminalSystemWindowsCompatibility": "Zgodność systemowa (PowerShell)",
       "accountManagement": "Zarządzanie kontami",
       "autoRefresh": "Automatyczne odświeżanie limitu Antigravity IDE",
       "codexAutoRefresh": "Automatyczne odświeżanie limitu Codex",
@@ -653,6 +654,11 @@
       "codexPathReset": "Przywróć domyślne",
       "codexSyncWsl": "Synchronizuj Codex z WSL",
       "codexSyncWslDesc": "Po przełączeniu domyślnego konta Codex pliki auth.json i config.toml są też zapisywane w katalogu Codex w WSL.",
+      "codexAppUiInjection": "Limit usługi API",
+      "codexAppUiInjectionDesc": "Po ponownym uruchomieniu instancji Codex pokaż pod kompozytorem liczbę kont oraz tygodniowy i 5-godzinny limit usługi API Cockpit Tools. Cockpit Tools musi działać w tle; aktualizacje zatrzymują się po całkowitym zamknięciu aplikacji lub przy braku sieci.",
+      "codexAppUiInjectionPoolLabel": "Konta",
+      "codexAppUiInjectionWeeklyLabel": "Tydzień",
+      "codexAppUiInjectionFiveHourLabel": "5 godz.",
       "codexWslConfigDir": "Katalog Codex w WSL",
       "codexWslConfigDirDesc": "Wpisz katalog .codex w WSL. Ścieżki \\\\wsl.localhost\\ są obsługiwane.",
       "codexWslConfigDirPlaceholder": "Przykład: \\\\wsl.localhost\\Ubuntu-24.04\\home\\user\\.codex",
@@ -699,6 +705,10 @@
       "codebuddySettingsTitle": "Ustawienia CodeBuddy",
       "codebuddyAutoRefresh": "Automatyczne odświeżanie limitu CodeBuddy",
       "codebuddyAutoRefreshDesc": "Interwał automatycznego odświeżania w tle",
+      "codebuddyShareSessionsOnSwitch": "Udostępniaj sesje lokalne przy zmianie",
+    "codebuddyShareSessionsOnSwitchDesc": "Scala lokalne sesje i stan przywracania między kontami CodeBuddy na tym urządzeniu. Treść jest odczytywana i zapisywana wyłącznie lokalnie i nie jest wysyłana.",
+    "workbuddyShareSessionsOnSwitch": "Udostępniaj sesje lokalne przy zmianie",
+    "workbuddyShareSessionsOnSwitchDesc": "Scala lokalne sesje i stan przywracania między kontami WorkBuddy na tym urządzeniu. Treść jest odczytywana i zapisywana wyłącznie lokalnie i nie jest wysyłana.",
       "codebuddyAppPath": "Ścieżka uruchamiania CodeBuddy",
       "codebuddyAppPathDesc": "Pozostaw puste, aby użyć domyślnej ścieżki",
       "codebuddyAppPathPlaceholder": "Domyślna ścieżka",
@@ -1824,11 +1834,23 @@
       "formatRefreshOnlyLabel": "Tylko refresh_token",
       "formatBatchLabel": "Przykład zbiorczy"
     },
+    "agentIdentityRegistration": {
+      "noticeTitle": "Informacja o imporcie Web Session",
+      "noticeMessage": "Wykryto {{count}} kont Web Session. Kontynuacja automatycznie zarejestruje je jako Agent Identity.",
+      "noticeApiOnly": "Te konta są przeznaczone wyłącznie dla Usługi API i zostaną automatycznie dodane do jej puli kont.",
+      "noticeNoSwitch": "Nie można ich używać do zwykłego przełączania kont Codex, bezpośredniego uruchamiania oficjalnego klienta lub CLI ani jako konta powiązanego przez OAuth.",
+      "noticeCredential": "Aplikacja lokalnie tworzy i przechowuje klucz prywatny Agent Identity. Eksportowane kopie chroń jak hasła.",
+      "noticeConfirm": "Rozumiem, kontynuuj",
+      "apiOnlyActionError": "Konta Agent Identity są dostępne tylko przez Usługę API i nie można ich bezpośrednio przełączać ani uruchamiać.",
+      "oauthBindingUnsupported": "Konta Agent Identity są przeznaczone wyłącznie dla Usługi API i nie mogą służyć jako konta powiązane przez OAuth."
+    },
     "exportFormat": {
       "label": "Format eksportu",
       "cockpitTools": "Cockpit Tools​",
       "sub2api": "Format sub2api",
       "cpa": "Format cpa",
+      "agentIdentityCpaUnsupported": "Kont Agent Identity nie można eksportować w formacie cpa. Użyj Cockpit Tools lub sub2api.",
+      "agentIdentityPrivateKeyNotice": "Ten eksport zawiera klucz prywatny Agent Identity, który umożliwia odtworzenie konta na innym urządzeniu. Chroń go jak hasło.",
       "downloadAll": "Pobierz wszystko",
       "cpaCardTitle": "Konto {{index}}",
       "savedFolder": "Zapisany folder",
@@ -1878,6 +1900,8 @@
         "freeNotice": "Bezpłatne konta nie są jeszcze obsługiwane. Nie można wybrać kont bezpłatnych.",
         "freeUnsupported": "Bezpłatne konta nie są jeszcze obsługiwane",
         "restrictFreeToggle": "Ogranicz konta Free",
+        "sessionAffinityConfirmTitle": "Włączyć przywiązanie sesji?",
+        "sessionAffinityDescription": "Po włączeniu ta sama rozmowa będzie próbowała nadal używać tego samego konta. Gdy konto jest niedostępne, routing może je zmienić; po wygaśnięciu konto zostanie wybrane ponownie.",
         "chatApiKeyUnsupported": "Chat Completions nieobsługiwane",
         "pendingOauthUnsupported": "Oczekujące wykluczone",
         "freeNoticeRestricted": "Konta Free są ograniczone. Wyłącz tę opcję, aby je wybrać.",
@@ -1907,7 +1931,10 @@
       "testConnectFailed": "Nie można połączyć się z {{url}}. Sprawdź, czy usługa API działa, port się nie zmienił i nic go nie blokuje.",
       "testAuthFailed": "Usługa jest osiągalna, ale uwierzytelnianie nie powiodło się: {{detail}}. Sprawdź klucz usługi API lub stan logowania konta.",
       "testServiceUnavailable": "Usługa jest osiągalna, ale obecnie niedostępna: {{detail}}. Sprawdź, czy usługa jest włączona, kolekcja kont nie jest pusta i konta są używalne.",
-      "gatewayErrors": {"authUnavailable": "Obecnie nie ma konta dostępnego do routingu. Konto może być w czasie oczekiwania, bez autoryzacji lub ograniczone limitem. Sprawdź jego stan w usłudze API Cockpit Tools.", "authNotFound": "W puli kont nie skonfigurowano użytecznego konta. Dodaj lub włącz konto w usłudze API Cockpit Tools."},
+      "gatewayErrors": {
+        "authUnavailable": "Obecnie nie ma konta dostępnego do routingu. Konto może być w czasie oczekiwania, bez autoryzacji lub ograniczone limitem. Sprawdź jego stan w usłudze API Cockpit Tools.",
+        "authNotFound": "W puli kont nie skonfigurowano użytecznego konta. Dodaj lub włącz konto w usłudze API Cockpit Tools."
+      },
       "testRateLimited": "Usługa jest osiągalna, ale upstream jest ograniczony lub limit został wyczerpany: {{detail}}.",
       "testHttpFailed": "Usługa jest osiągalna, ale żądanie zwróciło HTTP {{status}}: {{detail}}.",
       "activateAction": "Uruchom usługę API",
@@ -3360,7 +3387,7 @@
       "routing": {
         "optionsTitle": "Opcje routingu",
         "sessionAffinity": "Przywiązanie sesji",
-        "sessionAffinityTtl": "TTL przywiązania",
+        "sessionAffinityTtl": "Wygaśnięcie (sekundy)",
         "responsesWebsockets": "Responses przez WebSocket",
         "maxRetryCredentials": "Konta retry",
         "maxRetryInterval": "Czas retry",
@@ -4666,7 +4693,18 @@
       "payAsYouGoConsuming": "Rozliczanie za uzycie: w trakcie zuzycia",
       "payAsYouGoEnabled": "Rozliczanie za uzycie: wlaczone",
       "payAsYouGoEmpty": "Rozliczanie za uzycie: --",
-      "payAsYouGoLabel": "Uzycie na zadanie"
+      "payAsYouGoLabel": "Uzycie na zadanie",
+      "statusSynced": "Status: sync",
+      "statusSyncedPending": "Status: sync, reszta do potw.",
+      "fastAvailable": "Szybkie: {{times}}",
+      "fastTimes": "{{count}}",
+      "fastUnlimited": "Bez limitu",
+      "fastPerMonth": "Szybkie/mc: {{count}}",
+      "fastChannelPerMonth": "Express: {{count}}/mc",
+      "fastChannelStatus": "Szybki kanał: {{status}}",
+      "freeRemainingUnknown": "Free zostało: --",
+      "timesRemainingUnknown": "Zostało: --",
+      "soloParallel": "Pakiet: Solo ×{{count}}"
     },
     "flowNotice": {
       "title": "Przewodnik po kontach Trae (kliknij, aby rozwinac/zwinac)",
@@ -4678,6 +4716,10 @@
       "permissionWithPlatform": "Zakres uprawnień: odczyt i zapis pól logowania w lokalnym storage.json {{platform}} na potrzeby importu konta, przełączania kont i wyświetlania planu. Wszystkie dane są przetwarzane lokalnie.",
       "networkGlobal": "Zakres sieci: logowanie OAuth, odświeżanie tokenów i zapytania planu {{platform}} wywołują oficjalne API trae.ai / traeapi.us. Lokalne pliki kont i surowa zawartość nie są wysyłane do usług zewnętrznych.",
       "networkCn": "Zakres sieci: logowanie OAuth, odświeżanie tokenów i zapytania planu {{platform}} wywołują oficjalne API trae.cn / trae.com.cn. Lokalne pliki kont i surowa zawartość nie są wysyłane do usług zewnętrznych."
+    },
+    "token": {
+      "jsonOnlyDesc": "Wklej pełny JSON konta Trae CN. Surowy token nie jest obsługiwany.",
+      "jsonOnlyPlaceholder": "Pełny JSON Trae CN..."
     }
   },
   "codebuddyCn": {
@@ -4836,7 +4878,19 @@
       "queryFailed": "Zapytanie nieudane",
       "retry": "Ponów",
       "inactive": "Niedostępne",
-      "inactiveHint": "Check-in nieaktywny dla tego konta"
+      "inactiveHint": "Check-in nieaktywny dla tego konta",
+      "autoCheckinSettings": "Ustawienia automatycznego meldowania",
+      "autoCheckinLabel": "Automatyczne meldowanie",
+      "autoCheckinOff": "Automatyczne meldowanie wyłączone",
+      "autoCheckinEnabledHint": "Automatyczne meldowanie włączone: losowe meldowanie między {{start}} a {{end}}",
+      "autoCheckinDisabledHint": "Automatyczne meldowanie wyłączone",
+      "enableAutoCheckin": "Włącz automatyczne meldowanie",
+      "enableAutoCheckinDesc": "Wykonuje codzienne losowe meldowanie w określonym przedziale czasowym",
+      "randomTimeRange": "Losowy przedział czasowy meldowania",
+      "startTime": "Czas rozpoczęcia",
+      "endTime": "Czas zakończenia",
+      "timeRangeHint": "Wybiera codziennie losową godzinę w tym przedziale, aby dokończyć meldowanie w tle.",
+      "timeRangeError": "Czas rozpoczęcia nie może być późniejszy niż czas zakończenia"
     }
   },
   "zcode": {

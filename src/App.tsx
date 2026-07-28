@@ -71,6 +71,11 @@ import {
   type ExternalProviderImportPayload,
 } from './utils/externalProviderImport';
 import { runAutoBackupCycle } from './services/scheduledBackupService';
+import {
+  getWorkbuddyAutoCheckinNextDelayMs,
+  runWorkbuddyAutoCheckinCycleIfNeeded,
+  WORKBUDDY_AUTO_CHECKIN_CONFIG_CHANGED_EVENT,
+} from './services/workbuddyAutoCheckinService';
 import { prepareCodexLocalAccessForRestart } from './services/codexLocalAccessService';
 import { applyReducedMotion } from './utils/reducedMotion';
 import {
@@ -2240,6 +2245,53 @@ function MainApp() {
       if (intervalId !== undefined) {
         window.clearInterval(intervalId);
       }
+    };
+  }, []);
+
+  // WorkBuddy 自动签到：仅在下一个计划时间或失败重试时间唤醒，避免固定轮询。
+  useEffect(() => {
+    const WORKBUDDY_CHECKIN_STARTUP_DELAY_MS = 5 * 1000;
+    let timerId: number | undefined;
+    let disposed = false;
+
+    const scheduleNextCheck = (delayMs: number) => {
+      if (timerId !== undefined) {
+        window.clearTimeout(timerId);
+      }
+      timerId = window.setTimeout(() => {
+        void checkAutoCheckin();
+      }, delayMs);
+    };
+
+    const checkAutoCheckin = async () => {
+      try {
+        const result = await runWorkbuddyAutoCheckinCycleIfNeeded();
+        if (!disposed) {
+          scheduleNextCheck(getWorkbuddyAutoCheckinNextDelayMs(result));
+        }
+      } catch (error) {
+        console.warn('[WorkbuddyAutoCheckin] 后台自动签到检查失败:', error);
+        if (!disposed) {
+          scheduleNextCheck(getWorkbuddyAutoCheckinNextDelayMs('retry'));
+        }
+      }
+    };
+
+    const handleConfigChange = () => {
+      scheduleNextCheck(0);
+    };
+
+    timerId = window.setTimeout(() => {
+      void checkAutoCheckin();
+    }, WORKBUDDY_CHECKIN_STARTUP_DELAY_MS);
+    window.addEventListener(WORKBUDDY_AUTO_CHECKIN_CONFIG_CHANGED_EVENT, handleConfigChange);
+
+    return () => {
+      disposed = true;
+      if (timerId !== undefined) {
+        window.clearTimeout(timerId);
+      }
+      window.removeEventListener(WORKBUDDY_AUTO_CHECKIN_CONFIG_CHANGED_EVENT, handleConfigChange);
     };
   }, []);
 
