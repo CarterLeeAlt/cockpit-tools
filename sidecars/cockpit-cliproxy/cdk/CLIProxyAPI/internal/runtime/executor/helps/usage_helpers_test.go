@@ -28,6 +28,14 @@ func TestParseOpenAIUsageChatCompletions(t *testing.T) {
 	}
 }
 
+func TestParseOpenAIUsageNormalizesCacheCreationAlias(t *testing.T) {
+	data := []byte(`{"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12,"input_tokens_details":{"cache_creation_tokens":4}}}`)
+	detail := ParseOpenAIUsage(data)
+	if detail.CacheCreationTokens != 4 {
+		t.Fatalf("cache creation tokens = %d, want 4", detail.CacheCreationTokens)
+	}
+}
+
 func TestParseOpenAIUsageResponses(t *testing.T) {
 	data := []byte(`{"usage":{"input_tokens":10,"output_tokens":20,"total_tokens":30,"input_tokens_details":{"cached_tokens":7},"output_tokens_details":{"reasoning_tokens":9}}}`)
 	detail := ParseOpenAIUsage(data)

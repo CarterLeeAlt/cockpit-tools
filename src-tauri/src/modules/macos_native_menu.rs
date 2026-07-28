@@ -24,6 +24,7 @@ mod imp {
         fn macos_native_menu_update_snapshot(snapshot_json: *const c_char);
         fn macos_native_menu_update_status_item(
             account_prefix: *const c_char,
+            value_text: *const c_char,
             remaining_percent: i32,
             enabled: i32,
             status_item_ptr: *mut c_void,
@@ -50,6 +51,9 @@ mod imp {
         strings: MenuStrings,
         platforms: Vec<PlatformSnapshot>,
         selected_platform_id: String,
+        /// 为 true 时右键打开菜单应强制选中 selected_platform_id（菜单栏额度配置的平台）并展示当前账号。
+        #[serde(default)]
+        prefer_selected_platform: bool,
     }
 
     #[derive(Debug, Clone, Serialize)]
@@ -199,13 +203,143 @@ mod imp {
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct MenuBarStatus {
+        /// 前缀：邮箱前 4 位 / "API" / 空
         account_prefix: String,
+        /// 主数值文案：如 "45%" / "$12.50" / "--"
+        value_text: String,
+        /// 用于着色的剩余百分比；无则灰色
         remaining_percent: Option<i32>,
     }
 
     fn menu_bar_account_prefix(label: &str) -> String {
         let local_part = label.trim().split('@').next().unwrap_or_default().trim();
         local_part.chars().take(4).collect()
+    }
+
+    fn menu_bar_value_from_remaining(remaining_percent: Option<i32>) -> String {
+        remaining_percent
+            .map(|value| format!("{}%", value.clamp(0, i32::MAX)))
+            .unwrap_or_else(|| "--".to_string())
+    }
+
+    fn is_codex_api_service_current() -> bool {
+        let index = modules::codex_account::load_account_index();
+        if index
+            .current_account_id
+            .as_deref()
+            .map(modules::codex_instance::is_api_service_bind_account_id)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        // 激活 API 服务时会清空 current_account_id，实际当前态看默认实例 bind。
+        if modules::codex_account::get_current_account().is_some() {
+            return false;
+        }
+        modules::codex_instance::load_default_settings()
+            .ok()
+            .and_then(|settings| settings.bind_account_id)
+            .as_deref()
+            .map(modules::codex_instance::is_api_service_bind_account_id)
+            .unwrap_or(false)
+    }
+
+    /// Codex API Key / 模型供应商账号：展示剩余额度金额或数量，前缀固定为 API。
+    fn build_codex_api_key_menu_bar_status(
+        account: &crate::models::codex::CodexAccount,
+    ) -> MenuBarStatus {
+        // 「API」是类型标签，不是邮箱前缀，不受「显示邮箱前 4 位」开关影响。
+        let prefix = "API".to_string();
+        let Some(summary) = codex_api_key_provider_usage(account) else {
+            return MenuBarStatus {
+                account_prefix: prefix,
+                value_text: "--".to_string(),
+                remaining_percent: None,
+            };
+        };
+        let mode = json_path(Some(summary), &["mode"])
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .unwrap_or_default();
+        let unit = json_path(Some(summary), &["unit"]).and_then(Value::as_str);
+        let has_new_api_fields = codex_api_key_usage_detail(summary, "totalGranted").is_some()
+            || codex_api_key_usage_detail(summary, "totalAvailable").is_some()
+            || codex_api_key_usage_detail(summary, "expiresAt").is_some();
+
+        if mode == "new_api" || has_new_api_fields {
+            let total_granted = codex_api_key_usage_detail_number(summary, "totalGranted");
+            let total_available = codex_api_key_usage_detail_number(summary, "totalAvailable");
+            let remaining_percent = match (total_granted, total_available) {
+                (Some(granted), Some(available)) if granted > 0.0 => {
+                    Some(clamp_percent((available.max(0.0) / granted) * 100.0))
+                }
+                _ => None,
+            };
+            return MenuBarStatus {
+                account_prefix: prefix,
+                value_text: total_available
+                    .map(format_provider_usage_count)
+                    .unwrap_or_else(|| "--".to_string()),
+                remaining_percent,
+            };
+        }
+
+        let remaining = json_path(Some(summary), &["quotaRemaining"])
+            .or_else(|| json_path(Some(summary), &["remaining"]))
+            .or_else(|| json_path(Some(summary), &["balance"]))
+            .and_then(parse_json_number);
+        let used = json_path(Some(summary), &["quotaUsed"])
+            .or_else(|| json_path(Some(summary), &["totalCost"]))
+            .and_then(parse_json_number);
+        let limit = json_path(Some(summary), &["quotaLimit"]).and_then(parse_json_number);
+        let quota_unlimited = json_path(Some(summary), &["quotaUnlimited"])
+            .and_then(json_bool)
+            .unwrap_or(false);
+
+        let remaining_percent = match (used, limit) {
+            (Some(used), Some(limit)) if limit > 0.0 => {
+                Some(clamp_percent(((limit - used).max(0.0) / limit) * 100.0))
+            }
+            _ => None,
+        };
+
+        if quota_unlimited {
+            return MenuBarStatus {
+                account_prefix: prefix,
+                value_text: "∞".to_string(),
+                remaining_percent: Some(100),
+            };
+        }
+
+        let value_text = remaining
+            .or(limit)
+            .map(|value| {
+                if mode == "sub2api"
+                    || unit.is_some()
+                    || json_path(Some(summary), &["balance"]).is_some()
+                {
+                    format_provider_usage_money(value, unit)
+                } else {
+                    format_provider_usage_count(value)
+                }
+            })
+            .unwrap_or_else(|| "--".to_string());
+
+        MenuBarStatus {
+            account_prefix: prefix,
+            value_text,
+            remaining_percent,
+        }
+    }
+
+    fn build_codex_api_service_menu_bar_status() -> MenuBarStatus {
+        let quota = modules::codex_local_access::menu_bar_api_service_quota();
+        MenuBarStatus {
+            // 「API」是类型标签，不受邮箱前缀开关影响。
+            account_prefix: "API".to_string(),
+            value_text: menu_bar_value_from_remaining(quota.remaining_percent),
+            remaining_percent: quota.remaining_percent,
+        }
     }
 
     fn build_menu_bar_status() -> Option<MenuBarStatus> {
@@ -216,6 +350,22 @@ mod imp {
 
         let platform = PlatformId::from_str(config.menu_bar_quota_platform.trim())
             .unwrap_or(PlatformId::Codex);
+        let show_prefix = config.menu_bar_show_account_prefix;
+
+        // Codex：当前为 API 服务时，固定展示「API + 池剩余额度」，不回落到普通账号卡片。
+        if matches!(platform, PlatformId::Codex) && is_codex_api_service_current() {
+            return Some(build_codex_api_service_menu_bar_status());
+        }
+
+        // Codex：当前为 API Key 账号时，展示「API + 供应商剩余额度」。
+        if matches!(platform, PlatformId::Codex) {
+            if let Some(account) = modules::codex_account::get_current_account() {
+                if account.is_api_key_auth() {
+                    return Some(build_codex_api_key_menu_bar_status(&account));
+                }
+            }
+        }
+
         let lang = normalize_lang(&config.language);
         let (cards, current_account_id, _) = build_platform_cards(platform, &lang);
         let card = current_account_id
@@ -223,30 +373,47 @@ mod imp {
             .and_then(|id| cards.iter().find(|card| card.id == id))
             .or_else(|| cards.first());
 
+        let remaining_percent = card.and_then(|card| card.remaining_percent);
         Some(MenuBarStatus {
-            account_prefix: if config.menu_bar_show_account_prefix {
+            account_prefix: if show_prefix {
                 card.map(|card| menu_bar_account_prefix(&card.title))
                     .unwrap_or_default()
             } else {
                 String::new()
             },
-            remaining_percent: card.and_then(|card| card.remaining_percent),
+            value_text: menu_bar_value_from_remaining(remaining_percent),
+            remaining_percent,
         })
     }
 
     pub(crate) fn update_status_item<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
         let status = build_menu_bar_status();
         let enabled = status.is_some();
-        let account_prefix = to_cstring(
-            status
-                .as_ref()
-                .map(|value| value.account_prefix.as_str())
-                .unwrap_or_default(),
-        );
+        let account_prefix_raw = status
+            .as_ref()
+            .map(|value| value.account_prefix.clone())
+            .unwrap_or_default();
+        let account_prefix = to_cstring(&account_prefix_raw);
+        let value_text_raw = status
+            .as_ref()
+            .map(|value| value.value_text.clone())
+            .unwrap_or_else(|| "--".to_string());
+        let value_text = to_cstring(&value_text_raw);
         let remaining_percent = status
             .as_ref()
             .and_then(|value| value.remaining_percent)
             .unwrap_or(-1);
+        // 先通过 tray-icon 官方 set_title 同步 TaoTrayTarget 点击层尺寸；
+        // 再由 Swift 写入带颜色的 attributedTitle，并再次对齐 frame。
+        let plain_title = if enabled {
+            if account_prefix_raw.is_empty() {
+                value_text_raw.clone()
+            } else {
+                format!("{} {}", account_prefix_raw, value_text_raw)
+            }
+        } else {
+            String::new()
+        };
         let app = app.clone();
 
         app.clone()
@@ -254,6 +421,14 @@ mod imp {
                 let Some(tray) = app.tray_by_id(TRAY_ID) else {
                     return;
                 };
+
+                if let Err(err) = tray.set_title(Some(plain_title)) {
+                    modules::logger::log_warn(&format!(
+                        "[Tray] 同步菜单栏额度标题失败: {}",
+                        err
+                    ));
+                }
+
                 let status_item_ptr = tray
                     .with_inner_tray_icon(|tray_icon| {
                         tray_icon
@@ -269,6 +444,7 @@ mod imp {
                 unsafe {
                     macos_native_menu_update_status_item(
                         account_prefix.as_ptr(),
+                        value_text.as_ptr(),
                         remaining_percent,
                         i32::from(enabled),
                         status_item_ptr as *mut c_void,
@@ -409,15 +585,34 @@ mod imp {
             .into_iter()
             .map(|platform| build_platform_snapshot(platform, &lang))
             .collect::<Vec<_>>();
-        let selected_platform_id = platforms
-            .first()
-            .map(|item| item.id.clone())
-            .unwrap_or_default();
+
+        // 开启菜单栏额度时：右键默认选中配置的平台，并展示该平台当前账号/额度。
+        let preferred_platform = if config.menu_bar_quota_enabled {
+            PlatformId::from_str(config.menu_bar_quota_platform.trim())
+        } else {
+            None
+        };
+        let prefer_selected_platform = preferred_platform.is_some_and(|platform| {
+            platforms
+                .iter()
+                .any(|item| item.id == platform.as_str())
+        });
+        let selected_platform_id = if prefer_selected_platform {
+            preferred_platform
+                .map(|platform| platform.as_str().to_string())
+                .unwrap_or_default()
+        } else {
+            platforms
+                .first()
+                .map(|item| item.id.clone())
+                .unwrap_or_default()
+        };
 
         Some(MenuSnapshot {
             strings: build_strings(&lang),
             platforms,
             selected_platform_id,
+            prefer_selected_platform,
         })
     }
 
@@ -2979,13 +3174,80 @@ mod imp {
         (cards, current_id, recommended)
     }
 
+    fn localize_codex_pool_window_label(lang: &str, label: &str) -> String {
+        // 与前端 formatCodexQuotaPoolWindowLabel 对齐：Weekly → 周。
+        if label.eq_ignore_ascii_case("Weekly") {
+            return translate_or(
+                lang,
+                "codex.localAccess.quotaPool.weeklyShort",
+                "周",
+                &[],
+            );
+        }
+        label.to_string()
+    }
+
+    fn build_codex_api_service_card(lang: &str) -> AccountCard {
+        let pool = modules::codex_local_access::menu_bar_api_service_quota();
+        let mut rows = Vec::new();
+
+        for window in &pool.windows {
+            let tone_pct = window.percentage.clamp(0, 100);
+            rows.push(make_progress_row(
+                localize_codex_pool_window_label(lang, &window.label),
+                format!("{}%", window.percentage),
+                tone_pct,
+                None,
+                codex_remaining_tone(tone_pct),
+            ));
+        }
+        if rows.is_empty() {
+            rows.push(make_text_row(
+                translate_or(lang, "common.shared.quota.noData", "No quota data", &[]),
+                "-".to_string(),
+                Some(modules::i18n::translate(lang, "common.refresh", &[])),
+            ));
+        } else {
+            rows.insert(
+                0,
+                make_text_row(
+                    translate_or(
+                        lang,
+                        "settings.general.codexAppUiInjectionPoolLabel",
+                        "Accounts",
+                        &[],
+                    ),
+                    pool.account_count.to_string(),
+                    None,
+                ),
+            );
+        }
+
+        AccountCard {
+            id: modules::codex_instance::CODEX_API_SERVICE_BIND_ACCOUNT_ID.to_string(),
+            title: translate_or(lang, "codex.localAccess.title", "API Service", &[]),
+            plan: Some("API".to_string()),
+            updated_at: Some(chrono::Utc::now().timestamp()),
+            quota_rows: rows,
+            remaining_percent: pool.remaining_percent,
+        }
+    }
+
     fn build_codex_cards(lang: &str) -> (Vec<AccountCard>, Option<String>, Option<String>) {
         let mut accounts = modules::codex_account::list_accounts();
-        let current_id = modules::codex_account::resolve_current_account_id(&accounts);
+        let api_service_current = is_codex_api_service_current();
+        let current_id = if api_service_current {
+            Some(modules::codex_instance::CODEX_API_SERVICE_BIND_ACCOUNT_ID.to_string())
+        } else {
+            modules::codex_account::resolve_current_account_id(&accounts)
+        };
         accounts
             .sort_by_key(|account| std::cmp::Reverse(account.last_used.max(account.created_at)));
 
         let recommended = current_id.as_deref().and_then(|id| {
+            if modules::codex_instance::is_api_service_bind_account_id(id) {
+                return None;
+            }
             accounts
                 .iter()
                 .filter(|account| account.id != id && account.quota.is_some())
@@ -3005,7 +3267,7 @@ mod imp {
                 .map(|account| account.id.clone())
         });
 
-        let cards = accounts
+        let mut cards: Vec<AccountCard> = accounts
             .into_iter()
             .map(|account| {
                 let mut rows = Vec::new();
@@ -3092,6 +3354,12 @@ mod imp {
                 }
             })
             .collect();
+
+        // 有 API 服务账号池或当前正是 API 服务时，插入虚拟卡片展示池额度。
+        if api_service_current || modules::codex_local_access::api_service_collection_has_accounts()
+        {
+            cards.insert(0, build_codex_api_service_card(lang));
+        }
 
         (cards, current_id, recommended)
     }
@@ -4661,6 +4929,20 @@ mod imp {
         }
     }
 
+    async fn refresh_codex_api_service_pool_for_menu(app: AppHandle) -> Result<i32, String> {
+        let target_ids = modules::codex_local_access::api_service_refreshable_account_ids();
+        if target_ids.is_empty() {
+            return Err("API 服务账号池暂无可刷新的额度".to_string());
+        }
+        let success_count =
+            commands::codex::refresh_codex_quotas_batch(app.clone(), target_ids, Some(true)).await?;
+        if success_count <= 0 {
+            return Err("API 服务账号池额度刷新失败".to_string());
+        }
+        let _ = crate::modules::tray::update_tray_menu(&app);
+        Ok(success_count)
+    }
+
     fn spawn_refresh(platform: PlatformId, account_id: Option<String>) {
         let Some(app) = crate::get_app_handle().cloned() else {
             return;
@@ -4678,6 +4960,11 @@ mod imp {
                     commands::account::refresh_current_quota(app.clone())
                         .await
                         .map(|_| 0)
+                }
+                (PlatformId::Codex, Some(account_id))
+                    if modules::codex_instance::is_api_service_bind_account_id(&account_id) =>
+                {
+                    refresh_codex_api_service_pool_for_menu(app.clone()).await
                 }
                 (PlatformId::Codex, Some(account_id)) => {
                     refresh_codex_api_key_usage_for_menu(app.clone(), account_id)
@@ -4828,6 +5115,13 @@ mod imp {
                 PlatformId::Antigravity => commands::account::switch_account(app, account_id, None)
                     .await
                     .map(|_| ()),
+                PlatformId::Codex
+                    if modules::codex_instance::is_api_service_bind_account_id(&account_id) =>
+                {
+                    commands::codex::codex_local_access_activate(app, None)
+                        .await
+                        .map(|_| ())
+                }
                 PlatformId::Codex => commands::codex::switch_codex_account(app, account_id, None)
                     .await
                     .map(|_| ()),

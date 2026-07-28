@@ -120,6 +120,8 @@ pub struct CodexLocalAccessCustomRoutingRule {
     pub weight: u32,
     #[serde(default)]
     pub is_backup: bool,
+    #[serde(default)]
+    pub is_preferred: bool,
 }
 
 fn default_custom_routing_weight() -> u32 {
@@ -645,6 +647,8 @@ pub struct CodexLocalAccessUsageEvent {
     pub cached_tokens: u64,
     #[serde(default)]
     pub reasoning_tokens: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_breakdown: Option<CodexTokenBreakdown>,
     #[serde(default)]
     pub estimated_cost_usd: f64,
     #[serde(default = "default_model_pricing_version")]
@@ -655,6 +659,47 @@ pub struct CodexLocalAccessUsageEvent {
     pub output_usd_per_million: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cached_input_usd_per_million: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub struct CodexTokenInputBreakdown {
+    #[serde(default)]
+    pub total_tokens: u64,
+    #[serde(default)]
+    pub uncached_tokens: u64,
+    #[serde(default)]
+    pub cache_read_tokens: u64,
+    #[serde(default)]
+    pub cache_write_tokens: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub struct CodexTokenOutputBreakdown {
+    #[serde(default)]
+    pub total_tokens: u64,
+    #[serde(default)]
+    pub non_reasoning_tokens: u64,
+    #[serde(default)]
+    pub reasoning_tokens: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub struct CodexTokenBreakdown {
+    #[serde(default)]
+    pub schema_version: u32,
+    #[serde(default)]
+    pub quality: String,
+    #[serde(default)]
+    pub total_tokens: u64,
+    #[serde(default)]
+    pub input: CodexTokenInputBreakdown,
+    #[serde(default)]
+    pub output: CodexTokenOutputBreakdown,
+    #[serde(default)]
+    pub unclassified_tokens: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

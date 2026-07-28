@@ -296,6 +296,46 @@
   line-height: 1.45;
 }
 
+.settings-menu-bar-quota-modal {
+  max-width: 480px;
+}
+
+.settings-menu-bar-quota-modal-desc {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.settings-menu-bar-quota-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.settings-menu-bar-quota-modal-field:last-child {
+  margin-bottom: 0;
+}
+
+.settings-menu-bar-quota-modal-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-menu-bar-quota-modal-field-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.settings-menu-bar-quota-modal-select {
+  width: 100%;
+  min-width: 0;
+}
+
 /* Controls */
 .settings-select {
   padding: 6px 12px;

@@ -1046,7 +1046,18 @@
       "webdavAllowedDomains": "WebDAV 域名白名单",
       "webdavAllowedDomainsDesc": "逗号分隔；留空不限制。非空时同步 URL 主机必须匹配",
       "claudeQuotaDisplayRemaining": "Claude 额度显示剩余%",
-      "claudeQuotaDisplayRemainingDesc": "默认显示已用百分比；开启后改为显示剩余百分比。自动切号与预警仍按已用比例计算。"
+      "claudeQuotaDisplayRemainingDesc": "默认显示已用百分比；开启后改为显示剩余百分比。自动切号与预警仍按已用比例计算。",
+      "menuBarQuota": "菜单栏显示实时额度",
+      "menuBarQuotaDesc": "启用后在菜单栏图标旁显示所选平台当前账号的剩余额度；平台等专属选项在弹框中配置",
+      "menuBarQuotaEnabledDesc": "已启用 · {{platform}} · 显示该平台当前账号剩余额度（多条取最低）",
+      "menuBarQuotaConfigure": "配置",
+      "menuBarQuotaModalTitle": "菜单栏额度",
+      "menuBarQuotaModalDesc": "以下为菜单栏额度的专属选项：跟随所选平台当前账号。Codex 当前为 API 服务时显示「API + 池剩余%」；API Key 账号显示「API + 剩余额度」；普通账号显示邮箱前缀与剩余%（多条取最低；低红、中橙、高绿）。",
+      "menuBarQuotaPlatform": "额度账号平台",
+      "menuBarQuotaPlatformDesc": "跟随该平台当前正在使用的账号，刷新或切换后自动更新",
+      "menuBarAccountPrefix": "显示账号邮箱前 4 位",
+      "menuBarAccountPrefixDesc": "仅普通账号：关闭后不显示邮箱前缀。Codex API 服务 / API Key 仍会显示 API 标签",
+      "menuBarQuotaConfirmEnable": "启用"
     },
     "tabs": {
       "general": "通用",
@@ -2056,6 +2067,16 @@
       "apiOnlyActionError": "Agent Identity 账号仅支持 API 服务，无法作为普通账号切换或启动。",
       "oauthBindingUnsupported": "Agent Identity 账号仅用于 API 服务，不能作为 OAuth 绑定账号。"
     },
+    "webSessionImport": {
+      "noticeTitle": "Web Session 导入须知",
+      "noticeMessage": "检测到 {{count}} 个 Web Session 账号。此格式不支持实际使用，仅支持查看额度。",
+      "noticeQuotaOnly": "仅支持查看额度，不能启动官方客户端或 CLI，也不能切号。",
+      "noticeNoApi": "不能加入 Codex API 服务账号池，也不能作为 OAuth 绑定账号。",
+      "noticeConfirm": "已知晓，继续导入",
+      "actionBlocked": "Web Session 账号仅支持查看额度，无法切换或启动。",
+      "apiIneligible": "Web Session 仅支持查看额度，不能加入 API 服务",
+      "oauthBindingUnsupported": "Web Session 账号仅支持查看额度，不能作为 OAuth 绑定账号。"
+    },
     "exportFormat": {
       "label": "导出格式",
       "cockpitTools": "Cockpit Tools",
@@ -2332,6 +2353,11 @@
         }
       },
       "memberTitle": "集合成员",
+      "memberPriorityLabel": "优先级",
+      "memberPriorityLowest": "最低",
+      "memberPriorityNormal": "正常",
+      "memberPriorityHighest": "最高",
+      "memberPriorityDesc": "最高优先使用，正常按当前规则调度，最低仅在其他账号不可用时使用。",
       "routingStrategy": {
         "auto": "自动（推荐）",
         "singleAccount": "固定首个账号",
@@ -3881,17 +3907,7 @@
       "autoSyncBadge": "自动同步"
     },
     "exportAuthFailed": "导出失败账号",
-    "exportAuthFailedTitle": "导出全部授权失败账号",
-    "webSessionImport": {
-      "noticeTitle": "Web Session 导入须知",
-      "noticeMessage": "检测到 {{count}} 个 Web Session 账号。此格式不支持实际使用，仅支持查看额度。",
-      "noticeQuotaOnly": "仅支持查看额度，不能启动官方客户端或 CLI，也不能切号。",
-      "noticeNoApi": "不能加入 Codex API 服务账号池，也不能作为 OAuth 绑定账号。",
-      "noticeConfirm": "已知晓，继续导入",
-      "actionBlocked": "Web Session 账号仅支持查看额度，无法切换或启动。",
-      "apiIneligible": "Web Session 仅支持查看额度，不能加入 API 服务",
-      "oauthBindingUnsupported": "Web Session 账号仅支持查看额度，不能作为 OAuth 绑定账号。"
-    }
+    "exportAuthFailedTitle": "导出全部授权失败账号"
   },
   "codebuddy": {
     "title": "CodeBuddy 账号管理",

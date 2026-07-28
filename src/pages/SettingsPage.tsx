@@ -538,6 +538,11 @@ export function SettingsPage() {
   const [menuBarQuotaEnabled, setMenuBarQuotaEnabled] = useState(false);
   const [menuBarShowAccountPrefix, setMenuBarShowAccountPrefix] = useState(true);
   const [menuBarQuotaPlatform, setMenuBarQuotaPlatform] = useState<PlatformId>('codex');
+  const [menuBarQuotaModalOpen, setMenuBarQuotaModalOpen] = useState(false);
+  const [menuBarQuotaModalMode, setMenuBarQuotaModalMode] = useState<'enable' | 'edit'>('enable');
+  const [menuBarQuotaDraftPlatform, setMenuBarQuotaDraftPlatform] =
+    useState<PlatformId>('codex');
+  const [menuBarQuotaDraftShowPrefix, setMenuBarQuotaDraftShowPrefix] = useState(true);
   const [floatingCardShowOnStartup, setFloatingCardShowOnStartup] = useState(false);
   const [startupMinimized, setStartupMinimized] = useState(false);
   const [rememberMainWindowState, setRememberMainWindowState] = useState(false);
@@ -3065,6 +3070,26 @@ export function SettingsPage() {
 
   useEscClose(releaseHistoryOpen, handleCloseReleaseHistory);
 
+  const openMenuBarQuotaModal = (mode: 'enable' | 'edit') => {
+    setMenuBarQuotaDraftPlatform(menuBarQuotaPlatform);
+    setMenuBarQuotaDraftShowPrefix(menuBarShowAccountPrefix);
+    setMenuBarQuotaModalMode(mode);
+    setMenuBarQuotaModalOpen(true);
+  };
+
+  const handleCloseMenuBarQuotaModal = () => {
+    setMenuBarQuotaModalOpen(false);
+  };
+
+  const handleConfirmMenuBarQuotaModal = () => {
+    setMenuBarQuotaPlatform(menuBarQuotaDraftPlatform);
+    setMenuBarShowAccountPrefix(menuBarQuotaDraftShowPrefix);
+    setMenuBarQuotaEnabled(true);
+    setMenuBarQuotaModalOpen(false);
+  };
+
+  useEscClose(menuBarQuotaModalOpen, handleCloseMenuBarQuotaModal);
+
   const handleDownloadReleaseVersion = async (version: string) => {
     const targetVersion = String(version || '').trim();
     if (!targetVersion) {
@@ -3465,80 +3490,49 @@ export function SettingsPage() {
                         {t('settings.general.menuBarQuota', '菜单栏显示实时额度')}
                       </div>
                       <div className="row-desc">
-                        {t(
-                          'settings.general.menuBarQuotaDesc',
-                          '在图标旁显示当前账号的剩余额度；低额度红色、中等橙色、充足绿色'
-                        )}
+                        {menuBarQuotaEnabled
+                          ? t(
+                              'settings.general.menuBarQuotaEnabledDesc',
+                              '已启用 · {{platform}} · 显示该平台当前账号剩余额度（多条取最低）',
+                              {
+                                platform:
+                                  menuBarQuotaPlatformOptions.find(
+                                    (option) => option.value === menuBarQuotaPlatform
+                                  )?.label ?? menuBarQuotaPlatform,
+                              }
+                            )
+                          : t(
+                              'settings.general.menuBarQuotaDesc',
+                              '启用后在菜单栏图标旁显示所选平台当前账号的剩余额度；平台等专属选项在弹框中配置'
+                            )}
                       </div>
                     </div>
                     <div className="row-control">
                       <select
                         className="settings-select"
                         value={menuBarQuotaEnabled ? 'true' : 'false'}
-                        onChange={(e) => setMenuBarQuotaEnabled(e.target.value === 'true')}
+                        onChange={(e) => {
+                          if (e.target.value === 'true') {
+                            openMenuBarQuotaModal(menuBarQuotaEnabled ? 'edit' : 'enable');
+                            return;
+                          }
+                          setMenuBarQuotaEnabled(false);
+                        }}
                       >
                         <option value="false">{t('common.disable', '停用')}</option>
                         <option value="true">{t('common.enable', '启用')}</option>
                       </select>
+                      {menuBarQuotaEnabled ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => openMenuBarQuotaModal('edit')}
+                        >
+                          {t('settings.general.menuBarQuotaConfigure', '配置')}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
-
-                  {menuBarQuotaEnabled && (
-                    <>
-                      <div className="settings-row">
-                        <div className="row-label">
-                          <div className="row-title">
-                            {t('settings.general.menuBarQuotaPlatform', '菜单栏额度账号平台')}
-                          </div>
-                          <div className="row-desc">
-                            {t(
-                              'settings.general.menuBarQuotaPlatformDesc',
-                              '跟随所选平台当前正在使用的账号，刷新或切换账号后自动更新'
-                            )}
-                          </div>
-                        </div>
-                        <div className="row-control">
-                          <select
-                            className="settings-select"
-                            value={menuBarQuotaPlatform}
-                            onChange={(e) => setMenuBarQuotaPlatform(e.target.value as PlatformId)}
-                          >
-                            {menuBarQuotaPlatformOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="settings-row">
-                        <div className="row-label">
-                          <div className="row-title">
-                            {t('settings.general.menuBarAccountPrefix', '显示账号邮箱前 4 位')}
-                          </div>
-                          <div className="row-desc">
-                            {t(
-                              'settings.general.menuBarAccountPrefixDesc',
-                              '关闭后菜单栏只显示图标和百分比数字'
-                            )}
-                          </div>
-                        </div>
-                        <div className="row-control">
-                          <select
-                            className="settings-select"
-                            value={menuBarShowAccountPrefix ? 'true' : 'false'}
-                            onChange={(e) =>
-                              setMenuBarShowAccountPrefix(e.target.value === 'true')
-                            }
-                          >
-                            <option value="true">{t('common.enable', '启用')}</option>
-                            <option value="false">{t('common.disable', '停用')}</option>
-                          </select>
-                        </div>
-                      </div>
-                    </>
-                  )}
                 </>
               )}
 
@@ -7731,6 +7725,97 @@ export function SettingsPage() {
         )}
         </div>
       </div>
+      {menuBarQuotaModalOpen && (
+        <div className="modal-overlay">
+          <div
+            className="modal settings-menu-bar-quota-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>
+                {t('settings.general.menuBarQuotaModalTitle', '菜单栏额度')}
+              </h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={handleCloseMenuBarQuotaModal}
+                aria-label={t('common.close', '关闭')}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="settings-menu-bar-quota-modal-desc">
+                {t(
+                  'settings.general.menuBarQuotaModalDesc',
+                  '以下为菜单栏额度的专属选项：跟随所选平台当前账号。Codex 当前为 API 服务时显示「API + 池剩余%」；API Key 账号显示「API + 剩余额度」；普通账号显示邮箱前缀与剩余%（多条取最低；低红、中橙、高绿）。'
+                )}
+              </p>
+              <div className="settings-menu-bar-quota-modal-field">
+                <label className="settings-menu-bar-quota-modal-label" htmlFor="menu-bar-quota-platform">
+                  {t('settings.general.menuBarQuotaPlatform', '额度账号平台')}
+                </label>
+                <p className="settings-menu-bar-quota-modal-field-desc">
+                  {t(
+                    'settings.general.menuBarQuotaPlatformDesc',
+                    '跟随该平台当前正在使用的账号，刷新或切换后自动更新'
+                  )}
+                </p>
+                <select
+                  id="menu-bar-quota-platform"
+                  className="settings-select settings-menu-bar-quota-modal-select"
+                  value={menuBarQuotaDraftPlatform}
+                  onChange={(e) => setMenuBarQuotaDraftPlatform(e.target.value as PlatformId)}
+                >
+                  {menuBarQuotaPlatformOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="settings-menu-bar-quota-modal-field">
+                <label className="settings-menu-bar-quota-modal-label" htmlFor="menu-bar-quota-prefix">
+                  {t('settings.general.menuBarAccountPrefix', '显示账号邮箱前 4 位')}
+                </label>
+                <p className="settings-menu-bar-quota-modal-field-desc">
+                  {t(
+                    'settings.general.menuBarAccountPrefixDesc',
+                    '仅普通账号：关闭后不显示邮箱前缀。Codex API 服务 / API Key 仍会显示 API 标签'
+                  )}
+                </p>
+                <select
+                  id="menu-bar-quota-prefix"
+                  className="settings-select settings-menu-bar-quota-modal-select"
+                  value={menuBarQuotaDraftShowPrefix ? 'true' : 'false'}
+                  onChange={(e) => setMenuBarQuotaDraftShowPrefix(e.target.value === 'true')}
+                >
+                  <option value="true">{t('common.enable', '启用')}</option>
+                  <option value="false">{t('common.disable', '停用')}</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleCloseMenuBarQuotaModal}
+              >
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmMenuBarQuotaModal}
+              >
+                {menuBarQuotaModalMode === 'enable'
+                  ? t('settings.general.menuBarQuotaConfirmEnable', '启用')
+                  : t('common.save', '保存')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {releaseHistoryOpen && (
         <div className="modal-overlay">
           <div className="modal settings-release-history-modal" onClick={(event) => event.stopPropagation()}>

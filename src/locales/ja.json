@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "WebDAV ドメイン許可リスト",
       "webdavAllowedDomainsDesc": "カンマ区切り。空なら制限なし",
       "claudeQuotaDisplayRemaining": "Claude 残量%表示",
-      "claudeQuotaDisplayRemainingDesc": "既定は使用済み%。オンで残量%。自動切替と警告は使用率基準のままです。"
+      "claudeQuotaDisplayRemainingDesc": "既定は使用済み%。オンで残量%。自動切替と警告は使用率基準のままです。",
+      "menuBarQuota": "メニューバーにリアルタイム枠を表示",
+      "menuBarQuotaDesc": "有効にすると、選択したプラットフォームの現在アカウントの残枠をメニューバーアイコン横に表示。プラットフォーム等はダイアログで設定",
+      "menuBarQuotaEnabledDesc": "有効 · {{platform}} · そのプラットフォームの現在アカウント残枠（複数は最小）",
+      "menuBarQuotaConfigure": "設定",
+      "menuBarQuotaModalTitle": "メニューバー枠",
+      "menuBarQuotaModalDesc": "メニューバー枠専用の設定です。選択プラットフォームの現在アカウントに追従します。Codex が API サービスのときは「API + プール残%」、API Key アカウントは「API + 残額」、通常はメール先頭と残%（複数は最小、低赤・中橙・高緑）。",
+      "menuBarQuotaPlatform": "枠のアカウントプラットフォーム",
+      "menuBarQuotaPlatformDesc": "そのプラットフォームで使用中のアカウントに追従し、更新や切替後に自動反映",
+      "menuBarAccountPrefix": "メール先頭4文字を表示",
+      "menuBarAccountPrefixDesc": "通常アカウントのみ：オフでメール先頭を非表示。Codex API サービス / API Key は API ラベルを維持",
+      "menuBarQuotaConfirmEnable": "有効にする"
     },
     "network": {
       "apiTitle": "反重力コックピット API",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Agent Identity アカウントは API サービス専用のため、通常の切り替えや直接起動はできません。",
       "oauthBindingUnsupported": "Agent Identity アカウントは API サービス専用で、OAuth 連携アカウントとしては使用できません。"
     },
+    "webSessionImport": {
+      "noticeTitle": "Web Session インポートの注意",
+      "noticeMessage": "{{count}} 件の Web Session を検出。実利用非対応、枠確認のみ。",
+      "noticeQuotaOnly": "枠確認のみ。公式クライアント/CLI 起動や切替不可。",
+      "noticeNoApi": "API サービスや OAuth 連携には使えません。",
+      "noticeConfirm": "確認して続行",
+      "actionBlocked": "Web Session は枠確認のみで切替/起動できません。",
+      "apiIneligible": "Web Session は枠確認のみ、API 不可",
+      "oauthBindingUnsupported": "Web Session は OAuth 連携に使えません。"
+    },
     "exportFormat": {
       "label": "エクスポート形式",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} 件のアカウント · {{scope}}",
       "summaryMetaUnconfigured": "未設定 · {{scope}}",
       "memberTitle": "集合メンバー",
+      "memberPriorityLabel": "優先度",
+      "memberPriorityLowest": "最低",
+      "memberPriorityNormal": "通常",
+      "memberPriorityHighest": "最高",
+      "memberPriorityDesc": "最高は優先使用、通常は現在のルールで振り分け、最低は他のアカウントが利用できない場合のみ使用します。",
       "stats": {
         "requests": "リクエスト",
         "requestsDetail": "成功 {{success}} / 失敗 {{failed}} / 取消 {{canceled}} / 上流失敗 {{upstreamFailed}} / 未完了 {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "自動"
     },
     "exportAuthFailed": "失敗を書き出し",
-    "exportAuthFailedTitle": "認証失敗アカウントをすべて書き出す",
-    "webSessionImport": {
-      "noticeTitle": "Web Session インポートの注意",
-      "noticeMessage": "{{count}} 件の Web Session を検出。実利用非対応、枠確認のみ。",
-      "noticeQuotaOnly": "枠確認のみ。公式クライアント/CLI 起動や切替不可。",
-      "noticeNoApi": "API サービスや OAuth 連携には使えません。",
-      "noticeConfirm": "確認して続行",
-      "actionBlocked": "Web Session は枠確認のみで切替/起動できません。",
-      "apiIneligible": "Web Session は枠確認のみ、API 不可",
-      "oauthBindingUnsupported": "Web Session は OAuth 連携に使えません。"
-    }
+    "exportAuthFailedTitle": "認証失敗アカウントをすべて書き出す"
   },
   "githubCopilot": {
     "title": "GitHub Copilot アカウント管理",

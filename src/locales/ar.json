@@ -900,7 +900,18 @@
       "webdavAllowedDomains": "قائمة نطاقات WebDAV",
       "webdavAllowedDomainsDesc": "مفصولة بفواصل؛ فارغ = بلا حد",
       "claudeQuotaDisplayRemaining": "حصة Claude كنسبة متبقية",
-      "claudeQuotaDisplayRemainingDesc": "الافتراضي: % مستخدم. التفعيل = % متبقي. التبديل والتنبيهات حسب الاستخدام."
+      "claudeQuotaDisplayRemainingDesc": "الافتراضي: % مستخدم. التفعيل = % متبقي. التبديل والتنبيهات حسب الاستخدام.",
+      "menuBarQuota": "عرض الحصة الحية في شريط القوائم",
+      "menuBarQuotaDesc": "عند التفعيل، تُعرض الحصة المتبقية للحساب الحالي للمنصة المختارة بجانب أيقونة شريط القوائم. خيارات المنصة في مربع حوار.",
+      "menuBarQuotaEnabledDesc": "مفعّل · {{platform}} · المتبقي لحساب هذه المنصة الحالي (الأدنى بين الحصص)",
+      "menuBarQuotaConfigure": "تهيئة",
+      "menuBarQuotaModalTitle": "حصة شريط القوائم",
+      "menuBarQuotaModalDesc": "خيارات مخصصة لهذه الميزة فقط: تتبع الحساب الحالي. خدمة API لـ Codex: «API + نسبة متبقية من المجموعة»؛ حساب مفتاح API: «API + الرصيد المتبقي»؛ عادي: بادئة البريد + النسبة (الأدنى؛ أحمر/برتقالي/أخضر).",
+      "menuBarQuotaPlatform": "منصة حساب الحصة",
+      "menuBarQuotaPlatformDesc": "تستخدم الحساب النشط لتلك المنصة؛ تُحدَّث بعد التحديث أو التبديل",
+      "menuBarAccountPrefix": "أول 4 أحرف من البريد",
+      "menuBarAccountPrefixDesc": "للحسابات العادية فقط: عند الإيقاف تُخفى بادئة البريد. خدمة API لـ Codex / مفتاح API ما زالا يعرضان تسمية API",
+      "menuBarQuotaConfirmEnable": "تفعيل"
     },
     "network": {
       "apiTitle": "واجهة برمجة تطبيقات قمرة القيادة المضادة للجاذبية",
@@ -1887,6 +1898,16 @@
       "apiOnlyActionError": "حسابات Agent Identity متاحة عبر خدمة API فقط ولا يمكن التبديل إليها أو تشغيلها مباشرةً.",
       "oauthBindingUnsupported": "حسابات Agent Identity مخصصة لخدمة API فقط ولا يمكن استخدامها كحسابات مرتبطة عبر OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "تنبيه استيراد Web Session",
+      "noticeMessage": "{{count}} Web Session. غير مدعوم للاستخدام؛ عرض الحصة فقط.",
+      "noticeQuotaOnly": "عرض الحصة فقط. بلا عميل/CLI/تبديل.",
+      "noticeNoApi": "لا إلى خدمة API ولا OAuth.",
+      "noticeConfirm": "فهمت، متابعة",
+      "actionBlocked": "Web Session لعرض الحصة فقط.",
+      "apiIneligible": "Web Session حصة فقط؛ بلا API",
+      "oauthBindingUnsupported": "Web Session ليس لـ OAuth."
+    },
     "exportFormat": {
       "label": "تنسيق التصدير",
       "cockpitTools": "Cockpit Tools​",
@@ -1997,6 +2018,11 @@
       "summaryMeta": "{{count}} حسابًا · {{scope}}",
       "summaryMetaUnconfigured": "غير مهيأ · {{scope}}",
       "memberTitle": "أعضاء المجموعة",
+      "memberPriorityLabel": "الأولوية",
+      "memberPriorityLowest": "الأدنى",
+      "memberPriorityNormal": "عادية",
+      "memberPriorityHighest": "الأعلى",
+      "memberPriorityDesc": "تُستخدم الأعلى أولًا، والعادية وفق قواعد التوجيه الحالية، والأدنى فقط عند تعذّر استخدام الحسابات الأخرى.",
       "stats": {
         "requests": "الطلبات",
         "requestsDetail": "نجاح {{success}} / فشل {{failed}} / إلغاء {{canceled}} / فشل المصدر {{upstreamFailed}} / غير مكتمل {{incomplete}}",
@@ -3729,17 +3755,7 @@
       "autoSyncBadge": "آلي"
     },
     "exportAuthFailed": "تصدير الفاشل",
-    "exportAuthFailedTitle": "تصدير كل الحسابات ذات فشل المصادقة",
-    "webSessionImport": {
-      "noticeTitle": "تنبيه استيراد Web Session",
-      "noticeMessage": "{{count}} Web Session. غير مدعوم للاستخدام؛ عرض الحصة فقط.",
-      "noticeQuotaOnly": "عرض الحصة فقط. بلا عميل/CLI/تبديل.",
-      "noticeNoApi": "لا إلى خدمة API ولا OAuth.",
-      "noticeConfirm": "فهمت، متابعة",
-      "actionBlocked": "Web Session لعرض الحصة فقط.",
-      "apiIneligible": "Web Session حصة فقط؛ بلا API",
-      "oauthBindingUnsupported": "Web Session ليس لـ OAuth."
-    }
+    "exportAuthFailedTitle": "تصدير كل الحسابات ذات فشل المصادقة"
   },
   "githubCopilot": {
     "title": "إدارة حسابات GitHub Copilot",

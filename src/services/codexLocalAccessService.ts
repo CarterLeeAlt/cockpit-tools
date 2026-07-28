@@ -30,6 +30,7 @@ export async function saveCodexLocalAccessAccounts(
   accountIds: string[],
   restrictFreeAccounts: boolean,
   backupAccountIds?: string[],
+  preferredAccountIds?: string[],
   sessionAffinity?: boolean,
   sessionAffinityTtlMs?: number,
 ): Promise<CodexLocalAccessState> {
@@ -37,6 +38,7 @@ export async function saveCodexLocalAccessAccounts(
     accountIds,
     restrictFreeAccounts,
     backupAccountIds: backupAccountIds ?? null,
+    preferredAccountIds: preferredAccountIds ?? null,
     sessionAffinity: sessionAffinity ?? null,
     sessionAffinityTtlMs: sessionAffinityTtlMs ?? null,
   });

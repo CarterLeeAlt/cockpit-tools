@@ -1386,58 +1386,6 @@
   padding: 16px 24px 20px;
 }
 
-.codex-local-access-backup-confirm-overlay {
-  z-index: 10020;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.68);
-}
-
-.codex-local-access-backup-confirm-dialog {
-  width: min(420px, calc(100vw - 40px));
-  max-width: calc(100vw - 40px);
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
-  border-radius: 12px;
-  background: var(--bg-surface);
-  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.36);
-}
-
-.codex-local-access-backup-confirm-header {
-  padding: 18px 20px 14px;
-}
-
-.codex-local-access-backup-confirm-header h3 {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.codex-local-access-backup-confirm-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 18px 20px;
-}
-
-.codex-local-access-backup-confirm-body strong {
-  overflow-wrap: anywhere;
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.codex-local-access-backup-confirm-body p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.codex-local-access-backup-confirm-footer {
-  gap: 10px;
-  padding: 14px 20px 18px;
-}
-
 .codex-local-access-section {
   display: flex;
   flex-direction: column;
@@ -1635,91 +1583,44 @@
   line-height: 1.35;
 }
 
-.codex-local-access-member-backup-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  min-height: 28px;
-  margin: 0;
-  padding: 4px 6px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
+.codex-local-access-member-priority-label {
   color: var(--text-secondary);
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  font: inherit;
-  line-height: 1;
-  touch-action: manipulation;
-}
-
-.codex-local-access-member-backup-field:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
-  color: var(--text-primary);
-}
-
-.codex-local-access-member-backup-field:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--primary) 50%, transparent);
-  outline-offset: 2px;
-}
-
-.codex-local-access-member-backup-field:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-.codex-local-access-member-backup-label {
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
-  pointer-events: none;
 }
 
-.codex-local-access-member-backup-switch {
-  position: relative;
-  width: 34px;
+.codex-local-access-member-priority-dropdown {
+  width: 90px;
+}
+
+.codex-local-access-member-priority-dropdown
+  .single-select-dropdown-trigger {
+  min-height: 30px;
+  padding: 0 7px 0 10px;
+  border-radius: 9px;
+  gap: 5px;
+}
+
+.codex-local-access-member-priority-dropdown
+  .single-select-dropdown-value {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.codex-local-access-member-priority-dropdown
+  .single-select-dropdown-arrow {
+  width: 20px;
   height: 20px;
-  flex: 0 0 auto;
-  pointer-events: none;
 }
 
-.codex-local-access-member-backup-switch-track {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text-muted) 24%, var(--bg-card));
-  transition:
-    background 0.16s ease,
-    box-shadow 0.16s ease;
+.codex-local-access-member-priority-menu .single-select-dropdown-item {
+  min-height: 34px;
+  padding: 0 9px;
+  border-radius: 9px;
 }
 
-.codex-local-access-member-backup-switch-track::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--bg-card);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
-  transition: transform 0.16s ease;
-}
-
-.codex-local-access-member-backup-field.is-on
-  .codex-local-access-member-backup-switch-track {
-  background: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
-}
-
-.codex-local-access-member-backup-field.is-on
-  .codex-local-access-member-backup-switch-track::before {
-  transform: translateX(14px);
-}
-
-.codex-local-access-custom-routing-backup-badge {
+.codex-local-access-custom-routing-usage-priority-badge {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
@@ -2521,7 +2422,7 @@
 }
 
 .codex-local-access-member-list .codex-local-access-member-plan,
-.codex-local-access-member-list .codex-local-access-member-backup-slot,
+.codex-local-access-member-list .codex-local-access-member-priority-slot,
 .codex-local-access-member-list .codex-local-access-member-metric,
 .codex-local-access-member-list .codex-local-access-member-trailing {
   display: inline-flex;
@@ -2530,9 +2431,9 @@
   white-space: nowrap;
 }
 
-/* Slightly pull backup toward the plan area without affecting checkbox/email. */
-.codex-local-access-member-list .codex-local-access-member-backup-slot {
+.codex-local-access-member-list .codex-local-access-member-priority-slot {
   margin-left: 0;
+  gap: 6px;
 }
 
 .codex-local-access-member-list .codex-local-access-member-trailing {

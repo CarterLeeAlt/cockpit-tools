@@ -789,6 +789,9 @@ export function CodexApiServicePage() {
   const [selectedTimeoutPresetId, setSelectedTimeoutPresetId] =
     useState<TimeoutPresetId>("long_wait");
   const [timeoutPresetNameDraft, setTimeoutPresetNameDraft] = useState("");
+  const [sessionAffinityDraft, setSessionAffinityDraft] = useState(true);
+  const [sessionAffinityTtlDraft, setSessionAffinityTtlDraft] =
+    useState("3600");
   const [responsesWebsocketsEnabledDraft, setResponsesWebsocketsEnabledDraft] =
     useState(false);
   const [maxRetryCredentialsDraft, setMaxRetryCredentialsDraft] = useState("0");
@@ -1496,6 +1499,10 @@ export function CodexApiServicePage() {
     );
     setAccountModelRuleSelected(new Set());
     setAccountModelRuleBulkText("");
+    setSessionAffinityDraft(collection?.sessionAffinity ?? true);
+    setSessionAffinityTtlDraft(
+      formatSeconds(collection?.sessionAffinityTtlMs ?? 60 * 60 * 1000),
+    );
     setResponsesWebsocketsEnabledDraft(
       collection?.responsesWebsocketsEnabled ?? false,
     );
@@ -1516,6 +1523,8 @@ export function CodexApiServicePage() {
     collection?.modelAliases,
     collection?.excludedModels,
     collection?.accountModelRules,
+    collection?.sessionAffinity,
+    collection?.sessionAffinityTtlMs,
     collection?.responsesWebsocketsEnabled,
     collection?.maxRetryCredentials,
     collection?.maxRetryIntervalMs,
@@ -1936,6 +1945,7 @@ export function CodexApiServicePage() {
     accountIds: string[],
     restrictFreeAccounts: boolean,
     backupAccountIds?: string[],
+    preferredAccountIds?: string[],
   ) => {
     const filteredAccountIds =
       accountIds.length === 0
@@ -1959,11 +1969,15 @@ export function CodexApiServicePage() {
     const nextBackupAccountIds = (backupAccountIds ?? []).filter((id) =>
       filteredAccountIdSet.has(id),
     );
+    const nextPreferredAccountIds = (preferredAccountIds ?? []).filter((id) =>
+      filteredAccountIdSet.has(id),
+    );
 
     const next = await codexLocalAccessService.saveCodexLocalAccessAccounts(
       filteredAccountIds,
       restrictFreeAccounts,
       nextBackupAccountIds,
+      nextPreferredAccountIds,
     );
     setState(next);
     void fetchAccounts().catch((error) => {
@@ -1978,9 +1992,16 @@ export function CodexApiServicePage() {
     accountIds: string[],
     restrictFreeAccounts: boolean,
     backupAccountIds?: string[],
+    preferredAccountIds?: string[],
   ) => {
     await runAction(
-      () => saveMembers(accountIds, restrictFreeAccounts, backupAccountIds),
+      () =>
+        saveMembers(
+          accountIds,
+          restrictFreeAccounts,
+          backupAccountIds,
+          preferredAccountIds,
+        ),
       t("codex.localAccess.saveSuccess", "API 服务集合已更新"),
     );
   };
@@ -1989,12 +2010,18 @@ export function CodexApiServicePage() {
     accountIds: string[],
     restrictFreeAccounts: boolean,
     backupAccountIds?: string[],
+    preferredAccountIds?: string[],
   ) => {
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await saveMembers(accountIds, restrictFreeAccounts, backupAccountIds);
+      await saveMembers(
+        accountIds,
+        restrictFreeAccounts,
+        backupAccountIds,
+        preferredAccountIds,
+      );
       setNotice(t("codex.localAccess.saveSuccess", "API 服务集合已更新"));
     } catch (err) {
       const message = String(err).replace(/^Error:\s*/, "");
@@ -2040,10 +2067,14 @@ export function CodexApiServicePage() {
     const backupAccountIds = (collection.customRoutingRules ?? [])
       .filter((rule) => rule.isBackup && remainingSet.has(rule.accountId))
       .map((rule) => rule.accountId);
+    const preferredAccountIds = (collection.customRoutingRules ?? [])
+      .filter((rule) => rule.isPreferred && remainingSet.has(rule.accountId))
+      .map((rule) => rule.accountId);
     await handleSaveMembers(
       remainingIds,
       collection.restrictFreeAccounts,
       backupAccountIds,
+      preferredAccountIds,
     );
   };
 
@@ -2614,6 +2645,21 @@ export function CodexApiServicePage() {
   };
 
   const handleSaveRoutingOptions = async () => {
+    const sessionAffinityTtlSeconds = parseIntegerDraft(
+      sessionAffinityTtlDraft,
+      60,
+      86400,
+    );
+    if (sessionAffinityTtlSeconds === null) {
+      setError(
+        t("codex.apiService.validation.numberRange", {
+          min: 60,
+          max: 86400,
+          defaultValue: "请输入 {{min}} 到 {{max}} 之间的数字",
+        }),
+      );
+      return;
+    }
     const maxRetryCredentials = parseIntegerDraft(
       maxRetryCredentialsDraft,
       0,
@@ -2663,9 +2709,8 @@ export function CodexApiServicePage() {
       async () => {
         const next =
           await codexLocalAccessService.updateCodexLocalAccessRoutingOptions({
-            sessionAffinity: collection?.sessionAffinity ?? true,
-            sessionAffinityTtlMs:
-              collection?.sessionAffinityTtlMs ?? 60 * 60 * 1000,
+            sessionAffinity: sessionAffinityDraft,
+            sessionAffinityTtlMs: sessionAffinityTtlSeconds * 1000,
             responsesWebsocketsEnabled: responsesWebsocketsEnabledDraft,
             maxRetryCredentials,
             maxRetryIntervalMs: maxRetryIntervalSeconds * 1000,
@@ -4685,6 +4730,40 @@ export function CodexApiServicePage() {
                     onChange={(value) => void handleUpdateRouting(value)}
                     disabled={busy || !collection}
                     ariaLabel={t("codex.localAccess.routingLabel", "调度策略")}
+                  />
+                </label>
+                <label>
+                  <span>
+                    {t(
+                      "codex.apiService.routing.sessionAffinity",
+                      "会话亲和",
+                    )}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={sessionAffinityDraft}
+                    onChange={(event) =>
+                      setSessionAffinityDraft(event.target.checked)
+                    }
+                    disabled={busy || !collection}
+                  />
+                </label>
+                <label>
+                  <span>
+                    {t(
+                      "codex.apiService.routing.sessionAffinityTtl",
+                      "过期时间（秒）",
+                    )}
+                  </span>
+                  <input
+                    type="number"
+                    min={60}
+                    max={86400}
+                    value={sessionAffinityTtlDraft}
+                    onChange={(event) =>
+                      setSessionAffinityTtlDraft(event.target.value)
+                    }
+                    disabled={busy || !collection}
                   />
                 </label>
                 <label>
@@ -6740,17 +6819,34 @@ export function CodexApiServicePage() {
         initialSelectedIds={memberIds}
         maskAccountText={maskAccountText}
         onClose={() => setMemberModalOpen(false)}
-        onSaveAccounts={({
+        onSaveAccounts={async ({
           accountIds,
           restrictFreeAccounts,
           backupAccountIds,
-        }) =>
-          handleSaveMembersFromModal(
+          preferredAccountIds,
+          sessionAffinity,
+          sessionAffinityTtlMs,
+        }) => {
+          await handleSaveMembersFromModal(
             accountIds,
             restrictFreeAccounts,
             backupAccountIds,
-          )
-        }
+            preferredAccountIds,
+          );
+          if (collection) {
+            const next = await codexLocalAccessService.updateCodexLocalAccessRoutingOptions({
+              sessionAffinity,
+              sessionAffinityTtlMs,
+              responsesWebsocketsEnabled: collection.responsesWebsocketsEnabled,
+              maxRetryCredentials: collection.maxRetryCredentials,
+              maxRetryIntervalMs: collection.maxRetryIntervalMs,
+              disableCooling: collection.disableCooling,
+              immediateSseResponse: collection.immediateSseResponse,
+              maxConcurrentImageRequests: collection.maxConcurrentImageRequests,
+            });
+            setState(next);
+          }
+        }}
         onClearStats={() =>
           codexLocalAccessService.clearCodexLocalAccessStats().then(setState)
         }

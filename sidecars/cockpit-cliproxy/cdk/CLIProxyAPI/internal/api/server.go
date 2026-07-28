@@ -193,6 +193,18 @@ type Server struct {
 	keepAliveStop      chan struct{}
 }
 
+func effectiveSDKConfig(cfg *config.Config) *config.SDKConfig {
+	if cfg == nil {
+		return nil
+	}
+	sdkCfg := cfg.SDKConfig
+	sdkCfg.CodexOptimizeMultiAgentV2 = cfg.Codex.OptimizeMultiAgentV2
+	if cfg.CommercialMode {
+		sdkCfg.RequestLog = false
+	}
+	return &sdkCfg
+}
+
 // NewServer creates and initializes a new API server instance.
 // It sets up the Gin engine, middleware, routes, and handlers.
 //
@@ -257,7 +269,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	// Create server instance
 	s := &Server{
 		engine:              engine,
-		handlers:            handlers.NewBaseAPIHandlers(&cfg.SDKConfig, authManager),
+		handlers:            handlers.NewBaseAPIHandlers(effectiveSDKConfig(cfg), authManager),
 		cfg:                 cfg,
 		accessManager:       accessManager,
 		requestLogger:       requestLogger,
@@ -894,7 +906,7 @@ func (s *Server) handleHomeCodexClientModels(c *gin.Context) {
 		models = append(models, model)
 	}
 
-	c.JSON(http.StatusOK, openai.CodexClientModelsResponse(models))
+	c.JSON(http.StatusOK, openai.CodexClientModelsResponseWithMultiAgentV2(models, s.cfg.Codex.OptimizeMultiAgentV2))
 }
 
 func (s *Server) geminiModelsHandler(geminiHandler *gemini.GeminiAPIHandler) gin.HandlerFunc {
@@ -1453,7 +1465,7 @@ func (s *Server) UpdateClients(cfg *config.Config) {
 	// Save YAML snapshot for next comparison
 	s.oldConfigYaml, _ = yaml.Marshal(cfg)
 
-	s.handlers.UpdateClients(&cfg.SDKConfig)
+	s.handlers.UpdateClients(effectiveSDKConfig(cfg))
 
 	if s.mgmt != nil {
 		s.mgmt.SetConfig(cfg)

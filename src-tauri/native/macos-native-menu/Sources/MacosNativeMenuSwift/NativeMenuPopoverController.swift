@@ -23,7 +23,8 @@ final class NativeMenuPopoverController: NSObject, ObservableObject, NSMenuDeleg
 
         let statusItem = Unmanaged<NSStatusItem>.fromOpaque(statusItemPointer).takeUnretainedValue()
         self.statusItem = statusItem
-        self.apply(snapshot: snapshot)
+        // 右键打开：若配置了菜单栏额度平台，强制选中该平台与当前账号。
+        self.apply(snapshot: snapshot, preferSnapshotSelection: snapshot.shouldPreferSelectedPlatform)
         self.ensureMenu()
         self.rebuildMenu()
         self.presentMenu()
@@ -128,6 +129,10 @@ final class NativeMenuPopoverController: NSObject, ObservableObject, NSMenuDeleg
             self.statusItem?.menu = nil
         }
         self.clearStatusItemHighlight()
+        // 弹出系统菜单后状态栏按钮 frame 可能变化，重新对齐 tray-icon 点击层。
+        if let button = self.statusItem?.button {
+            syncTrayClickTargetFrameSoon(for: button)
+        }
     }
 
     var selectedPlatform: NativeMenuPlatform? {
@@ -199,26 +204,37 @@ final class NativeMenuPopoverController: NSObject, ObservableObject, NSMenuDeleg
 
     func update(snapshotJSON: String) {
         guard let snapshot = self.decodeSnapshot(from: snapshotJSON) else { return }
-        self.apply(snapshot: snapshot)
+        // 菜单已打开时的增量刷新：保留用户正在浏览的平台/账号。
+        self.apply(snapshot: snapshot, preferSnapshotSelection: false)
         self.bumpRenderRevision()
         self.finishRefreshIfNeeded()
         self.rebuildMenu()
         self.refreshVisibleMenuDisplay()
     }
 
-    private func apply(snapshot: NativeMenuSnapshot) {
+    private func apply(snapshot: NativeMenuSnapshot, preferSnapshotSelection: Bool) {
         self.snapshot = snapshot
 
         let validPlatformIds = Set(snapshot.platforms.map(\.id))
-        if !validPlatformIds.contains(self.selectedPlatformId) {
-            self.selectedPlatformId = snapshot.selected_platform_id
-        }
-        if self.selectedPlatformId.isEmpty {
+        if preferSnapshotSelection
+            || !validPlatformIds.contains(self.selectedPlatformId)
+            || self.selectedPlatformId.isEmpty
+        {
             self.selectedPlatformId = snapshot.selected_platform_id
         }
 
         var nextViewedAccountIds = self.viewedAccountIds
         for platform in snapshot.platforms {
+            // 打开菜单且需要跟随菜单栏配置时：该平台强制回到「当前账号」。
+            if preferSnapshotSelection, platform.id == snapshot.selected_platform_id {
+                if let currentId = platform.currentOrFirstAccountId {
+                    nextViewedAccountIds[platform.id] = currentId
+                } else {
+                    nextViewedAccountIds.removeValue(forKey: platform.id)
+                }
+                continue
+            }
+
             let currentViewedId = nextViewedAccountIds[platform.id]
             if let currentViewedId,
                platform.cards.contains(where: { $0.id == currentViewedId })

@@ -900,7 +900,18 @@
       "webdavAllowedDomains": "Daftar domain WebDAV",
       "webdavAllowedDomainsDesc": "Pisahkan koma; kosong = tanpa batas",
       "claudeQuotaDisplayRemaining": "Kuota Claude sebagai % sisa",
-      "claudeQuotaDisplayRemainingDesc": "Default: % terpakai. Aktif = % sisa. Auto-switch & peringatan tetap pakai rasio terpakai."
+      "claudeQuotaDisplayRemainingDesc": "Default: % terpakai. Aktif = % sisa. Auto-switch & peringatan tetap pakai rasio terpakai.",
+      "menuBarQuota": "Kuota langsung di bilah menu",
+      "menuBarQuotaDesc": "Saat diaktifkan, tampilkan sisa kuota akun saat ini platform terpilih di samping ikon. Opsi platform di dialog.",
+      "menuBarQuotaEnabledDesc": "Aktif · {{platform}} · sisa akun saat ini platform itu (terendah dari kuota)",
+      "menuBarQuotaConfigure": "Atur",
+      "menuBarQuotaModalTitle": "Kuota bilah menu",
+      "menuBarQuotaModalDesc": "Hanya opsi fitur ini: mengikuti akun saat ini. Layanan API Codex: “API + % sisa pool”; akun API Key: “API + sisa saldo”; normal: awalan email + % (terendah; merah/oranye/hijau).",
+      "menuBarQuotaPlatform": "Platform akun",
+      "menuBarQuotaPlatformDesc": "Mengikuti akun aktif platform itu; diperbarui setelah muat ulang atau ganti",
+      "menuBarAccountPrefix": "4 karakter awal email",
+      "menuBarAccountPrefixDesc": "Hanya akun normal: mati menyembunyikan awalan email. Layanan API Codex / API Key tetap menampilkan label API",
+      "menuBarQuotaConfirmEnable": "Aktifkan"
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -1890,6 +1901,16 @@
       "apiOnlyActionError": "Akun Agent Identity hanya tersedia melalui Layanan API dan tidak dapat dialihkan atau dijalankan langsung.",
       "oauthBindingUnsupported": "Akun Agent Identity hanya untuk Layanan API dan tidak dapat digunakan sebagai akun pengikatan OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Pemberitahuan Web Session",
+      "noticeMessage": "{{count}} Web Session. Tidak untuk dipakai; hanya kuota.",
+      "noticeQuotaOnly": "Hanya kuota. Tanpa klien/CLI/ganti akun.",
+      "noticeNoApi": "Tidak ke pool API atau OAuth.",
+      "noticeConfirm": "Mengerti, lanjut",
+      "actionBlocked": "Web Session hanya kuota.",
+      "apiIneligible": "Web Session hanya kuota, bukan API",
+      "oauthBindingUnsupported": "Web Session tidak untuk OAuth."
+    },
     "exportFormat": {
       "label": "Format ekspor",
       "cockpitTools": "Cockpit Tools​",
@@ -2000,6 +2021,11 @@
       "summaryMeta": "{{count}} akun · {{scope}}",
       "summaryMetaUnconfigured": "Belum dikonfigurasi · {{scope}}",
       "memberTitle": "Anggota koleksi",
+      "memberPriorityLabel": "Prioritas",
+      "memberPriorityLowest": "Terendah",
+      "memberPriorityNormal": "Biasa",
+      "memberPriorityHighest": "Tertinggi",
+      "memberPriorityDesc": "Tertinggi digunakan lebih dulu, Biasa mengikuti aturan saat ini, dan Terendah hanya digunakan jika akun lain tidak tersedia.",
       "stats": {
         "requests": "Permintaan",
         "requestsDetail": "OK {{success}} / Gagal {{failed}} / Batal {{canceled}} / Hulu {{upstreamFailed}} / Belum lengkap {{incomplete}}",
@@ -3729,17 +3755,7 @@
       "autoSyncBadge": "Mobil"
     },
     "exportAuthFailed": "Ekspor gagal",
-    "exportAuthFailedTitle": "Ekspor semua akun auth gagal",
-    "webSessionImport": {
-      "noticeTitle": "Pemberitahuan Web Session",
-      "noticeMessage": "{{count}} Web Session. Tidak untuk dipakai; hanya kuota.",
-      "noticeQuotaOnly": "Hanya kuota. Tanpa klien/CLI/ganti akun.",
-      "noticeNoApi": "Tidak ke pool API atau OAuth.",
-      "noticeConfirm": "Mengerti, lanjut",
-      "actionBlocked": "Web Session hanya kuota.",
-      "apiIneligible": "Web Session hanya kuota, bukan API",
-      "oauthBindingUnsupported": "Web Session tidak untuk OAuth."
-    }
+    "exportAuthFailedTitle": "Ekspor semua akun auth gagal"
   },
   "codebuddy": {
     "title": "Akun CodeBuddy",

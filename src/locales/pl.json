@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Biała lista WebDAV",
       "webdavAllowedDomainsDesc": "Po przecinku; puste = bez limitu",
       "claudeQuotaDisplayRemaining": "Limit Claude jako % pozostały",
-      "claudeQuotaDisplayRemainingDesc": "Domyślnie % zużycia. Włącz = % pozostały. Auto-przełączanie i alerty wg zużycia."
+      "claudeQuotaDisplayRemainingDesc": "Domyślnie % zużycia. Włącz = % pozostały. Auto-przełączanie i alerty wg zużycia.",
+      "menuBarQuota": "Bieżący limit na pasku menu",
+      "menuBarQuotaDesc": "Po włączeniu pokazuje pozostały limit bieżącego konta wybranej platformy obok ikony. Opcje platformy w oknie dialogowym.",
+      "menuBarQuotaEnabledDesc": "Wł. · {{platform}} · pozostały limit bieżącego konta tej platformy (najniższy z limitów)",
+      "menuBarQuotaConfigure": "Konfiguruj",
+      "menuBarQuotaModalTitle": "Limit paska menu",
+      "menuBarQuotaModalDesc": "Tylko opcje tej funkcji: śledzi bieżące konto. Usługa API Codex: „API + % puli”; konto API Key: „API + pozostałe saldo”; zwykłe: prefiks e-mail + % (najniższy; czerwień/pomarańcz/zieleń).",
+      "menuBarQuotaPlatform": "Platforma konta",
+      "menuBarQuotaPlatformDesc": "Używa aktywnego konta tej platformy; aktualizuje po odświeżeniu lub przełączeniu",
+      "menuBarAccountPrefix": "Pierwsze 4 znaki e-mail",
+      "menuBarAccountPrefixDesc": "Tylko zwykłe konta: wył. ukrywa prefiks e-mail. Usługa API Codex / API Key nadal pokazuje API",
+      "menuBarQuotaConfirmEnable": "Włącz"
     },
     "network": {
       "apiTitle": "API kokpitu antygrawitacyjnego",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Konta Agent Identity są dostępne tylko przez Usługę API i nie można ich bezpośrednio przełączać ani uruchamiać.",
       "oauthBindingUnsupported": "Konta Agent Identity są przeznaczone wyłącznie dla Usługi API i nie mogą służyć jako konta powiązane przez OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Import Web Session",
+      "noticeMessage": "{{count}} Web Session. Tylko podgląd limitu.",
+      "noticeQuotaOnly": "Tylko limit. Bez klienta/CLI/przełączania.",
+      "noticeNoApi": "Bez puli API i OAuth.",
+      "noticeConfirm": "Rozumiem, kontynuuj",
+      "actionBlocked": "Web Session tylko limit.",
+      "apiIneligible": "Web Session tylko limit, bez API",
+      "oauthBindingUnsupported": "Web Session nie do OAuth."
+    },
     "exportFormat": {
       "label": "Format eksportu",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} kont · {{scope}}",
       "summaryMetaUnconfigured": "Nie skonfigurowano · {{scope}}",
       "memberTitle": "Członkowie kolekcji",
+      "memberPriorityLabel": "Priorytet",
+      "memberPriorityLowest": "Najniższy",
+      "memberPriorityNormal": "Normalny",
+      "memberPriorityHighest": "Najwyższy",
+      "memberPriorityDesc": "Najwyższy jest używany najpierw, normalny podlega bieżącym regułom, a najniższy tylko wtedy, gdy inne konta są niedostępne.",
       "stats": {
         "requests": "Żądania",
         "requestsDetail": "OK {{success}} / Błąd {{failed}} / Anul. {{canceled}} / Źródło {{upstreamFailed}} / Niepeł. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Automatyczny"
     },
     "exportAuthFailed": "Eksport błędów",
-    "exportAuthFailedTitle": "Eksportuj konta z błędem auth",
-    "webSessionImport": {
-      "noticeTitle": "Import Web Session",
-      "noticeMessage": "{{count}} Web Session. Tylko podgląd limitu.",
-      "noticeQuotaOnly": "Tylko limit. Bez klienta/CLI/przełączania.",
-      "noticeNoApi": "Bez puli API i OAuth.",
-      "noticeConfirm": "Rozumiem, kontynuuj",
-      "actionBlocked": "Web Session tylko limit.",
-      "apiIneligible": "Web Session tylko limit, bez API",
-      "oauthBindingUnsupported": "Web Session nie do OAuth."
-    }
+    "exportAuthFailedTitle": "Eksportuj konta z błędem auth"
   },
   "githubCopilot": {
     "title": "Zarządzanie kontami GitHub Copilot",

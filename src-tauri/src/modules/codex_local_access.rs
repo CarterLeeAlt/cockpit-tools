@@ -15,6 +15,7 @@ use crate::models::codex_local_access::{
     CodexLocalAccessStats, CodexLocalAccessStatsWindow, CodexLocalAccessTestFailure,
     CodexLocalAccessTestResult, CodexLocalAccessTimeoutPreset, CodexLocalAccessTimeouts,
     CodexLocalAccessUsageEvent, CodexLocalAccessUsageEventPage, CodexLocalAccessUsageStats,
+    CodexTokenBreakdown,
 };
 use crate::modules::atomic_write::{write_string_atomic, write_string_atomic_if_hash_matches};
 use crate::modules::{
@@ -485,6 +486,7 @@ struct UsageCapture {
     total_tokens: u64,
     cached_tokens: u64,
     reasoning_tokens: u64,
+    token_breakdown: Option<CodexTokenBreakdown>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -5276,7 +5278,8 @@ fn normalize_custom_routing_rule(
         weight: rule
             .weight
             .clamp(CUSTOM_ROUTING_WEIGHT_MIN, CUSTOM_ROUTING_WEIGHT_MAX),
-        is_backup: rule.is_backup,
+        is_backup: rule.is_backup && !rule.is_preferred,
+        is_preferred: rule.is_preferred,
     })
 }
 
@@ -5530,7 +5533,26 @@ fn sidecar_excluded_models_for_account(
     normalize_model_rule_list(excluded)
 }
 
-fn custom_rule_map(rules: &[CodexLocalAccessCustomRoutingRule]) -> HashMap<&str, (i32, u32, bool)> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum AccountUsagePriority {
+    Lowest,
+    Normal,
+    Highest,
+}
+
+fn account_usage_priority(
+    rule: Option<&CodexLocalAccessCustomRoutingRule>,
+) -> AccountUsagePriority {
+    match rule {
+        Some(rule) if rule.is_preferred => AccountUsagePriority::Highest,
+        Some(rule) if rule.is_backup => AccountUsagePriority::Lowest,
+        _ => AccountUsagePriority::Normal,
+    }
+}
+
+fn custom_rule_map(
+    rules: &[CodexLocalAccessCustomRoutingRule],
+) -> HashMap<&str, (i32, u32, AccountUsagePriority)> {
     rules
         .iter()
         .map(|rule| {
@@ -5541,7 +5563,7 @@ fn custom_rule_map(rules: &[CodexLocalAccessCustomRoutingRule]) -> HashMap<&str,
                         .clamp(CUSTOM_ROUTING_PRIORITY_MIN, CUSTOM_ROUTING_PRIORITY_MAX),
                     rule.weight
                         .clamp(CUSTOM_ROUTING_WEIGHT_MIN, CUSTOM_ROUTING_WEIGHT_MAX),
-                    rule.is_backup,
+                    account_usage_priority(Some(rule)),
                 ),
             )
         })
@@ -5550,7 +5572,7 @@ fn custom_rule_map(rules: &[CodexLocalAccessCustomRoutingRule]) -> HashMap<&str,
 
 fn weighted_group_order(
     group: &[String],
-    weights: &HashMap<&str, (i32, u32, bool)>,
+    weights: &HashMap<&str, (i32, u32, AccountUsagePriority)>,
     start: usize,
 ) -> Vec<String> {
     if group.len() <= 1 {
@@ -5593,33 +5615,56 @@ fn apply_custom_routing_strategy(
     start: usize,
 ) -> Vec<String> {
     let rule_map = custom_rule_map(rules);
-    let mut priority_groups: Vec<(bool, i32, Vec<String>)> = Vec::new();
+    let mut priority_groups: Vec<(AccountUsagePriority, i32, Vec<String>)> = Vec::new();
 
     for account_id in account_ids {
-        let (priority, is_backup) = rule_map
+        let (priority, usage_priority) = rule_map
             .get(account_id.as_str())
-            .map(|(priority, _, is_backup)| (*priority, *is_backup))
-            .unwrap_or((CUSTOM_ROUTING_PRIORITY_MIN, false));
+            .map(|(priority, _, usage_priority)| (*priority, *usage_priority))
+            .unwrap_or((CUSTOM_ROUTING_PRIORITY_MIN, AccountUsagePriority::Normal));
         if let Some((_, _, group)) =
             priority_groups
                 .iter_mut()
-                .find(|(group_is_backup, group_priority, _)| {
-                    *group_is_backup == is_backup && *group_priority == priority
+                .find(|(group_usage_priority, group_priority, _)| {
+                    *group_usage_priority == usage_priority && *group_priority == priority
                 })
         {
             group.push(account_id.clone());
         } else {
-            priority_groups.push((is_backup, priority, vec![account_id.clone()]));
+            priority_groups.push((usage_priority, priority, vec![account_id.clone()]));
         }
     }
 
-    priority_groups.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| right.1.cmp(&left.1)));
+    priority_groups.sort_by(|left, right| right.0.cmp(&left.0).then_with(|| right.1.cmp(&left.1)));
 
     let mut ordered = Vec::with_capacity(account_ids.len());
     for (_, _, group) in priority_groups {
         ordered.extend(weighted_group_order(&group, &rule_map, start));
     }
     ordered
+}
+
+fn apply_account_usage_priority(
+    account_ids: Vec<String>,
+    rules: &[CodexLocalAccessCustomRoutingRule],
+) -> Vec<String> {
+    let rules_by_account_id = rules
+        .iter()
+        .map(|rule| (rule.account_id.as_str(), rule))
+        .collect::<HashMap<_, _>>();
+    let mut highest = Vec::new();
+    let mut normal = Vec::new();
+    let mut lowest = Vec::new();
+    for account_id in account_ids {
+        match account_usage_priority(rules_by_account_id.get(account_id.as_str()).copied()) {
+            AccountUsagePriority::Highest => highest.push(account_id),
+            AccountUsagePriority::Normal => normal.push(account_id),
+            AccountUsagePriority::Lowest => lowest.push(account_id),
+        }
+    }
+    highest.extend(normal);
+    highest.extend(lowest);
+    highest
 }
 
 fn apply_routing_strategy(
@@ -5631,11 +5676,11 @@ fn apply_routing_strategy(
     if strategy == CodexLocalAccessRoutingStrategy::Random {
         let mut shuffled = account_ids.to_vec();
         shuffled.shuffle(&mut rand::thread_rng());
-        return shuffled;
+        return apply_account_usage_priority(shuffled, custom_rules);
     }
 
     if strategy == CodexLocalAccessRoutingStrategy::SingleAccount {
-        return account_ids.to_vec();
+        return apply_account_usage_priority(account_ids.to_vec(), custom_rules);
     }
 
     if strategy == CodexLocalAccessRoutingStrategy::Custom {
@@ -5650,10 +5695,11 @@ fn apply_routing_strategy(
     let mut candidates = build_routing_candidates(account_ids);
     candidates
         .sort_by(|left, right| compare_routing_candidates(left, right, strategy, &original_index));
-    candidates
+    let ordered = candidates
         .into_iter()
         .map(|candidate| candidate.account_id)
-        .collect()
+        .collect();
+    apply_account_usage_priority(ordered, custom_rules)
 }
 
 fn effective_routing_strategy(
@@ -5716,32 +5762,30 @@ fn prioritize_account_ids(
 fn pin_account_to_front_for_strategy(
     account_ids: Vec<String>,
     priority_account_ids: &[String],
-    strategy: CodexLocalAccessRoutingStrategy,
+    _strategy: CodexLocalAccessRoutingStrategy,
     custom_rules: &[CodexLocalAccessCustomRoutingRule],
 ) -> Vec<String> {
-    if strategy != CodexLocalAccessRoutingStrategy::Custom {
-        return prioritize_account_ids(account_ids, priority_account_ids);
-    }
-
-    let rule_map = custom_rule_map(custom_rules);
-    let mut regular = Vec::with_capacity(account_ids.len());
-    let mut backup = Vec::new();
+    let rules_by_account_id = custom_rules
+        .iter()
+        .map(|rule| (rule.account_id.as_str(), rule))
+        .collect::<HashMap<_, _>>();
+    let mut highest = Vec::new();
+    let mut normal = Vec::with_capacity(account_ids.len());
+    let mut lowest = Vec::new();
     for account_id in account_ids {
-        if rule_map
-            .get(account_id.as_str())
-            .map(|(_, _, is_backup)| *is_backup)
-            .unwrap_or(false)
-        {
-            backup.push(account_id);
-        } else {
-            regular.push(account_id);
+        match account_usage_priority(rules_by_account_id.get(account_id.as_str()).copied()) {
+            AccountUsagePriority::Highest => highest.push(account_id),
+            AccountUsagePriority::Normal => normal.push(account_id),
+            AccountUsagePriority::Lowest => lowest.push(account_id),
         }
     }
 
-    regular = prioritize_account_ids(regular, priority_account_ids);
-    backup = prioritize_account_ids(backup, priority_account_ids);
-    regular.extend(backup);
-    regular
+    highest = prioritize_account_ids(highest, priority_account_ids);
+    normal = prioritize_account_ids(normal, priority_account_ids);
+    lowest = prioritize_account_ids(lowest, priority_account_ids);
+    highest.extend(normal);
+    highest.extend(lowest);
+    highest
 }
 
 fn format_retry_after_duration(wait: Duration) -> String {
@@ -6703,6 +6747,42 @@ fn calculate_usage_cost_usd(
     let (Some(usage), Some(pricing)) = (usage, pricing) else {
         return 0.0;
     };
+    if let Some(breakdown) = usage.token_breakdown.as_ref() {
+        if breakdown.schema_version == 2
+            && breakdown.input.total_tokens
+                == breakdown
+                    .input
+                    .uncached_tokens
+                    .saturating_add(breakdown.input.cache_read_tokens)
+                    .saturating_add(breakdown.input.cache_write_tokens)
+            && breakdown.output.total_tokens
+                == breakdown
+                    .output
+                    .non_reasoning_tokens
+                    .saturating_add(breakdown.output.reasoning_tokens)
+            && breakdown.total_tokens
+                == breakdown
+                    .input
+                    .total_tokens
+                    .saturating_add(breakdown.output.total_tokens)
+                    .saturating_add(breakdown.unclassified_tokens)
+            && breakdown.quality == "complete"
+        {
+            let cached_input_price = pricing
+                .cached_input_usd_per_million
+                .unwrap_or(pricing.input_usd_per_million);
+            let cost = (breakdown.input.uncached_tokens as f64 * pricing.input_usd_per_million
+                + breakdown.input.cache_read_tokens as f64 * cached_input_price
+                + breakdown.input.cache_write_tokens as f64 * pricing.input_usd_per_million
+                + breakdown.output.total_tokens as f64 * pricing.output_usd_per_million)
+                / 1_000_000.0;
+            return if cost.is_finite() && cost > 0.0 {
+                cost
+            } else {
+                0.0
+            };
+        }
+    }
     calculate_usage_cost_usd_from_tokens(
         usage.input_tokens,
         usage.output_tokens,
@@ -6901,6 +6981,7 @@ fn create_request_logs_table(
             total_tokens INTEGER NOT NULL DEFAULT 0,
             cached_tokens INTEGER NOT NULL DEFAULT 0,
             reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+            token_breakdown_json TEXT NOT NULL DEFAULT '',
             estimated_cost_usd REAL NOT NULL DEFAULT 0,
             model_pricing_version INTEGER NOT NULL DEFAULT 1,
             input_usd_per_million REAL NOT NULL DEFAULT 0,
@@ -6990,6 +7071,11 @@ fn open_local_access_logs_db_once(
         &conn,
         "reasoning_tokens",
         "reasoning_tokens INTEGER NOT NULL DEFAULT 0",
+    )?;
+    ensure_request_logs_column(
+        &conn,
+        "token_breakdown_json",
+        "token_breakdown_json TEXT NOT NULL DEFAULT ''",
     )?;
     ensure_request_logs_column(
         &conn,
@@ -7177,6 +7263,20 @@ fn open_local_access_logs_db_for_write(
     open_local_access_logs_db_with_schema_for_write(true)
 }
 
+fn serialize_token_breakdown_for_db(breakdown: Option<&CodexTokenBreakdown>) -> String {
+    breakdown
+        .and_then(|value| serde_json::to_string(value).ok())
+        .unwrap_or_default()
+}
+
+fn deserialize_token_breakdown_from_db(raw: &str) -> Option<CodexTokenBreakdown> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    serde_json::from_str(raw).ok()
+}
+
 fn insert_local_access_usage_event(
     conn: &Connection,
     event: &CodexLocalAccessUsageEvent,
@@ -7188,6 +7288,7 @@ fn insert_local_access_usage_event(
         .as_deref()
         .and_then(normalize_proxy_service_tier)
         .unwrap_or_default();
+    let token_breakdown_json = serialize_token_breakdown_for_db(event.token_breakdown.as_ref());
     if has_service_tier_column {
         conn.execute(
             r#"
@@ -7214,12 +7315,13 @@ fn insert_local_access_usage_event(
                 total_tokens,
                 cached_tokens,
                 reasoning_tokens,
+                token_breakdown_json,
                 estimated_cost_usd,
                 model_pricing_version,
                 input_usd_per_million,
                 output_usd_per_million,
                 cached_input_usd_per_million
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28)
             "#,
             params![
                 local_access_log_event_key(event),
@@ -7247,6 +7349,7 @@ fn insert_local_access_usage_event(
                 event.total_tokens as i64,
                 event.cached_tokens as i64,
                 event.reasoning_tokens as i64,
+                token_breakdown_json,
                 event.estimated_cost_usd,
                 event.model_pricing_version as i64,
                 event.input_usd_per_million,
@@ -7280,12 +7383,13 @@ fn insert_local_access_usage_event(
                 total_tokens,
                 cached_tokens,
                 reasoning_tokens,
+                token_breakdown_json,
                 estimated_cost_usd,
                 model_pricing_version,
                 input_usd_per_million,
                 output_usd_per_million,
                 cached_input_usd_per_million
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27)
             "#,
             params![
                 local_access_log_event_key(event),
@@ -7312,6 +7416,7 @@ fn insert_local_access_usage_event(
                 event.total_tokens as i64,
                 event.cached_tokens as i64,
                 event.reasoning_tokens as i64,
+                token_breakdown_json,
                 event.estimated_cost_usd,
                 event.model_pricing_version as i64,
                 event.input_usd_per_million,
@@ -7443,6 +7548,7 @@ fn read_request_log_reprice_rows_for_model(
             total_tokens,
             cached_tokens,
             reasoning_tokens,
+            token_breakdown_json,
             estimated_cost_usd,
             model_pricing_version,
             input_usd_per_million,
@@ -7473,6 +7579,7 @@ fn read_request_log_reprice_rows_for_model(
                     let value: i64 = row.get(name)?;
                     Ok(value.max(0) as u64)
                 };
+                let token_breakdown_json: String = row.get("token_breakdown_json")?;
                 Ok(RequestLogRepriceRow {
                     id: row.get("id")?,
                     event_key: row.get("event_key")?,
@@ -7486,6 +7593,7 @@ fn read_request_log_reprice_rows_for_model(
                         total_tokens: read_u64("total_tokens")?,
                         cached_tokens: read_u64("cached_tokens")?,
                         reasoning_tokens: read_u64("reasoning_tokens")?,
+                        token_breakdown: deserialize_token_breakdown_from_db(&token_breakdown_json),
                     },
                     previous_cost_usd: row.get("estimated_cost_usd")?,
                     previous_model_pricing_version: read_u64("model_pricing_version")?,
@@ -8058,6 +8166,7 @@ fn usage_event_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CodexLocalA
     let success: i64 = row.get("success")?;
     let http_status: Option<i64> = row.get("http_status")?;
     let gateway_mode: String = row.get("gateway_mode")?;
+    let token_breakdown_json: String = row.get("token_breakdown_json")?;
     let read_u64 = |name: &str| -> rusqlite::Result<u64> {
         let value: i64 = row.get(name)?;
         Ok(value.max(0) as u64)
@@ -8086,6 +8195,7 @@ fn usage_event_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CodexLocalA
         total_tokens: read_u64("total_tokens")?,
         cached_tokens: read_u64("cached_tokens")?,
         reasoning_tokens: read_u64("reasoning_tokens")?,
+        token_breakdown: deserialize_token_breakdown_from_db(&token_breakdown_json),
         estimated_cost_usd: row.get("estimated_cost_usd")?,
         model_pricing_version: read_u64("model_pricing_version")?,
         input_usd_per_million: row.get("input_usd_per_million")?,
@@ -8129,6 +8239,7 @@ fn load_local_access_usage_events_since(
                 total_tokens,
                 cached_tokens,
                 reasoning_tokens,
+                token_breakdown_json,
                 estimated_cost_usd,
                 model_pricing_version,
                 input_usd_per_million,
@@ -8344,6 +8455,7 @@ fn query_local_access_usage_events_blocking(
             total_tokens,
             cached_tokens,
             reasoning_tokens,
+            token_breakdown_json,
             estimated_cost_usd,
             model_pricing_version,
             input_usd_per_million,
@@ -8451,7 +8563,7 @@ fn query_local_access_stats_window_blocking(
         r#"SELECT timestamp, request_id, account_id, email, api_key_id, api_key_label,
                   client_instance_id, model_id, gateway_mode, request_kind, {service_tier_select}, success,
                   http_status, error_category, error_message, latency_ms, input_tokens,
-                  output_tokens, total_tokens, cached_tokens, reasoning_tokens,
+                  output_tokens, total_tokens, cached_tokens, reasoning_tokens, token_breakdown_json,
                   estimated_cost_usd, model_pricing_version, input_usd_per_million,
                   output_usd_per_million, cached_input_usd_per_million
            FROM request_logs
@@ -8497,6 +8609,7 @@ fn apply_usage_event_to_stats(
         total_tokens: event.total_tokens,
         cached_tokens: event.cached_tokens,
         reasoning_tokens: event.reasoning_tokens,
+        token_breakdown: event.token_breakdown.clone(),
     };
     apply_usage_stats(
         &mut stats.totals,
@@ -8625,6 +8738,7 @@ fn append_usage_event(
         total_tokens: usage.total_tokens,
         cached_tokens: usage.cached_tokens,
         reasoning_tokens: usage.reasoning_tokens,
+        token_breakdown: usage.token_breakdown.clone(),
         estimated_cost_usd,
         model_pricing_version: model_pricing_version.max(DEFAULT_MODEL_PRICING_VERSION),
         input_usd_per_million: pricing
@@ -8649,6 +8763,7 @@ fn apply_usage_event_to_window(
         total_tokens: event.total_tokens,
         cached_tokens: event.cached_tokens,
         reasoning_tokens: event.reasoning_tokens,
+        token_breakdown: event.token_breakdown.clone(),
     };
     apply_usage_stats(
         &mut window.totals,
@@ -9925,6 +10040,8 @@ struct SidecarUsageDetails {
     cached_tokens: i64,
     #[serde(default)]
     total_tokens: i64,
+    #[serde(default)]
+    token_breakdown: Option<CodexTokenBreakdown>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -10457,6 +10574,174 @@ fn effective_sidecar_account_ids(collection: &CodexLocalAccessCollection) -> Vec
         }
     }
     account_ids
+}
+
+/// 池内某一类额度窗口的汇总（按真实窗口时长归类，避免把周窗误标成 5h）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ApiServicePoolWindowSum {
+    /// 稳定 key：如 "5h" / "weekly" / "2d"
+    pub key: String,
+    /// 展示用英文标签，上层再做本地化（Weekly → 周）。
+    pub label: String,
+    pub percentage: i32,
+    pub window_minutes: i64,
+}
+
+/// 菜单栏 / 托盘菜单：API 服务账号池额度摘要。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ApiServiceMenuBarQuota {
+    /// 各窗口合计中的较小值；用于菜单栏单数字展示与配色。
+    pub remaining_percent: Option<i32>,
+    /// 按窗口时长归类后的汇总行（与悬浮卡 / API 服务页一致）。
+    pub windows: Vec<ApiServicePoolWindowSum>,
+    /// 池内 OAuth 账号数量（参与汇总的账号）。
+    pub account_count: usize,
+}
+
+fn api_service_window_bucket(
+    window_minutes: Option<i64>,
+    fallback: &str,
+) -> (String, String, i64) {
+    const HOUR_MINUTES: i64 = 60;
+    const DAY_MINUTES: i64 = 24 * HOUR_MINUTES;
+    const WEEK_MINUTES: i64 = 7 * DAY_MINUTES;
+
+    let minutes = window_minutes.filter(|value| *value > 0).unwrap_or_else(|| {
+        if fallback.eq_ignore_ascii_case("weekly") {
+            WEEK_MINUTES
+        } else {
+            5 * HOUR_MINUTES
+        }
+    });
+
+    let (key, label) = if minutes >= WEEK_MINUTES - 1 {
+        let weeks = (minutes + WEEK_MINUTES - 1) / WEEK_MINUTES;
+        if weeks <= 1 {
+            ("weekly".to_string(), "Weekly".to_string())
+        } else {
+            (format!("{weeks}week"), format!("{weeks} Week"))
+        }
+    } else if minutes >= DAY_MINUTES - 1 {
+        let days = (minutes + DAY_MINUTES - 1) / DAY_MINUTES;
+        (format!("{days}d"), format!("{days}d"))
+    } else if minutes >= HOUR_MINUTES {
+        let hours = (minutes + HOUR_MINUTES - 1) / HOUR_MINUTES;
+        (format!("{hours}h"), format!("{hours}h"))
+    } else {
+        (format!("{minutes}m"), format!("{minutes}m"))
+    };
+
+    (key, label, minutes)
+}
+
+fn add_api_service_window_sum(
+    windows: &mut Vec<ApiServicePoolWindowSum>,
+    window_minutes: Option<i64>,
+    fallback: &str,
+    percentage: i32,
+) {
+    let (key, label, minutes) = api_service_window_bucket(window_minutes, fallback);
+    let value = percentage.clamp(0, 100);
+    if let Some(existing) = windows.iter_mut().find(|item| item.key == key) {
+        existing.percentage = existing.percentage.saturating_add(value);
+        existing.window_minutes = existing.window_minutes.min(minutes);
+        return;
+    }
+    windows.push(ApiServicePoolWindowSum {
+        key,
+        label,
+        percentage: value,
+        window_minutes: minutes,
+    });
+}
+
+/// 读取本地 API 服务集合，按真实窗口时长汇总池内 OAuth 账号剩余百分比。
+pub(crate) fn menu_bar_api_service_quota() -> ApiServiceMenuBarQuota {
+    let Ok(Some(collection)) = load_collection_from_disk() else {
+        return ApiServiceMenuBarQuota {
+            remaining_percent: None,
+            windows: Vec::new(),
+            account_count: 0,
+        };
+    };
+
+    let mut windows: Vec<ApiServicePoolWindowSum> = Vec::new();
+    let mut account_count = 0usize;
+
+    for account_id in effective_sidecar_account_ids(&collection) {
+        let Some(account) = codex_account::load_account(&account_id) else {
+            continue;
+        };
+        // 池汇总仅计 OAuth 类窗口额度；API Key 账号走单独额度模型。
+        if account.is_api_key_auth() {
+            continue;
+        }
+        account_count += 1;
+        let Some(quota) = account.quota.as_ref() else {
+            continue;
+        };
+        let has_presence_flags =
+            quota.hourly_window_present.is_some() || quota.weekly_window_present.is_some();
+        // 与前端 getCodexQuotaWindows 一致：按 present 决定是否纳入，标签看 window_minutes。
+        if !has_presence_flags || quota.hourly_window_present == Some(true) {
+            add_api_service_window_sum(
+                &mut windows,
+                quota.hourly_window_minutes,
+                "5h",
+                quota.hourly_percentage,
+            );
+        }
+        if !has_presence_flags || quota.weekly_window_present == Some(true) {
+            add_api_service_window_sum(
+                &mut windows,
+                quota.weekly_window_minutes,
+                "Weekly",
+                quota.weekly_percentage,
+            );
+        }
+    }
+
+    windows.sort_by(|left, right| {
+        left.window_minutes
+            .cmp(&right.window_minutes)
+            .then_with(|| left.label.cmp(&right.label))
+    });
+
+    let remaining_percent = windows
+        .iter()
+        .map(|item| item.percentage)
+        .min();
+
+    ApiServiceMenuBarQuota {
+        remaining_percent,
+        windows,
+        account_count,
+    }
+}
+
+/// 池内可刷新额度的 OAuth 账号 ID（用于托盘菜单刷新 API 服务额度）。
+pub(crate) fn api_service_refreshable_account_ids() -> Vec<String> {
+    let Ok(Some(collection)) = load_collection_from_disk() else {
+        return Vec::new();
+    };
+    effective_sidecar_account_ids(&collection)
+        .into_iter()
+        .filter(|account_id| {
+            codex_account::load_account(account_id)
+                .map(|account| {
+                    !account.is_api_key_auth() && crate::modules::codex_quota::supports_quota_refresh(&account)
+                })
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+/// 是否存在 API 服务集合（有账号即可在托盘中展示 API 服务卡片）。
+pub(crate) fn api_service_collection_has_accounts() -> bool {
+    let Ok(Some(collection)) = load_collection_from_disk() else {
+        return false;
+    };
+    !effective_sidecar_account_ids(&collection).is_empty()
 }
 
 fn remove_account_refs_from_collection(
@@ -11654,6 +11939,7 @@ fn prepare_sidecar_launch_config_in_dir_sync(
             "priority": rule.priority,
             "weight": rule.weight,
             "isBackup": rule.is_backup,
+            "isPreferred": rule.is_preferred,
         })).collect::<Vec<_>>(),
         "accountModelRules": collection.account_model_rules.iter().map(|rule| json!({
             "accountId": rule.account_id.clone(),
@@ -11699,6 +11985,10 @@ fn prepare_sidecar_launch_config_in_dir_sync(
     config.insert("request-log".to_string(), json!(false));
     config.insert("logging-to-file".to_string(), json!(false));
     config.insert("commercial-mode".to_string(), json!(true));
+    config.insert(
+        "codex".to_string(),
+        json!({ "optimize-multi-agent-v2": true }),
+    );
     config.insert("ws-auth".to_string(), json!(true));
     config.insert("disable-auth-auto-refresh".to_string(), json!(true));
     // 不写 disable-image-generation：默认允许生图（绑定 OAuth 与改前一致；纯 API Key 也靠正常注入/上游能力）。
@@ -11815,6 +12105,7 @@ fn sidecar_usage_capture(details: &SidecarUsageDetails) -> Option<UsageCapture> 
         total_tokens: usage_i64_to_u64(details.total_tokens),
         cached_tokens: usage_i64_to_u64(details.cached_tokens),
         reasoning_tokens: usage_i64_to_u64(details.reasoning_tokens),
+        token_breakdown: details.token_breakdown.clone(),
     };
     if usage.input_tokens == 0
         && usage.output_tokens == 0
@@ -14258,6 +14549,7 @@ fn local_access_ineligible_reason(
     {
         return Some("pending_oauth");
     }
+    // ChatGPT Web Session 仅支持查额，禁止加入 API 服务。
     if account.is_web_session_auth() {
         return Some("web_session_quota_only");
     }
@@ -19013,28 +19305,53 @@ fn append_eligible_local_access_account_ids(
     )
 }
 
-fn apply_backup_account_ids(
+fn apply_account_usage_priority_ids(
     collection: &mut CodexLocalAccessCollection,
-    backup_account_ids: &[String],
+    backup_account_ids: Option<&[String]>,
+    preferred_account_ids: Option<&[String]>,
 ) {
     let account_set: HashSet<&str> = collection.account_ids.iter().map(String::as_str).collect();
-    let backup_set: HashSet<&str> = backup_account_ids
-        .iter()
-        .map(|id| id.trim())
-        .filter(|id| !id.is_empty() && account_set.contains(*id))
-        .collect();
+    let normalize_ids = |account_ids: &[String]| {
+        account_ids
+            .iter()
+            .map(|id| id.trim().to_string())
+            .filter(|id| !id.is_empty() && account_set.contains(id.as_str()))
+            .collect::<HashSet<String>>()
+    };
+    let backup_set = backup_account_ids.map(normalize_ids);
+    let preferred_set = preferred_account_ids.map(normalize_ids);
 
     let mut seen = HashSet::new();
     for rule in &mut collection.custom_routing_rules {
         if !account_set.contains(rule.account_id.as_str()) {
             continue;
         }
-        rule.is_backup = backup_set.contains(rule.account_id.as_str());
+        if let Some(backup_set) = backup_set.as_ref() {
+            rule.is_backup = backup_set.contains(rule.account_id.as_str());
+            if rule.is_backup {
+                rule.is_preferred = false;
+            }
+        }
+        if let Some(preferred_set) = preferred_set.as_ref() {
+            rule.is_preferred = preferred_set.contains(rule.account_id.as_str());
+            if rule.is_preferred {
+                rule.is_backup = false;
+            }
+        }
         seen.insert(rule.account_id.clone());
     }
 
     for account_id in &collection.account_ids {
-        if !backup_set.contains(account_id.as_str()) || seen.contains(account_id) {
+        if seen.contains(account_id) {
+            continue;
+        }
+        let is_backup = backup_set
+            .as_ref()
+            .is_some_and(|ids| ids.contains(account_id.as_str()));
+        let is_preferred = preferred_set
+            .as_ref()
+            .is_some_and(|ids| ids.contains(account_id.as_str()));
+        if !is_backup && !is_preferred {
             continue;
         }
         collection
@@ -19043,7 +19360,8 @@ fn apply_backup_account_ids(
                 account_id: account_id.clone(),
                 priority: CUSTOM_ROUTING_PRIORITY_MIN,
                 weight: CUSTOM_ROUTING_WEIGHT_MIN,
-                is_backup: true,
+                is_backup: is_backup && !is_preferred,
+                is_preferred,
             });
         seen.insert(account_id.clone());
     }
@@ -19058,6 +19376,7 @@ pub async fn save_local_access_accounts(
     account_ids: Vec<String>,
     restrict_free_accounts: bool,
     backup_account_ids: Option<Vec<String>>,
+    preferred_account_ids: Option<Vec<String>>,
     session_affinity: Option<bool>,
     session_affinity_ttl_ms: Option<i64>,
 ) -> Result<CodexLocalAccessState, String> {
@@ -19101,9 +19420,13 @@ pub async fn save_local_access_accounts(
     }
     collection.updated_at = now_ms();
     let (mut changed, _) = sanitize_collection_with_accounts(&mut collection, &accounts)?;
-    if let Some(backup_ids) = backup_account_ids {
+    if backup_account_ids.is_some() || preferred_account_ids.is_some() {
         let before = collection.custom_routing_rules.clone();
-        apply_backup_account_ids(&mut collection, &backup_ids);
+        apply_account_usage_priority_ids(
+            &mut collection,
+            backup_account_ids.as_deref(),
+            preferred_account_ids.as_deref(),
+        );
         if collection.custom_routing_rules != before {
             changed = true;
         }
@@ -20551,6 +20874,7 @@ fn extract_usage_capture(value: &Value) -> Option<UsageCapture> {
         },
         cached_tokens,
         reasoning_tokens,
+        token_breakdown: None,
     })
 }
 
@@ -22499,6 +22823,322 @@ async fn send_upstream_request_with_authorization_url(
     Err("请求 Codex 上游失败: 未知错误".to_string())
 }
 
+const MAX_OPENAI_RESPONSES_REJECTED_FIELD_RETRIES: usize = 6;
+
+struct OpenAIResponsesRejectedFieldRetryState {
+    attempts: usize,
+    seen_body_hashes: HashSet<[u8; 32]>,
+}
+
+impl OpenAIResponsesRejectedFieldRetryState {
+    fn new(initial_body: &[u8]) -> Self {
+        let mut state = Self {
+            attempts: 0,
+            seen_body_hashes: HashSet::with_capacity(
+                MAX_OPENAI_RESPONSES_REJECTED_FIELD_RETRIES + 1,
+            ),
+        };
+        state.remember(initial_body);
+        state
+    }
+
+    fn allow(&mut self, next_body: &[u8]) -> bool {
+        if next_body.is_empty() || self.attempts >= MAX_OPENAI_RESPONSES_REJECTED_FIELD_RETRIES {
+            return false;
+        }
+        let body_hash: [u8; 32] = Sha256::digest(next_body).into();
+        if !self.seen_body_hashes.insert(body_hash) {
+            return false;
+        }
+        self.attempts += 1;
+        true
+    }
+
+    fn remember(&mut self, body: &[u8]) {
+        if !body.is_empty() {
+            self.seen_body_hashes.insert(Sha256::digest(body).into());
+        }
+    }
+}
+
+fn normalize_openai_responses_rejected_field_retry_body(
+    status: StatusCode,
+    body: &[u8],
+    response_body: &[u8],
+) -> Result<Option<(Vec<u8>, &'static str)>, String> {
+    if status != StatusCode::BAD_REQUEST || body.is_empty() || response_body.is_empty() {
+        return Ok(None);
+    }
+    let response: Value = match serde_json::from_slice(response_body) {
+        Ok(response) => response,
+        Err(_) => return Ok(None),
+    };
+    let code = response
+        .pointer("/error/code")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    let message = response
+        .pointer("/error/message")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    if code != "unknown_parameter"
+        && code != "unsupported_parameter"
+        && !message.contains("unknown parameter")
+        && !message.contains("unsupported parameter")
+    {
+        return Ok(None);
+    }
+    let mut param = response
+        .pointer("/error/param")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    if param.is_empty() {
+        let pattern = regex::Regex::new(
+            r#"(?i)(?:unknown|unsupported)[ _-]+parameter\s*(?::|=|is)?\s*[\"']?(max_output_tokens|input\[\d+\]\.namespace)(?:[\"']|\b)"#,
+        )
+        .map_err(|error| format!("编译 Responses 拒绝字段匹配规则失败: {error}"))?;
+        param = pattern
+            .captures(&message)
+            .and_then(|captures| captures.get(1))
+            .map(|value| value.as_str().trim().to_ascii_lowercase())
+            .unwrap_or_default();
+    }
+
+    let mut request: Value = serde_json::from_slice(body)
+        .map_err(|error| format!("解析 Responses 拒绝字段重试请求失败: {error}"))?;
+    if param == "max_output_tokens" {
+        let Some(object) = request.as_object_mut() else {
+            return Ok(None);
+        };
+        if object.remove("max_output_tokens").is_none() {
+            return Ok(None);
+        }
+        return serde_json::to_vec(&request)
+            .map(|body| Some((body, "max_output_tokens parameter rejection")))
+            .map_err(|error| format!("序列化 Responses 拒绝字段重试请求失败: {error}"));
+    }
+
+    let namespace_pattern = regex::Regex::new(r"(?i)^input\[(\d+)\]\.namespace$")
+        .map_err(|error| format!("编译 Responses namespace 匹配规则失败: {error}"))?;
+    let Some(index) = namespace_pattern
+        .captures(&param)
+        .and_then(|captures| captures.get(1))
+        .and_then(|value| value.as_str().parse::<usize>().ok())
+    else {
+        return Ok(None);
+    };
+    let Some(item) = request
+        .get_mut("input")
+        .and_then(Value::as_array_mut)
+        .and_then(|input| input.get_mut(index))
+        .and_then(Value::as_object_mut)
+    else {
+        return Ok(None);
+    };
+    let item_type = item
+        .get("type")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    if !matches!(
+        item_type.as_str(),
+        "function_call" | "tool_call" | "custom_tool_call" | "mcp_tool_call"
+    ) || item.remove("namespace").is_none()
+    {
+        return Ok(None);
+    }
+    serde_json::to_vec(&request)
+        .map(|body| Some((body, "indexed namespace parameter rejection")))
+        .map_err(|error| format!("序列化 Responses namespace 重试请求失败: {error}"))
+}
+
+#[cfg(test)]
+mod openai_responses_rejected_field_retry_tests {
+    use super::*;
+
+    #[test]
+    fn retries_only_explicit_max_output_tokens_rejection() {
+        let body = br#"{"max_output_tokens":128,"input":[]}"#;
+        let explicit = br#"{"error":{"code":"unknown_parameter","param":"max_output_tokens","message":"Unknown parameter"}}"#;
+        let (retry, reason) = normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            body,
+            explicit,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(reason, "max_output_tokens parameter rejection");
+        assert!(serde_json::from_slice::<Value>(&retry)
+            .unwrap()
+            .get("max_output_tokens")
+            .is_none());
+
+        let ambiguous = br#"{"error":{"message":"invalid max_output_tokens"}}"#;
+        assert!(normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            body,
+            ambiguous,
+        )
+        .unwrap()
+        .is_none());
+    }
+
+    #[test]
+    fn rejects_ambiguous_rejected_field_errors() {
+        let cases: &[(&[u8], &[u8])] = &[
+            (
+                br#"{"input":[{"type":"message","namespace":"keep"}]}"#,
+                br#"{"error":{"code":"unknown_parameter","message":"Unknown parameter: 'input[0].namespace'.","param":"input[0].namespace"}}"#,
+            ),
+            (
+                br#"{"max_output_tokens":4096}"#,
+                br#"{"error":{"code":"invalid_request_error","message":"max_output_tokens must be positive","param":"max_output_tokens"}}"#,
+            ),
+            (
+                br#"{"input":[{"type":"function_call","namespace":"keep","arguments":"{}"}]}"#,
+                br#"{"error":{"code":"unknown_parameter","message":"Unknown parameter: 'input[0].namespace'.","param":"tools"}}"#,
+            ),
+            (
+                br#"{"max_output_tokens":4096,"input":[{"type":"message","content":{"max_output_tokens":"keep"}}]}"#,
+                br#"{"error":{"code":"unknown_parameter","message":"Unknown parameter: input[0].content.max_output_tokens","param":"input[0].content.max_output_tokens"}}"#,
+            ),
+        ];
+
+        for (body, response_body) in cases {
+            assert!(normalize_openai_responses_rejected_field_retry_body(
+                StatusCode::BAD_REQUEST,
+                body,
+                response_body,
+            )
+            .unwrap()
+            .is_none());
+        }
+    }
+
+    #[test]
+    fn finds_rejected_namespace_path_in_message() {
+        let body = br#"{"input":[{"type":"function_call","namespace":"keep","arguments":"{}"},{"type":"function_call","namespace":"remove","arguments":"{}"}]}"#;
+        let response = br#"{"error":{"code":"unknown_parameter","message":"input[0] was accepted; Unknown parameter: 'input[1].namespace'."}}"#;
+        let (retry, _) = normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            body,
+            response,
+        )
+        .unwrap()
+        .unwrap();
+        let retry: Value = serde_json::from_slice(&retry).unwrap();
+        assert_eq!(
+            retry.pointer("/input/0/namespace").and_then(Value::as_str),
+            Some("keep")
+        );
+        assert!(retry.pointer("/input/1/namespace").is_none());
+    }
+
+    #[test]
+    fn binds_rejected_namespace_path_to_rejection_phrase() {
+        let body = br#"{"input":[{"type":"function_call","namespace":"keep","arguments":"{}"},{"type":"function_call","namespace":"remove","arguments":"{}"}]}"#;
+        let response = br#"{"error":{"code":"unknown_parameter","message":"input[0].namespace is supported; Unknown parameter: input[1].namespace."}}"#;
+        let (retry, _) = normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            body,
+            response,
+        )
+        .unwrap()
+        .unwrap();
+        let retry: Value = serde_json::from_slice(&retry).unwrap();
+        assert_eq!(
+            retry.pointer("/input/0/namespace").and_then(Value::as_str),
+            Some("keep")
+        );
+        assert!(retry.pointer("/input/1/namespace").is_none());
+    }
+
+    #[test]
+    fn does_not_treat_max_output_tokens_suggestion_as_rejection() {
+        let body = br#"{"max_tokens":4096,"max_output_tokens":2048}"#;
+        let response = br#"{"error":{"code":"unknown_parameter","message":"Unknown parameter: max_tokens. Use max_output_tokens instead."}}"#;
+        assert!(normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            body,
+            response,
+        )
+        .unwrap()
+        .is_none());
+    }
+
+    #[test]
+    fn composes_distinct_rejected_field_retries() {
+        let initial = br#"{"max_output_tokens":2048,"input":[{"type":"function_call","namespace":"keep","arguments":"{}"},{"type":"custom_tool_call","namespace":"remove","input":"{}"}]}"#;
+        let namespace_response = br#"{"error":{"code":"unknown_parameter","message":"Unknown parameter: 'input[1].namespace'.","param":"input[1].namespace"}}"#;
+        let max_tokens_response = br#"{"error":{"code":"unsupported_parameter","message":"Unsupported parameter: max_output_tokens","param":"max_output_tokens"}}"#;
+        let mut state = OpenAIResponsesRejectedFieldRetryState::new(initial);
+
+        let (without_namespace, _) = normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            initial,
+            namespace_response,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(state.allow(&without_namespace));
+        let first_retry: Value = serde_json::from_slice(&without_namespace).unwrap();
+        assert!(first_retry.pointer("/input/1/namespace").is_none());
+        assert_eq!(
+            first_retry.get("max_output_tokens").and_then(Value::as_u64),
+            Some(2048)
+        );
+
+        let (without_both, _) = normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            &without_namespace,
+            max_tokens_response,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(state.allow(&without_both));
+        let second_retry: Value = serde_json::from_slice(&without_both).unwrap();
+        assert!(second_retry.pointer("/input/1/namespace").is_none());
+        assert!(second_retry.get("max_output_tokens").is_none());
+    }
+
+    #[test]
+    fn removes_only_rejected_tool_call_namespace() {
+        let body = br#"{"input":[{"type":"function_call","namespace":"collaboration"},{"type":"message","namespace":"keep"}]}"#;
+        let response = br#"{"error":{"code":"unsupported_parameter","param":"input[0].namespace","message":"Unsupported parameter"}}"#;
+        let (retry, _) = normalize_openai_responses_rejected_field_retry_body(
+            StatusCode::BAD_REQUEST,
+            body,
+            response,
+        )
+        .unwrap()
+        .unwrap();
+        let retry: Value = serde_json::from_slice(&retry).unwrap();
+        assert!(retry.pointer("/input/0/namespace").is_none());
+        assert_eq!(
+            retry.pointer("/input/1/namespace").and_then(Value::as_str),
+            Some("keep")
+        );
+    }
+
+    #[test]
+    fn retry_state_rejects_duplicate_and_seventh_mutation() {
+        let initial = br#"{"input":[]}"#;
+        let mut state = OpenAIResponsesRejectedFieldRetryState::new(initial);
+        assert!(!state.allow(initial));
+        for attempt in 0..MAX_OPENAI_RESPONSES_REJECTED_FIELD_RETRIES {
+            assert!(state.allow(format!(r#"{{"attempt":{attempt}}}"#).as_bytes()));
+        }
+        assert!(!state.allow(br#"{"attempt":99}"#));
+    }
+}
+
 async fn proxy_request_with_account_pool(
     request: &ParsedRequest,
     collection: &CodexLocalAccessCollection,
@@ -22697,6 +23337,9 @@ async fn proxy_request_with_account_pool(
             );
 
             let mut single_account_status_retry_attempt = 0usize;
+            let mut upstream_request_body = request.body.clone();
+            let mut rejected_field_retry_state = is_responses_request(&request.target)
+                .then(|| OpenAIResponsesRejectedFieldRetryState::new(&upstream_request_body));
             loop {
                 let upstream_send_started_at = Instant::now();
                 legacy_debug_log(
@@ -22715,7 +23358,7 @@ async fn proxy_request_with_account_pool(
                     &request.method,
                     &upstream_target,
                     &request.headers,
-                    &request.body,
+                    &upstream_request_body,
                     &account,
                     collection.upstream_proxy_url.as_deref(),
                     upstream_connect_timeout,
@@ -22851,7 +23494,7 @@ async fn proxy_request_with_account_pool(
                                 &request.method,
                                 &upstream_target,
                                 &request.headers,
-                                &request.body,
+                                &upstream_request_body,
                                 &account,
                                 collection.upstream_proxy_url.as_deref(),
                                 upstream_connect_timeout,
@@ -22943,6 +23586,34 @@ async fn proxy_request_with_account_pool(
 
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
+                if let Some(state) = rejected_field_retry_state.as_mut() {
+                    if let Some((next_body, reason)) =
+                        normalize_openai_responses_rejected_field_retry_body(
+                            status,
+                            &upstream_request_body,
+                            body.as_bytes(),
+                        )
+                        .map_err(|message| ProxyDispatchError {
+                            status: StatusCode::BAD_REQUEST.as_u16(),
+                            message,
+                            account_id: Some(account.id.clone()),
+                            account_email: Some(account.email.clone()),
+                            error_category: Some("bad_request".to_string()),
+                        })?
+                    {
+                        if state.allow(&next_body) {
+                            legacy_debug_log(
+                                collection.debug_logs,
+                                format!(
+                                    "responses_rejected_field_retry account_id={} attempt={} reason={}",
+                                    account.id, state.attempts, reason
+                                ),
+                            );
+                            upstream_request_body = next_body;
+                            continue;
+                        }
+                    }
+                }
                 let category = classify_upstream_error_category(status, &body);
                 let message = if category == Some("image_generation_not_enabled") {
                     friendly_image_generation_capability_error(&account.email)
@@ -25233,12 +25904,13 @@ mod tests {
 
     use super::{
         account_model_rule_blocks_model, account_requires_bound_oauth_local_gateway,
-        account_requires_provider_gateway, account_upstream_base_url, align_codex_prompt_cache,
-        api_key_inherits_account_pool, api_key_priority_account_ids,
-        append_eligible_local_access_account_ids, append_usage_event, apply_codex_official_headers,
-        apply_routing_strategy, backup_current_profile_model_before_provider_gateway,
-        bound_oauth_quota_refresh_failures, bound_oauth_quota_reserve_blocks_account,
-        bridge_websocket_streams, build_account_scoped_upstream_body, build_base_url_with_host,
+        account_requires_provider_gateway, account_upstream_base_url, account_usage_priority,
+        align_codex_prompt_cache, api_key_inherits_account_pool, api_key_priority_account_ids,
+        append_eligible_local_access_account_ids, append_usage_event,
+        apply_account_usage_priority_ids, apply_codex_official_headers, apply_routing_strategy,
+        backup_current_profile_model_before_provider_gateway, bound_oauth_quota_refresh_failures,
+        bound_oauth_quota_reserve_blocks_account, bridge_websocket_streams,
+        build_account_scoped_upstream_body, build_base_url_with_host,
         build_chat_completion_payload, build_chat_completion_stream_body,
         build_codex_client_models_response, build_collection_base_url, build_images_api_payload,
         build_local_access_api_key, build_local_models_response,
@@ -25277,7 +25949,7 @@ mod tests {
         read_http_request, read_request_log_reprice_batch, recompute_time_windows,
         recover_invalid_stats_file, remove_account_refs_from_collection,
         remove_codex_local_access_config, reprice_request_logs_for_collection,
-        request_image_generation_mode, request_ordered_account_ids,
+        request_image_generation_mode, request_logs_has_column, request_ordered_account_ids,
         resolve_effective_model_pricing, resolve_plan_rank, resolve_sidecar_upstream_base_url,
         resolve_sidecar_upstream_base_url_with, resolve_supported_model_alias,
         resolve_upstream_target, restore_config_toml_from_takeover_backup,
@@ -25294,18 +25966,20 @@ mod tests {
         sidecar_payload_default_service_tier, sidecar_quota_reserve_snapshot_value,
         sidecar_routing_strategy_value, sidecar_stable_id, supported_codex_model_ids,
         system_proxy_target_scheme, system_proxy_value_url,
-        tool_declares_image_generation_capability, validate_api_key_account_scope_update,
-        validate_client_model_visible, validate_loaded_local_access_bound_oauth_account,
-        visible_codex_model_ids_for_api_key, visible_codex_model_ids_for_api_key_with_accounts,
-        websocket_accept_value, websocket_connect_error_from_http_response,
-        windows_proxy_url_from_server, windows_reg_dword_enabled, windows_reg_query_map,
+        tool_declares_image_generation_capability, usage_event_from_row,
+        validate_api_key_account_scope_update, validate_client_model_visible,
+        validate_loaded_local_access_bound_oauth_account, visible_codex_model_ids_for_api_key,
+        visible_codex_model_ids_for_api_key_with_accounts, websocket_accept_value,
+        websocket_connect_error_from_http_response, windows_proxy_url_from_server,
+        windows_reg_dword_enabled, windows_reg_query_map,
         write_local_access_profile_model_override, write_local_access_profile_takeover,
         write_provider_gateway_model_catalog, write_string_atomic, write_string_atomic_if_changed,
-        CodexLocalAccessCollection, CodexLocalAccessGatewayMode, CodexLocalAccessScope,
-        CodexModelProviderGatewayChatTestRequest, GatewayResponseAdapter, ParsedRequest,
-        ResolvedLocalApiKey, ResponseUsageCollector, RoutingCandidate, SidecarUsageDetails,
-        SidecarUsageEvent, UsageCapture, BOUND_OAUTH_QUOTA_RESERVE_MAX_SNAPSHOT_AGE_SECONDS,
-        CODEX_AUTO_REVIEW_MODEL_ID, CODEX_IMAGEGEN_ACTOR_HEADER, CODEX_IMAGE_MODEL_ID,
+        AccountUsagePriority, CodexLocalAccessCollection, CodexLocalAccessGatewayMode,
+        CodexLocalAccessScope, CodexModelProviderGatewayChatTestRequest, GatewayResponseAdapter,
+        ParsedRequest, ResolvedLocalApiKey, ResponseUsageCollector, RoutingCandidate,
+        SidecarUsageDetails, SidecarUsageEvent, UsageCapture,
+        BOUND_OAUTH_QUOTA_RESERVE_MAX_SNAPSHOT_AGE_SECONDS, CODEX_AUTO_REVIEW_MODEL_ID,
+        CODEX_IMAGEGEN_ACTOR_HEADER, CODEX_IMAGE_MODEL_ID,
         CODEX_LOCAL_ACCESS_DISABLE_HOSTED_IMAGE_GENERATION_HEADER,
         CODEX_LOCAL_ACCESS_DISABLE_HOSTED_IMAGE_GENERATION_HEADER_VALUE,
         CODEX_LOCAL_ACCESS_MODEL_CATALOG_FILE, CODEX_PROFILE_AUTH_FILE, CODEX_PROFILE_CONFIG_FILE,
@@ -25328,7 +26002,7 @@ mod tests {
         CodexLocalAccessImageGenerationMode, CodexLocalAccessProviderGateway,
         CodexLocalAccessQuotaReserve, CodexLocalAccessRequestKind, CodexLocalAccessRoutingStrategy,
         CodexLocalAccessStats, CodexLocalAccessStatsWindow, CodexLocalAccessTimeouts,
-        CodexLocalAccessUsageEvent,
+        CodexLocalAccessUsageEvent, CodexTokenBreakdown,
     };
     use crate::models::{
         DefaultInstanceSettings, InstanceLaunchMode, InstanceProfile, InstanceStore,
@@ -25336,6 +26010,7 @@ mod tests {
     use futures_util::{SinkExt, StreamExt};
     use rand::rngs::OsRng;
     use reqwest::StatusCode;
+    use rusqlite::Connection;
     use serde_json::{json, Value};
     use std::{
         collections::{HashMap, HashSet},
@@ -26505,12 +27180,14 @@ wire_api = "responses"
                 priority: 10,
                 weight: 2,
                 is_backup: false,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "account-c".to_string(),
                 priority: 5,
                 weight: 1,
                 is_backup: false,
+                is_preferred: false,
             },
         ];
         collection.account_model_rules = vec![CodexLocalAccessAccountModelRule {
@@ -28083,6 +28760,7 @@ wire_api = "responses"
             total_tokens: 3_000,
             cached_tokens: 400,
             reasoning_tokens: 0,
+            token_breakdown: None,
         };
         let pricing = model_pricing(
             "gpt-5.4",
@@ -28163,6 +28841,103 @@ wire_api = "responses"
     }
 
     #[test]
+    fn request_log_db_persists_canonical_token_breakdown() {
+        let dir = make_temp_dir("codex-local-access-token-breakdown");
+        let db_path = dir.join("request_logs.sqlite");
+        let conn = open_local_access_logs_db_once(&db_path, true).expect("open logs db");
+        let mut breakdown = CodexTokenBreakdown::default();
+        breakdown.schema_version = 2;
+        breakdown.quality = "complete".to_string();
+        breakdown.total_tokens = 1_200;
+        breakdown.input.total_tokens = 1_000;
+        breakdown.input.uncached_tokens = 600;
+        breakdown.input.cache_read_tokens = 300;
+        breakdown.input.cache_write_tokens = 100;
+        breakdown.output.total_tokens = 200;
+        breakdown.output.non_reasoning_tokens = 150;
+        breakdown.output.reasoning_tokens = 50;
+        let usage = UsageCapture {
+            input_tokens: 1_000,
+            output_tokens: 200,
+            total_tokens: 1_200,
+            cached_tokens: 300,
+            reasoning_tokens: 50,
+            token_breakdown: Some(breakdown.clone()),
+        };
+        let mut events = Vec::new();
+        let event = append_usage_event(
+            &mut events,
+            1_700_000_000_000,
+            Some("req-token-breakdown"),
+            Some("acc-1"),
+            Some("user@example.com"),
+            Some("key-1"),
+            Some("Production Key"),
+            None,
+            Some("gpt-5.4"),
+            Some(CodexLocalAccessGatewayMode::Sidecar),
+            CodexLocalAccessRequestKind::Text,
+            None,
+            true,
+            Some(200),
+            None,
+            None,
+            42,
+            Some(&usage),
+            None,
+            2,
+            0.0,
+        );
+        insert_local_access_usage_event(&conn, &event).expect("insert request log");
+
+        let loaded = conn
+            .query_row(
+                "SELECT * FROM request_logs WHERE request_id = ?1",
+                ["req-token-breakdown"],
+                usage_event_from_row,
+            )
+            .expect("read request log");
+        let loaded_breakdown = loaded.token_breakdown.expect("token breakdown");
+        assert_eq!(loaded_breakdown.schema_version, breakdown.schema_version);
+        assert_eq!(loaded_breakdown.quality, breakdown.quality);
+        assert_eq!(loaded_breakdown.total_tokens, breakdown.total_tokens);
+        assert_eq!(
+            loaded_breakdown.input.cache_read_tokens,
+            breakdown.input.cache_read_tokens
+        );
+        assert_eq!(
+            loaded_breakdown.input.cache_write_tokens,
+            breakdown.input.cache_write_tokens
+        );
+        assert_eq!(
+            loaded_breakdown.output.reasoning_tokens,
+            breakdown.output.reasoning_tokens
+        );
+
+        drop(conn);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn request_log_db_adds_token_breakdown_to_existing_schema() {
+        let dir = make_temp_dir("codex-local-access-token-breakdown-migration");
+        let db_path = dir.join("request_logs.sqlite");
+        let conn = Connection::open(&db_path).expect("open legacy logs db");
+        conn.execute_batch(
+            "CREATE TABLE request_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, event_key TEXT NOT NULL DEFAULT '', timestamp INTEGER NOT NULL DEFAULT 0)",
+        )
+        .expect("create legacy request logs table");
+        drop(conn);
+
+        let conn = open_local_access_logs_db_once(&db_path, true).expect("migrate logs db");
+        assert!(request_logs_has_column(&conn, "token_breakdown_json")
+            .expect("inspect token breakdown column"));
+
+        drop(conn);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn request_log_db_adds_service_tier_to_existing_schema() {
         let dir = make_temp_dir("codex-local-access-service-tier-migration");
         let db_path = dir.join("request_logs.sqlite");
@@ -28202,12 +28977,23 @@ wire_api = "responses"
         let db_path = dir.join("request_logs.sqlite");
         let mut conn = open_local_access_logs_db_once(&db_path, true).expect("open logs db");
         let mut events = Vec::new();
+        let mut breakdown = CodexTokenBreakdown::default();
+        breakdown.schema_version = 2;
+        breakdown.quality = "complete".to_string();
+        breakdown.total_tokens = 1_500_000;
+        breakdown.input.total_tokens = 1_000_000;
+        breakdown.input.uncached_tokens = 700_000;
+        breakdown.input.cache_read_tokens = 200_000;
+        breakdown.input.cache_write_tokens = 100_000;
+        breakdown.output.total_tokens = 500_000;
+        breakdown.output.non_reasoning_tokens = 500_000;
         let usage = UsageCapture {
             input_tokens: 1_000_000,
             output_tokens: 500_000,
             total_tokens: 1_500_000,
-            cached_tokens: 200_000,
+            cached_tokens: 400_000,
             reasoning_tokens: 0,
+            token_breakdown: Some(breakdown),
         };
         let event = append_usage_event(
             &mut events,
@@ -28302,6 +29088,7 @@ wire_api = "responses"
             total_tokens: 1_500,
             cached_tokens: 200,
             reasoning_tokens: 0,
+            token_breakdown: None,
         };
         for (request_id, timestamp, pricing_version) in [
             ("req-stale", 1_700_000_000_000, 7),
@@ -28364,6 +29151,7 @@ wire_api = "responses"
             total_tokens: 272_001,
             cached_tokens: 0,
             reasoning_tokens: 0,
+            token_breakdown: None,
         };
         let long_usage = UsageCapture {
             input_tokens: 272_001,
@@ -28427,6 +29215,7 @@ wire_api = "responses"
             total_tokens: 150,
             cached_tokens: 20,
             reasoning_tokens: 0,
+            token_breakdown: None,
         };
 
         let flex =
@@ -28466,6 +29255,7 @@ wire_api = "responses"
             total_tokens: 304_000,
             cached_tokens: 0,
             reasoning_tokens: 0,
+            token_breakdown: None,
         };
         let pricing = resolve_effective_model_pricing(None, Some("gpt-5.4"), Some(&usage), None)
             .expect("pricing");
@@ -29472,18 +30262,21 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 priority: 10,
                 weight: 1,
                 is_backup: false,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-high-a".to_string(),
                 priority: 40,
                 weight: 1,
                 is_backup: false,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-high-b".to_string(),
                 priority: 40,
                 weight: 1,
                 is_backup: false,
+                is_preferred: false,
             },
         ];
 
@@ -29506,12 +30299,14 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 priority: 100,
                 weight: 1,
                 is_backup: true,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "regular".to_string(),
                 priority: 0,
                 weight: 1,
                 is_backup: false,
+                is_preferred: false,
             },
         ];
 
@@ -29529,6 +30324,113 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
         );
 
         assert_eq!(affinity_ordered, vec!["regular", "backup"]);
+    }
+
+    #[test]
+    fn usage_priority_wraps_every_routing_strategy_and_affinity() {
+        let account_ids = vec![
+            "lowest".to_string(),
+            "normal".to_string(),
+            "highest".to_string(),
+        ];
+        let rules = vec![
+            CodexLocalAccessCustomRoutingRule {
+                account_id: "lowest".to_string(),
+                priority: 100,
+                weight: 1,
+                is_backup: true,
+                is_preferred: false,
+            },
+            CodexLocalAccessCustomRoutingRule {
+                account_id: "normal".to_string(),
+                priority: 50,
+                weight: 1,
+                is_backup: false,
+                is_preferred: false,
+            },
+            CodexLocalAccessCustomRoutingRule {
+                account_id: "highest".to_string(),
+                priority: 0,
+                weight: 1,
+                is_backup: false,
+                is_preferred: true,
+            },
+        ];
+
+        for strategy in [
+            CodexLocalAccessRoutingStrategy::Auto,
+            CodexLocalAccessRoutingStrategy::Random,
+            CodexLocalAccessRoutingStrategy::SingleAccount,
+            CodexLocalAccessRoutingStrategy::Custom,
+        ] {
+            let ordered = apply_routing_strategy(&account_ids, strategy, &rules, 0);
+            assert_eq!(ordered.first().map(String::as_str), Some("highest"));
+            assert_eq!(ordered.last().map(String::as_str), Some("lowest"));
+
+            let affinity_ordered = pin_account_to_front_for_strategy(
+                ordered,
+                &["lowest".to_string()],
+                strategy,
+                &rules,
+            );
+            assert_eq!(affinity_ordered, vec!["highest", "normal", "lowest"]);
+        }
+    }
+
+    #[test]
+    fn account_usage_priority_ids_are_exclusive_and_preserve_unspecified_tier() {
+        let mut collection = test_local_access_collection(vec![
+            "lowest".to_string(),
+            "normal".to_string(),
+            "highest".to_string(),
+        ]);
+
+        apply_account_usage_priority_ids(
+            &mut collection,
+            Some(&["lowest".to_string()]),
+            Some(&["highest".to_string()]),
+        );
+
+        let rules = collection
+            .custom_routing_rules
+            .iter()
+            .map(|rule| {
+                (
+                    rule.account_id.as_str(),
+                    (rule.is_backup, rule.is_preferred),
+                )
+            })
+            .collect::<HashMap<_, _>>();
+        assert_eq!(rules.get("lowest"), Some(&(true, false)));
+        assert_eq!(rules.get("highest"), Some(&(false, true)));
+        assert!(!rules.contains_key("normal"));
+
+        apply_account_usage_priority_ids(&mut collection, Some(&[]), None);
+        let highest = collection
+            .custom_routing_rules
+            .iter()
+            .find(|rule| rule.account_id == "highest")
+            .expect("highest rule");
+        assert!(!highest.is_backup);
+        assert!(highest.is_preferred);
+    }
+
+    #[test]
+    fn legacy_backup_rule_defaults_to_lowest_without_preferred_field() {
+        let rule = serde_json::from_value::<CodexLocalAccessCustomRoutingRule>(serde_json::json!({
+            "accountId": "legacy-backup",
+            "priority": 10,
+            "weight": 1,
+            "isBackup": true
+        }))
+        .expect("legacy custom routing rule");
+
+        assert!(rule.is_backup);
+        assert!(!rule.is_preferred);
+        assert_eq!(
+            account_usage_priority(Some(&rule)),
+            AccountUsagePriority::Lowest
+        );
     }
 
     #[test]
@@ -29609,12 +30511,14 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 priority: 20,
                 weight: 3,
                 is_backup: false,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-light".to_string(),
                 priority: 20,
                 weight: 1,
                 is_backup: false,
+                is_preferred: false,
             },
         ];
 
@@ -29654,24 +30558,28 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 priority: 120,
                 weight: 0,
                 is_backup: true,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-a".to_string(),
                 priority: 20,
                 weight: 10,
                 is_backup: false,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-removed".to_string(),
                 priority: 30,
                 weight: 5,
                 is_backup: false,
+                is_preferred: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-b".to_string(),
                 priority: -5,
                 weight: 500,
                 is_backup: false,
+                is_preferred: false,
             },
         ];
 
@@ -29685,12 +30593,14 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                     priority: 100,
                     weight: 1,
                     is_backup: true,
+                    is_preferred: false,
                 },
                 CodexLocalAccessCustomRoutingRule {
                     account_id: "acc-b".to_string(),
                     priority: 0,
                     weight: 100,
                     is_backup: false,
+                    is_preferred: false,
                 },
             ]
         );
@@ -32035,6 +32945,12 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
                 .get("streaming")
                 .and_then(|streaming| streaming.get("bootstrap-retries")),
             Some(&json!(2))
+        );
+        assert_eq!(
+            config
+                .get("codex")
+                .and_then(|codex| codex.get("optimize-multi-agent-v2")),
+            Some(&json!(true))
         );
 
         fs::remove_dir_all(&dir).expect("cleanup temp dir");

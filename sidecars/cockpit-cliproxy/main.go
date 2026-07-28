@@ -292,10 +292,11 @@ type modelAliasSpec struct {
 }
 
 type customRoutingRule struct {
-	AccountID string `json:"accountId"`
-	Priority  int    `json:"priority"`
-	Weight    int    `json:"weight"`
-	IsBackup  bool   `json:"isBackup"`
+	AccountID   string `json:"accountId"`
+	Priority    int    `json:"priority"`
+	Weight      int    `json:"weight"`
+	IsBackup    bool   `json:"isBackup"`
+	IsPreferred bool   `json:"isPreferred"`
 }
 
 type usagePayload struct {
@@ -389,11 +390,12 @@ func (e relayStatusError) StatusCode() int {
 }
 
 type usageDetails struct {
-	InputTokens     int64 `json:"inputTokens,omitempty"`
-	OutputTokens    int64 `json:"outputTokens,omitempty"`
-	ReasoningTokens int64 `json:"reasoningTokens,omitempty"`
-	CachedTokens    int64 `json:"cachedTokens,omitempty"`
-	TotalTokens     int64 `json:"totalTokens,omitempty"`
+	InputTokens     int64                    `json:"inputTokens,omitempty"`
+	OutputTokens    int64                    `json:"outputTokens,omitempty"`
+	ReasoningTokens int64                    `json:"reasoningTokens,omitempty"`
+	CachedTokens    int64                    `json:"cachedTokens,omitempty"`
+	TotalTokens     int64                    `json:"totalTokens,omitempty"`
+	TokenBreakdown  coreusage.TokenBreakdown `json:"tokenBreakdown,omitempty"`
 }
 
 type usageFinalizeInput struct {
@@ -2176,42 +2178,59 @@ func (s *backupAccountSelector) Pick(ctx context.Context, provider, model string
 	if s == nil || s.fallback == nil {
 		return nil, fmt.Errorf("backup account selector is not initialized")
 	}
-	if s.manifest == nil || !strings.EqualFold(strings.TrimSpace(s.manifest.RoutingStrategy), "custom") {
+	if s.manifest == nil {
 		return s.fallback.Pick(ctx, provider, model, opts, auths)
 	}
 
 	now := time.Now()
+	preferred := make([]*coreauth.Auth, 0)
 	regular := make([]*coreauth.Auth, 0, len(auths))
 	backup := make([]*coreauth.Auth, 0)
+	preferredAvailable := false
 	regularAvailable := false
 	for _, auth := range auths {
-		if s.isBackupAuth(auth) {
+		switch s.authUsagePriority(auth) {
+		case 1:
+			preferred = append(preferred, auth)
+			if authAvailable(auth, model, now) {
+				preferredAvailable = true
+			}
+		case -1:
 			backup = append(backup, auth)
-			continue
-		}
-		regular = append(regular, auth)
-		if authAvailable(auth, model, now) {
-			regularAvailable = true
+		default:
+			regular = append(regular, auth)
+			if authAvailable(auth, model, now) {
+				regularAvailable = true
+			}
 		}
 	}
 
+	if preferredAvailable {
+		return s.fallback.Pick(ctx, provider, model, opts, preferred)
+	}
 	if regularAvailable || len(backup) == 0 {
 		return s.fallback.Pick(ctx, provider, model, opts, regular)
 	}
 	return s.fallback.Pick(ctx, provider, model, opts, backup)
 }
 
-func (s *backupAccountSelector) isBackupAuth(auth *coreauth.Auth) bool {
+func (s *backupAccountSelector) authUsagePriority(auth *coreauth.Auth) int {
 	account := accountForAuthInManifest(s.manifest, auth)
 	if account == nil {
-		return false
+		return 0
 	}
 	for _, rule := range s.manifest.CustomRoutingRules {
 		if rule.AccountID == account.ID {
-			return rule.IsBackup
+			if rule.IsPreferred {
+				return 1
+			}
+			if rule.IsBackup {
+				return -1
+			}
+			return 0
 		}
 	}
-	return false
+	return 0
 }
 
 func (s *backupAccountSelector) Stop() {
@@ -2874,6 +2893,7 @@ func (p *usagePlugin) HandleUsage(ctx context.Context, record coreusage.Record) 
 			ReasoningTokens: record.Detail.ReasoningTokens,
 			CachedTokens:    record.Detail.CachedTokens,
 			TotalTokens:     record.Detail.TotalTokens,
+			TokenBreakdown:  record.Detail.TokenBreakdown,
 		},
 		RequestedAtMS: record.RequestedAt.UnixMilli(),
 	})

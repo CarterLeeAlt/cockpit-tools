@@ -1142,30 +1142,6 @@ export function CodebuddySuiteAccountsSharedView<
         </div>
       ) : viewMode === "grid" ? (
         <div className="grid-view-container">
-          {paginatedAccounts.length > 0 && (
-            <div
-              className="grid-view-header"
-              style={{ marginBottom: "12px", paddingLeft: "4px" }}
-            >
-              <label
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  color: "var(--text-color)",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={isAllPaginatedSelected}
-                  onChange={() => toggleSelectAll(paginatedIds)}
-                />
-                {t("common.selectAll", "全选")}
-              </label>
-            </div>
-          )}
           {groupByTag ? (
             <div className="tag-group-list">
               {paginatedGroupedAccounts.map(

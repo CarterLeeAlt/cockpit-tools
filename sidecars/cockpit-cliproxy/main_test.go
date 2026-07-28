@@ -1537,6 +1537,72 @@ func TestBackupAccountSelectorOverridesCachedAffinityWhenRegularRecovers(t *test
 	}
 }
 
+func TestUsagePrioritySelectorPrefersHighestAcrossRoutingStrategies(t *testing.T) {
+	preferredAccount := &accountSpec{ID: "preferred", AuthID: "preferred.json"}
+	regularAccount := &accountSpec{ID: "regular", AuthID: "regular.json"}
+	backupAccount := &accountSpec{ID: "backup", AuthID: "backup.json"}
+	m := &manifest{
+		Accounts:        []accountSpec{*preferredAccount, *regularAccount, *backupAccount},
+		RoutingStrategy: "auto",
+		CustomRoutingRules: []customRoutingRule{
+			{AccountID: "preferred", IsPreferred: true},
+			{AccountID: "regular"},
+			{AccountID: "backup", IsBackup: true},
+		},
+		accountByID: map[string]*accountSpec{
+			"preferred": preferredAccount,
+			"regular":   regularAccount,
+			"backup":    backupAccount,
+		},
+		accountByAuthID: map[string]*accountSpec{
+			"preferred.json": preferredAccount,
+			"regular.json":   regularAccount,
+			"backup.json":    backupAccount,
+		},
+		originalIndexByID: map[string]int{"preferred": 0, "regular": 1, "backup": 2},
+	}
+	cfg := &config.Config{}
+	cfg.Routing.SessionAffinity = true
+	cfg.Routing.SessionAffinityTTL = time.Minute.String()
+	selector := buildCoreAuthSelector(cfg, &cockpitSelector{manifest: m}, m, nil)
+	if stoppable, ok := selector.(coreauth.StoppableSelector); ok {
+		defer stoppable.Stop()
+	}
+
+	preferredAuth := &coreauth.Auth{
+		ID:             "preferred.json",
+		Unavailable:    true,
+		NextRetryAfter: time.Now().Add(time.Minute),
+	}
+	regularAuth := &coreauth.Auth{ID: "regular.json"}
+	backupAuth := &coreauth.Auth{ID: "backup.json"}
+	auths := []*coreauth.Auth{preferredAuth, regularAuth, backupAuth}
+	opts := cliproxyexecutor.Options{
+		OriginalRequest: []byte(`{"metadata":{"user_id":"user_xxx_account__session_c425b37d-e64d-4798-aef9-c8b0402fd713"}}`),
+	}
+
+	selected, err := selector.Pick(context.Background(), "codex", "gpt-5.4", opts, auths)
+	if err != nil || selected == nil || selected.ID != "regular.json" {
+		t.Fatalf("expected regular while preferred is unavailable, got auth=%#v err=%v", selected, err)
+	}
+
+	preferredAuth.Unavailable = false
+	preferredAuth.NextRetryAfter = time.Time{}
+	selected, err = selector.Pick(context.Background(), "codex", "gpt-5.4", opts, auths)
+	if err != nil || selected == nil || selected.ID != "preferred.json" {
+		t.Fatalf("expected recovered preferred auth to override regular affinity, got auth=%#v err=%v", selected, err)
+	}
+
+	preferredAuth.Unavailable = true
+	preferredAuth.NextRetryAfter = time.Now().Add(time.Minute)
+	regularAuth.Unavailable = true
+	regularAuth.NextRetryAfter = time.Now().Add(time.Minute)
+	selected, err = selector.Pick(context.Background(), "codex", "gpt-5.4", opts, auths)
+	if err != nil || selected == nil || selected.ID != "backup.json" {
+		t.Fatalf("expected backup when preferred and regular are unavailable, got auth=%#v err=%v", selected, err)
+	}
+}
+
 func int64PointerForTest(value int64) *int64 {
 	return &value
 }

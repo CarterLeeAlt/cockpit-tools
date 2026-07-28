@@ -298,6 +298,8 @@ pub struct GeneralConfig {
     pub claude_quota_alert_enabled: bool,
     /// Claude 配额预警阈值（百分比）
     pub claude_quota_alert_threshold: i32,
+    /// Claude 额度 UI 是否显示「剩余%」（默认 false，保持历史「已用%」）
+    pub claude_quota_display_remaining: bool,
     /// 是否启用 CodeBuddy 配额预警通知
     pub codebuddy_quota_alert_enabled: bool,
     /// CodeBuddy 配额预警阈值（百分比）
@@ -1148,6 +1150,7 @@ fn is_general_config_patch_field(key: &str) -> bool {
             | "grok_quota_alert_threshold"
             | "claude_quota_alert_enabled"
             | "claude_quota_alert_threshold"
+            | "claude_quota_display_remaining"
             | "codebuddy_quota_alert_enabled"
             | "codebuddy_quota_alert_threshold"
             | "codebuddy_cn_quota_alert_enabled"
@@ -2672,6 +2675,7 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         grok_quota_alert_threshold: user_config.grok_quota_alert_threshold,
         claude_quota_alert_enabled: user_config.claude_quota_alert_enabled,
         claude_quota_alert_threshold: user_config.claude_quota_alert_threshold,
+        claude_quota_display_remaining: user_config.claude_quota_display_remaining,
         codebuddy_quota_alert_enabled: user_config.codebuddy_quota_alert_enabled,
         codebuddy_quota_alert_threshold: user_config.codebuddy_quota_alert_threshold,
         codebuddy_cn_quota_alert_enabled: user_config.codebuddy_cn_quota_alert_enabled,
@@ -3047,6 +3051,7 @@ pub fn save_general_config(
     grok_quota_alert_threshold: Option<i32>,
     claude_quota_alert_enabled: Option<bool>,
     claude_quota_alert_threshold: Option<i32>,
+    claude_quota_display_remaining: Option<bool>,
     codebuddy_quota_alert_enabled: Option<bool>,
     codebuddy_quota_alert_threshold: Option<i32>,
     codebuddy_cn_quota_alert_enabled: Option<bool>,
@@ -3493,6 +3498,9 @@ pub fn save_general_config(
         }
         if let Some(value) = claude_quota_alert_threshold {
             current.claude_quota_alert_threshold = value;
+        }
+        if let Some(value) = claude_quota_display_remaining {
+            current.claude_quota_display_remaining = value;
         }
         if let Some(value) = codebuddy_quota_alert_enabled {
             current.codebuddy_quota_alert_enabled = value;

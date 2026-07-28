@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "WebDAV 網域白名單",
       "webdavAllowedDomainsDesc": "逗號分隔；留空不限制",
       "claudeQuotaDisplayRemaining": "Claude 額度顯示剩餘%",
-      "claudeQuotaDisplayRemainingDesc": "預設顯示已用百分比；開啟後改為顯示剩餘百分比。自動切號與預警仍依已用比例計算。"
+      "claudeQuotaDisplayRemainingDesc": "預設顯示已用百分比；開啟後改為顯示剩餘百分比。自動切號與預警仍依已用比例計算。",
+      "menuBarQuota": "選單列顯示即時額度",
+      "menuBarQuotaDesc": "啟用後在選單列圖示旁顯示所選平台目前帳號的剩餘額度；平台等專屬選項在彈窗中設定",
+      "menuBarQuotaEnabledDesc": "已啟用 · {{platform}} · 顯示該平台目前帳號剩餘額度（多條取最低）",
+      "menuBarQuotaConfigure": "設定",
+      "menuBarQuotaModalTitle": "選單列額度",
+      "menuBarQuotaModalDesc": "以下為選單列額度的專屬選項：跟隨所選平台目前帳號。Codex 目前為 API 服務時顯示「API + 池剩餘%」；API Key 帳號顯示「API + 剩餘額度」；一般帳號顯示信箱前綴與剩餘%（多條取最低；低紅、中橙、高綠）。",
+      "menuBarQuotaPlatform": "額度帳號平台",
+      "menuBarQuotaPlatformDesc": "跟隨該平台目前正在使用的帳號，重新整理或切換後自動更新",
+      "menuBarAccountPrefix": "顯示帳號信箱前 4 碼",
+      "menuBarAccountPrefixDesc": "僅一般帳號：關閉後不顯示信箱前綴。Codex API 服務 / API Key 仍會顯示 API 標籤",
+      "menuBarQuotaConfirmEnable": "啟用"
     },
     "network": {
       "apiTitle": "反重力駕駛艙 API",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Agent Identity 帳號僅支援 API 服務，無法作為一般帳號切換或啟動。",
       "oauthBindingUnsupported": "Agent Identity 帳號僅供 API 服務使用，不能作為 OAuth 綁定帳號。"
     },
+    "webSessionImport": {
+      "noticeTitle": "Web Session 匯入須知",
+      "noticeMessage": "偵測到 {{count}} 個 Web Session 帳號。此格式不支援實際使用，僅支援查看額度。",
+      "noticeQuotaOnly": "僅支援查看額度，不能啟動官方用戶端或 CLI，也不能切換帳號。",
+      "noticeNoApi": "不能加入 Codex API 服務帳號池，也不能作為 OAuth 綁定帳號。",
+      "noticeConfirm": "已知悉，繼續匯入",
+      "actionBlocked": "Web Session 帳號僅支援查看額度，無法切換或啟動。",
+      "apiIneligible": "Web Session 僅支援查看額度，不能加入 API 服務",
+      "oauthBindingUnsupported": "Web Session 帳號僅支援查看額度，不能作為 OAuth 綁定帳號。"
+    },
     "exportFormat": {
       "label": "匯出格式",
       "cockpitTools": "Cockpit Tools",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} 個帳號 · {{scope}}",
       "summaryMetaUnconfigured": "未設定 · {{scope}}",
       "memberTitle": "集合成員",
+      "memberPriorityLabel": "優先級",
+      "memberPriorityLowest": "最低",
+      "memberPriorityNormal": "一般",
+      "memberPriorityHighest": "最高",
+      "memberPriorityDesc": "最高會優先使用，一般依目前規則排程，最低僅在其他帳號無法使用時採用。",
       "stats": {
         "requests": "總請求數",
         "requestsDetail": "成功 {{success}} / 失敗 {{failed}} / 取消 {{canceled}} / 上游失敗 {{upstreamFailed}} / 未完成 {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "汽車"
     },
     "exportAuthFailed": "匯出失敗帳號",
-    "exportAuthFailedTitle": "匯出全部授權失敗帳號",
-    "webSessionImport": {
-      "noticeTitle": "Web Session 匯入須知",
-      "noticeMessage": "偵測到 {{count}} 個 Web Session 帳號。此格式不支援實際使用，僅支援查看額度。",
-      "noticeQuotaOnly": "僅支援查看額度，不能啟動官方用戶端或 CLI，也不能切換帳號。",
-      "noticeNoApi": "不能加入 Codex API 服務帳號池，也不能作為 OAuth 綁定帳號。",
-      "noticeConfirm": "已知悉，繼續匯入",
-      "actionBlocked": "Web Session 帳號僅支援查看額度，無法切換或啟動。",
-      "apiIneligible": "Web Session 僅支援查看額度，不能加入 API 服務",
-      "oauthBindingUnsupported": "Web Session 帳號僅支援查看額度，不能作為 OAuth 綁定帳號。"
-    }
+    "exportAuthFailedTitle": "匯出全部授權失敗帳號"
   },
   "githubCopilot": {
     "title": "GitHub Copilot 帳號管理",

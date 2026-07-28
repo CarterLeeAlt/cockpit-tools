@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Lista blanca WebDAV",
       "webdavAllowedDomainsDesc": "Separado por comas; vacío = sin límite",
       "claudeQuotaDisplayRemaining": "Cuota Claude como % restante",
-      "claudeQuotaDisplayRemainingDesc": "Por defecto: % usado. Activar = % restante. Cambio automático y alertas siguen el uso."
+      "claudeQuotaDisplayRemainingDesc": "Por defecto: % usado. Activar = % restante. Cambio automático y alertas siguen el uso.",
+      "menuBarQuota": "Cuota en vivo en la barra de menús",
+      "menuBarQuotaDesc": "Al activarlo, muestra la cuota restante de la cuenta actual de la plataforma elegida junto al icono. Las opciones de plataforma van en un diálogo.",
+      "menuBarQuotaEnabledDesc": "Activo · {{platform}} · restante de la cuenta actual de esa plataforma (la más baja)",
+      "menuBarQuotaConfigure": "Configurar",
+      "menuBarQuotaModalTitle": "Cuota de la barra de menús",
+      "menuBarQuotaModalDesc": "Opciones solo de esta función: sigue la cuenta actual. Servicio API de Codex: «API + % restante del pool»; cuenta API Key: «API + saldo restante»; normal: prefijo de correo + % restante (la más baja; rojo/naranja/verde).",
+      "menuBarQuotaPlatform": "Plataforma de la cuenta",
+      "menuBarQuotaPlatformDesc": "Usa la cuenta activa de esa plataforma; se actualiza al refrescar o cambiar",
+      "menuBarAccountPrefix": "Primeros 4 del correo",
+      "menuBarAccountPrefixDesc": "Solo cuentas normales: desactivado oculta el prefijo de correo. El servicio API de Codex / API Key siguen mostrando API",
+      "menuBarQuotaConfirmEnable": "Activar"
     },
     "network": {
       "apiTitle": "API de cabina antigravedad",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Las cuentas Agent Identity solo están disponibles mediante el Servicio API y no se pueden cambiar ni iniciar directamente.",
       "oauthBindingUnsupported": "Las cuentas Agent Identity son exclusivas del Servicio API y no se pueden usar como cuentas vinculadas mediante OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Aviso importación Web Session",
+      "noticeMessage": "{{count}} Web Session. Sin uso real; solo cuota.",
+      "noticeQuotaOnly": "Solo cuota. Sin cliente/CLI/cambio de cuenta.",
+      "noticeNoApi": "Sin pool API ni enlace OAuth.",
+      "noticeConfirm": "Entendido, continuar",
+      "actionBlocked": "Web Session solo cuota; no cambiar ni iniciar.",
+      "apiIneligible": "Web Session solo cuota; sin API",
+      "oauthBindingUnsupported": "Web Session no sirve para OAuth."
+    },
     "exportFormat": {
       "label": "Formato de exportación",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} cuentas · {{scope}}",
       "summaryMetaUnconfigured": "Sin configurar · {{scope}}",
       "memberTitle": "Miembros de la colección",
+      "memberPriorityLabel": "Prioridad",
+      "memberPriorityLowest": "Mínima",
+      "memberPriorityNormal": "Estándar",
+      "memberPriorityHighest": "Máxima",
+      "memberPriorityDesc": "Máxima se usa primero; Estándar sigue las reglas actuales; Mínima solo se usa si las demás cuentas no están disponibles.",
       "stats": {
         "requests": "Solicitudes",
         "requestsDetail": "OK {{success}} / Fallo {{failed}} / Canc. {{canceled}} / Origen {{upstreamFailed}} / Incomp. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Automático"
     },
     "exportAuthFailed": "Exportar fallos",
-    "exportAuthFailedTitle": "Exportar todas las cuentas con fallo de auth",
-    "webSessionImport": {
-      "noticeTitle": "Aviso importación Web Session",
-      "noticeMessage": "{{count}} Web Session. Sin uso real; solo cuota.",
-      "noticeQuotaOnly": "Solo cuota. Sin cliente/CLI/cambio de cuenta.",
-      "noticeNoApi": "Sin pool API ni enlace OAuth.",
-      "noticeConfirm": "Entendido, continuar",
-      "actionBlocked": "Web Session solo cuota; no cambiar ni iniciar.",
-      "apiIneligible": "Web Session solo cuota; sin API",
-      "oauthBindingUnsupported": "Web Session no sirve para OAuth."
-    }
+    "exportAuthFailedTitle": "Exportar todas las cuentas con fallo de auth"
   },
   "githubCopilot": {
     "title": "Gestión de cuentas de GitHub Copilot",

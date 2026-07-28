@@ -25,6 +25,7 @@ export interface CodexLocalAccessCustomRoutingRule {
   priority: number;
   weight: number;
   isBackup: boolean;
+  isPreferred: boolean;
 }
 
 export interface CodexLocalAccessOAuthQuotaReserve {
@@ -197,6 +198,28 @@ export interface CodexLocalAccessStatsWindow {
   apiKeys: CodexLocalAccessApiKeyStats[];
 }
 
+export interface CodexTokenInputBreakdown {
+  total_tokens: number;
+  uncached_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+}
+
+export interface CodexTokenOutputBreakdown {
+  total_tokens: number;
+  non_reasoning_tokens: number;
+  reasoning_tokens: number;
+}
+
+export interface CodexTokenBreakdown {
+  schema_version: number;
+  quality: string;
+  total_tokens: number;
+  input: CodexTokenInputBreakdown;
+  output: CodexTokenOutputBreakdown;
+  unclassified_tokens: number;
+}
+
 export interface CodexLocalAccessUsageEvent {
   timestamp: number;
   requestId: string;
@@ -220,6 +243,7 @@ export interface CodexLocalAccessUsageEvent {
   totalTokens: number;
   cachedTokens: number;
   reasoningTokens: number;
+  tokenBreakdown?: CodexTokenBreakdown | null;
   estimatedCostUsd: number;
   modelPricingVersion: number;
   inputUsdPerMillion: number;
@@ -339,7 +363,8 @@ export interface CodexLocalAccessAppendAccountSkipped {
     | "not_found"
     | "chat_completions_api_key"
     | "free_restricted"
-    | "pending_oauth";
+    | "pending_oauth"
+    | "web_session_quota_only";
 }
 
 export interface CodexLocalAccessAppendAccountsResult {

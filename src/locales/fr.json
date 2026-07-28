@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Liste blanche domaines WebDAV",
       "webdavAllowedDomainsDesc": "Séparés par des virgules ; vide = sans limite",
       "claudeQuotaDisplayRemaining": "Quota Claude en % restant",
-      "claudeQuotaDisplayRemainingDesc": "Par défaut : % utilisé. Activer = % restant. Bascules/alertes restent sur l’usage."
+      "claudeQuotaDisplayRemainingDesc": "Par défaut : % utilisé. Activer = % restant. Bascules/alertes restent sur l’usage.",
+      "menuBarQuota": "Quota en direct dans la barre de menus",
+      "menuBarQuotaDesc": "Une fois activé, affiche le quota restant du compte actuel de la plateforme choisie à côté de l’icône. Options de plateforme dans une boîte de dialogue.",
+      "menuBarQuotaEnabledDesc": "Activé · {{platform}} · restant du compte actuel de cette plateforme (plus bas des quotas)",
+      "menuBarQuotaConfigure": "Configurer",
+      "menuBarQuotaModalTitle": "Quota barre de menus",
+      "menuBarQuotaModalDesc": "Options réservées au quota de la barre de menus : suit le compte actuel. Service API Codex : « API + % restant du pool » ; compte clé API : « API + solde restant » ; compte normal : préfixe e-mail + % restant (le plus bas ; rouge/orange/vert).",
+      "menuBarQuotaPlatform": "Plateforme du compte",
+      "menuBarQuotaPlatformDesc": "Suit le compte actif de cette plateforme ; se met à jour après actualisation ou bascule",
+      "menuBarAccountPrefix": "4 premiers caractères e-mail",
+      "menuBarAccountPrefixDesc": "Comptes normaux uniquement : désactivé masque le préfixe e-mail. Service API Codex / clé API gardent le libellé API",
+      "menuBarQuotaConfirmEnable": "Activer"
     },
     "network": {
       "apiTitle": "API du cockpit antigravité",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Les comptes Agent Identity sont disponibles uniquement via le service API et ne peuvent pas être activés ou lancés directement.",
       "oauthBindingUnsupported": "Les comptes Agent Identity sont réservés au service API et ne peuvent pas servir de comptes liés via OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Avis import Web Session",
+      "noticeMessage": "{{count}} Web Session. Usage non supporté, quota seulement.",
+      "noticeQuotaOnly": "Quota seul. Pas de client/CLI/changement de compte.",
+      "noticeNoApi": "Pas de pool API ni liaison OAuth.",
+      "noticeConfirm": "Compris, continuer",
+      "actionBlocked": "Web Session : quota seul, pas de bascule/lancement.",
+      "apiIneligible": "Web Session : quota seul, hors API",
+      "oauthBindingUnsupported": "Web Session non utilisable en OAuth."
+    },
     "exportFormat": {
       "label": "Format d’export",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} comptes · {{scope}}",
       "summaryMetaUnconfigured": "Non configuré · {{scope}}",
       "memberTitle": "Membres de la collection",
+      "memberPriorityLabel": "Priorité",
+      "memberPriorityLowest": "Basse",
+      "memberPriorityNormal": "Normale",
+      "memberPriorityHighest": "Haute",
+      "memberPriorityDesc": "Haute est utilisée en priorité, Normale suit les règles actuelles et Basse ne sert que si les autres comptes sont indisponibles.",
       "stats": {
         "requests": "Requêtes",
         "requestsDetail": "OK {{success}} / Échec {{failed}} / Annul. {{canceled}} / Amont {{upstreamFailed}} / Incomp. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Automatique"
     },
     "exportAuthFailed": "Exporter échecs",
-    "exportAuthFailedTitle": "Exporter tous les comptes en échec d’auth",
-    "webSessionImport": {
-      "noticeTitle": "Avis import Web Session",
-      "noticeMessage": "{{count}} Web Session. Usage non supporté, quota seulement.",
-      "noticeQuotaOnly": "Quota seul. Pas de client/CLI/changement de compte.",
-      "noticeNoApi": "Pas de pool API ni liaison OAuth.",
-      "noticeConfirm": "Compris, continuer",
-      "actionBlocked": "Web Session : quota seul, pas de bascule/lancement.",
-      "apiIneligible": "Web Session : quota seul, hors API",
-      "oauthBindingUnsupported": "Web Session non utilisable en OAuth."
-    }
+    "exportAuthFailedTitle": "Exporter tous les comptes en échec d’auth"
   },
   "githubCopilot": {
     "title": "Gestion des comptes GitHub Copilot",

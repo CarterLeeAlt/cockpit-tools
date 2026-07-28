@@ -43,6 +43,7 @@ import {
   loadCurrentAccountRefreshMinutesMap,
   saveCurrentAccountRefreshMinutesMap,
 } from '../utils/currentAccountRefresh';
+import { setClaudeQuotaDisplayRemainingEnabled } from '../utils/claudeQuotaDisplayPreference';
 import type { Account } from '../types/account';
 import type { CodexAccount, CodexQuickConfig } from '../types/codex';
 import { getDisplayGroups, type DisplayGroup } from '../services/groupService';
@@ -155,6 +156,7 @@ interface GeneralConfig {
   grok_quota_alert_threshold: number;
   claude_quota_alert_enabled: boolean;
   claude_quota_alert_threshold: number;
+  claude_quota_display_remaining?: boolean;
   codebuddy_quota_alert_enabled: boolean;
   codebuddy_quota_alert_threshold: number;
   codebuddy_cn_quota_alert_enabled: boolean;
@@ -909,6 +911,9 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
       }
       configRef.current = cfg;
       setConfig(cfg);
+      setClaudeQuotaDisplayRemainingEnabled(
+        Boolean(cfg.claude_quota_display_remaining),
+      );
       setAutoSwitchDisplayGroups(groups);
       setAntigravityAccounts(nextAntigravityAccounts || []);
       setAntigravityAccountGroups(nextAntigravityGroups || []);
@@ -3349,6 +3354,52 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                   <span>{t('quickSettings.quotaAlert.enable', '超额预警')}</span>
                 </div>
                 {renderQuotaAlertControls()}
+              </div>
+            )}
+
+            {type === 'claude' && config && (
+              <div className="qs-section">
+                <div className="qs-section-header">
+                  <Zap size={15} />
+                  <span>
+                    {t(
+                      'settings.general.claudeQuotaDisplayRemaining',
+                      'Claude 额度显示剩余%',
+                    )}
+                  </span>
+                </div>
+                <div className="qs-row">
+                  <div className="qs-row-label">
+                    <span>
+                      {t(
+                        'settings.general.claudeQuotaDisplayRemaining',
+                        'Claude 额度显示剩余%',
+                      )}
+                    </span>
+                  </div>
+                  <div className="qs-row-control">
+                    <label className="qs-switch">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(config.claude_quota_display_remaining)}
+                        onChange={(e) => {
+                          const enabled = e.target.checked;
+                          setClaudeQuotaDisplayRemainingEnabled(enabled);
+                          void saveConfig({
+                            claude_quota_display_remaining: enabled,
+                          });
+                        }}
+                      />
+                      <span className="qs-switch-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <div className="qs-hint">
+                  {t(
+                    'settings.general.claudeQuotaDisplayRemainingDesc',
+                    '默认显示已用百分比；开启后改为显示剩余百分比。自动切号与预警仍按已用比例计算。',
+                  )}
+                </div>
               </div>
             )}
           </div>

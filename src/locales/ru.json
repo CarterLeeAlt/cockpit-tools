@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Белый список WebDAV",
       "webdavAllowedDomainsDesc": "Через запятую; пусто = без ограничений",
       "claudeQuotaDisplayRemaining": "Квота Claude как % остатка",
-      "claudeQuotaDisplayRemainingDesc": "По умолчанию % использования. Вкл. = остаток. Авто-смена и алерты по использованию."
+      "claudeQuotaDisplayRemainingDesc": "По умолчанию % использования. Вкл. = остаток. Авто-смена и алерты по использованию.",
+      "menuBarQuota": "Квота в строке меню",
+      "menuBarQuotaDesc": "При включении показывает остаток квоты текущего аккаунта выбранной платформы рядом с иконкой. Параметры платформы — в диалоге.",
+      "menuBarQuotaEnabledDesc": "Вкл. · {{platform}} · остаток текущего аккаунта этой платформы (минимум из квот)",
+      "menuBarQuotaConfigure": "Настроить",
+      "menuBarQuotaModalTitle": "Квота строки меню",
+      "menuBarQuotaModalDesc": "Только для этой функции: следует текущему аккаунту. API-сервис Codex: «API + % остатка пула»; API Key: «API + остаток»; обычный: префикс почты + % остатка (минимум; красный/оранжевый/зелёный).",
+      "menuBarQuotaPlatform": "Платформа аккаунта",
+      "menuBarQuotaPlatformDesc": "Берёт активный аккаунт этой платформы; обновляется после обновления или смены",
+      "menuBarAccountPrefix": "Первые 4 символа почты",
+      "menuBarAccountPrefixDesc": "Только обычные аккаунты: выкл. скрывает префикс почты. API-сервис Codex / API Key по-прежнему показывают API",
+      "menuBarQuotaConfirmEnable": "Включить"
     },
     "network": {
       "apiTitle": "API антигравитационной кабины",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Аккаунты Agent Identity доступны только через API-сервис; на них нельзя напрямую переключиться или запустить их.",
       "oauthBindingUnsupported": "Аккаунты Agent Identity предназначены только для API-сервиса и не могут использоваться как аккаунты, привязанные через OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Импорт Web Session",
+      "noticeMessage": "{{count}} Web Session. Только просмотр квоты.",
+      "noticeQuotaOnly": "Только квота. Без клиента/CLI/смены.",
+      "noticeNoApi": "Не в API-пул и не OAuth.",
+      "noticeConfirm": "Понятно, продолжить",
+      "actionBlocked": "Web Session только квота.",
+      "apiIneligible": "Web Session только квота, без API",
+      "oauthBindingUnsupported": "Web Session нельзя для OAuth."
+    },
     "exportFormat": {
       "label": "Формат экспорта",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} аккаунтов · {{scope}}",
       "summaryMetaUnconfigured": "Не настроено · {{scope}}",
       "memberTitle": "Участники коллекции",
+      "memberPriorityLabel": "Приоритет",
+      "memberPriorityLowest": "Низкий",
+      "memberPriorityNormal": "Обычный",
+      "memberPriorityHighest": "Высокий",
+      "memberPriorityDesc": "Высокий используется первым, обычный — по текущим правилам, низкий — только когда другие аккаунты недоступны.",
       "stats": {
         "requests": "Запросы",
         "requestsDetail": "ОК {{success}} / Ошибка {{failed}} / Отмена {{canceled}} / Источник {{upstreamFailed}} / Неполн. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Авто"
     },
     "exportAuthFailed": "Экспорт сбоев",
-    "exportAuthFailedTitle": "Экспорт всех аккаунтов с ошибкой auth",
-    "webSessionImport": {
-      "noticeTitle": "Импорт Web Session",
-      "noticeMessage": "{{count}} Web Session. Только просмотр квоты.",
-      "noticeQuotaOnly": "Только квота. Без клиента/CLI/смены.",
-      "noticeNoApi": "Не в API-пул и не OAuth.",
-      "noticeConfirm": "Понятно, продолжить",
-      "actionBlocked": "Web Session только квота.",
-      "apiIneligible": "Web Session только квота, без API",
-      "oauthBindingUnsupported": "Web Session нельзя для OAuth."
-    }
+    "exportAuthFailedTitle": "Экспорт всех аккаунтов с ошибкой auth"
   },
   "githubCopilot": {
     "title": "Управление аккаунтами GitHub Copilot",

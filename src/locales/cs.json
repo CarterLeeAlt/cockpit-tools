@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Whitelist domén WebDAV",
       "webdavAllowedDomainsDesc": "Oddělené čárkou; prázdné = bez limitu",
       "claudeQuotaDisplayRemaining": "Claude kvóta jako zbývající %",
-      "claudeQuotaDisplayRemainingDesc": "Výchozí: % využito. Zapnout = % zbývá. Auto-přepínání a výstrahy dle využití."
+      "claudeQuotaDisplayRemainingDesc": "Výchozí: % využito. Zapnout = % zbývá. Auto-přepínání a výstrahy dle využití.",
+      "menuBarQuota": "Živá kvóta v řádku nabídek",
+      "menuBarQuotaDesc": "Po zapnutí zobrazí zbývající kvótu aktuálního účtu zvolené platformy vedle ikony. Možnosti platformy v dialogu.",
+      "menuBarQuotaEnabledDesc": "Zapnuto · {{platform}} · zbývající u aktuálního účtu této platformy (nejnižší z kvót)",
+      "menuBarQuotaConfigure": "Nastavit",
+      "menuBarQuotaModalTitle": "Kvóta řádku nabídek",
+      "menuBarQuotaModalDesc": "Jen volby této funkce: sleduje aktuální účet. Codex API služba: „API + % fondu“; API Key účet: „API + zbývající zůstatek“; běžný: prefix e-mailu + % (nejnižší; červená/oranžová/zelená).",
+      "menuBarQuotaPlatform": "Platforma účtu",
+      "menuBarQuotaPlatformDesc": "Používá aktivní účet této platformy; aktualizuje po obnovení nebo přepnutí",
+      "menuBarAccountPrefix": "První 4 znaky e-mailu",
+      "menuBarAccountPrefixDesc": "Jen běžné účty: vypnuto skryje prefix e-mailu. Codex API služba / API Key stále ukazují API",
+      "menuBarQuotaConfirmEnable": "Zapnout"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API​",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Účty Agent Identity jsou dostupné pouze přes službu API a nelze na ně přímo přepnout ani je spustit.",
       "oauthBindingUnsupported": "Účty Agent Identity jsou určeny pouze pro službu API a nelze je použít jako účty svázané přes OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Import Web Session",
+      "noticeMessage": "{{count}} Web Session. Pouze kvóta, ne pro běh.",
+      "noticeQuotaOnly": "Jen kvóta. Bez klienta/CLI/přepnutí.",
+      "noticeNoApi": "Ne do API poolu ani OAuth.",
+      "noticeConfirm": "Rozumím, pokračovat",
+      "actionBlocked": "Web Session jen kvóta.",
+      "apiIneligible": "Web Session jen kvóta, ne API",
+      "oauthBindingUnsupported": "Web Session ne pro OAuth."
+    },
     "exportFormat": {
       "label": "Formát exportu",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} účtů · {{scope}}",
       "summaryMetaUnconfigured": "Nenastaveno · {{scope}}",
       "memberTitle": "Členové kolekce",
+      "memberPriorityLabel": "Priorita",
+      "memberPriorityLowest": "Nejnižší",
+      "memberPriorityNormal": "Běžná",
+      "memberPriorityHighest": "Nejvyšší",
+      "memberPriorityDesc": "Nejvyšší se použije přednostně, běžná se řídí aktuálními pravidly a nejnižší jen tehdy, když ostatní účty nejsou dostupné.",
       "stats": {
         "requests": "Požadavky",
         "requestsDetail": "OK {{success}} / Chyba {{failed}} / Zruš. {{canceled}} / Zdroj {{upstreamFailed}} / Nedok. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Automaticky"
     },
     "exportAuthFailed": "Export chyb",
-    "exportAuthFailedTitle": "Exportovat všechny účty s chybou auth",
-    "webSessionImport": {
-      "noticeTitle": "Import Web Session",
-      "noticeMessage": "{{count}} Web Session. Pouze kvóta, ne pro běh.",
-      "noticeQuotaOnly": "Jen kvóta. Bez klienta/CLI/přepnutí.",
-      "noticeNoApi": "Ne do API poolu ani OAuth.",
-      "noticeConfirm": "Rozumím, pokračovat",
-      "actionBlocked": "Web Session jen kvóta.",
-      "apiIneligible": "Web Session jen kvóta, ne API",
-      "oauthBindingUnsupported": "Web Session ne pro OAuth."
-    }
+    "exportAuthFailedTitle": "Exportovat všechny účty s chybou auth"
   },
   "githubCopilot": {
     "title": "Správa účtů GitHub Copilot",

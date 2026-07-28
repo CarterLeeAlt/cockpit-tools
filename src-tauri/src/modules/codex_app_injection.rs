@@ -14,8 +14,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "macos")]
+use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
+#[cfg(not(target_os = "macos"))]
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use tauri::AppHandle;
 use tokio::sync::Mutex as TokioMutex;
 use tokio::task::JoinSet;
@@ -112,6 +116,133 @@ pub fn enabled_for_app() -> bool {
 
 pub fn supports_bind_account(bind_account_id: Option<&str>) -> bool {
     bind_account_id.is_some_and(crate::modules::codex_instance::is_api_service_bind_account_id)
+}
+
+fn remote_debugging_port_from_command_line(command_line: &str) -> Option<u16> {
+    let mut tokens = command_line.split_whitespace();
+    while let Some(token) = tokens.next() {
+        let token = token.trim_matches(['"', '\'']);
+        if token == "--remote-debugging-port" {
+            return tokens
+                .next()
+                .map(|value| value.trim_matches(['"', '\'']))
+                .and_then(|value| value.parse::<u16>().ok())
+                .filter(|port| *port > 0);
+        }
+        if let Some(value) = token.strip_prefix("--remote-debugging-port=") {
+            return value
+                .trim_matches(['"', '\''])
+                .parse::<u16>()
+                .ok()
+                .filter(|port| *port > 0);
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "macos")]
+fn remote_debugging_port_for_pid(pid: u32) -> Option<u16> {
+    let output = Command::new("ps")
+        .args(["-ww", "-p", &pid.to_string(), "-o", "command="])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    remote_debugging_port_from_command_line(&String::from_utf8_lossy(&output.stdout))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn remote_debugging_port_for_pid(pid: u32) -> Option<u16> {
+    let pid = Pid::from_u32(pid);
+    let mut system = System::new();
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&[pid]),
+        true,
+        ProcessRefreshKind::nothing().with_cmd(UpdateKind::OnlyIfNotSet),
+    );
+    let command_line = system
+        .process(pid)?
+        .cmd()
+        .iter()
+        .map(|value| value.to_string_lossy())
+        .collect::<Vec<_>>()
+        .join(" ");
+    remote_debugging_port_from_command_line(&command_line)
+}
+
+pub fn restore_running_profiles(app: AppHandle) -> Result<usize, String> {
+    if !enabled_for_app() {
+        return Ok(0);
+    }
+
+    let store = crate::modules::codex_instance::load_instance_store()?;
+    let default_dir = crate::modules::codex_instance::get_default_codex_home()?;
+    let process_entries = crate::modules::process::collect_codex_process_entries();
+    let mut candidates = Vec::new();
+
+    if store.default_settings.launch_mode == crate::models::InstanceLaunchMode::App
+        && supports_bind_account(store.default_settings.bind_account_id.as_deref())
+    {
+        if let Some(pid) = crate::modules::process::resolve_codex_pid_from_entries(
+            store.default_settings.last_pid,
+            None,
+            &process_entries,
+        ) {
+            candidates.push((
+                "__default__".to_string(),
+                default_dir,
+                pid,
+                store.default_settings.bind_account_id.clone(),
+            ));
+        }
+    }
+
+    for instance in store.instances {
+        if instance.launch_mode != crate::models::InstanceLaunchMode::App
+            || !supports_bind_account(instance.bind_account_id.as_deref())
+        {
+            continue;
+        }
+        let Some(pid) = crate::modules::process::resolve_codex_pid_from_entries(
+            instance.last_pid,
+            Some(&instance.user_data_dir),
+            &process_entries,
+        ) else {
+            continue;
+        };
+        candidates.push((
+            instance.id,
+            PathBuf::from(instance.user_data_dir),
+            pid,
+            instance.bind_account_id,
+        ));
+    }
+
+    let mut restored = 0;
+    for (instance_id, profile_dir, pid, bind_account_id) in candidates {
+        let Some(port) = remote_debugging_port_for_pid(pid) else {
+            logger::log_warn(&format!(
+                "[Codex App Injection] 跳过恢复，运行中的实例缺少 CDP 端口: instance_id={}, pid={}",
+                instance_id, pid
+            ));
+            continue;
+        };
+        start_for_profile(
+            app.clone(),
+            instance_id.clone(),
+            profile_dir,
+            Some(port),
+            bind_account_id,
+        );
+        restored += 1;
+        logger::log_info(&format!(
+            "[Codex App Injection] 已恢复运行中实例: instance_id={}, pid={}, port={}",
+            instance_id, pid, port
+        ));
+    }
+
+    Ok(restored)
 }
 
 pub fn stop_for_profile(profile_dir: &Path) {
@@ -766,7 +897,8 @@ async fn run_injection_loop(app: AppHandle, _instance_id: String, profile_dir: P
 mod tests {
     use super::{
         build_launch_args, injection_script, refresh_request_token_from_cdp_response,
-        supports_bind_account, QuotaPlanSummary, QuotaResponse,
+        remote_debugging_port_from_command_line, supports_bind_account, QuotaPlanSummary,
+        QuotaResponse,
     };
     use serde_json::json;
 
@@ -803,6 +935,38 @@ mod tests {
             "__provider_gateway__:custom-provider"
         )));
         assert!(!supports_bind_account(None));
+    }
+
+    #[test]
+    fn parses_remote_debugging_port_from_running_process_command_line() {
+        assert_eq!(
+            remote_debugging_port_from_command_line(
+                "/Applications/ChatGPT.app/Contents/MacOS/ChatGPT --remote-debugging-address=127.0.0.1 --remote-debugging-port=64404"
+            ),
+            Some(64404)
+        );
+        assert_eq!(
+            remote_debugging_port_from_command_line(
+                r#"C:\Program Files\ChatGPT\ChatGPT.exe --remote-debugging-port "9333""#
+            ),
+            Some(9333)
+        );
+    }
+
+    #[test]
+    fn rejects_missing_or_invalid_remote_debugging_port() {
+        assert_eq!(
+            remote_debugging_port_from_command_line("ChatGPT --remote-debugging-address=127.0.0.1"),
+            None
+        );
+        assert_eq!(
+            remote_debugging_port_from_command_line("ChatGPT --remote-debugging-port=0"),
+            None
+        );
+        assert_eq!(
+            remote_debugging_port_from_command_line("ChatGPT --remote-debugging-port=70000"),
+            None
+        );
     }
 
     #[test]

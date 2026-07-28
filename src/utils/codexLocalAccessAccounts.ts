@@ -83,6 +83,7 @@ export function getCodexLocalAccessAccountIneligibleReason(
   if (isCodexPendingOAuthAccount(account)) {
     return "pending_oauth";
   }
+  // ChatGPT Web Session: quota view only, never join API service.
   if (isCodexWebSessionAccount(account)) {
     return "web_session_quota_only";
   }

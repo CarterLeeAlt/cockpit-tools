@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "WebDAV alan adı listesi",
       "webdavAllowedDomainsDesc": "Virgülle ayır; boş = sınır yok",
       "claudeQuotaDisplayRemaining": "Claude kotayı kalan % olarak göster",
-      "claudeQuotaDisplayRemainingDesc": "Varsayılan: kullanılan %. Açık = kalan %. Otomatik geçiş ve uyarılar kullanıma göre."
+      "claudeQuotaDisplayRemainingDesc": "Varsayılan: kullanılan %. Açık = kalan %. Otomatik geçiş ve uyarılar kullanıma göre.",
+      "menuBarQuota": "Menü çubuğunda canlı kota",
+      "menuBarQuotaDesc": "Açıldığında, seçilen platformun geçerli hesabının kalan kotasını menü çubuğu simgesinin yanında gösterir. Platform seçenekleri iletişim kutusunda.",
+      "menuBarQuotaEnabledDesc": "Açık · {{platform}} · o platformun geçerli hesabı kalan (kotların en düşüğü)",
+      "menuBarQuotaConfigure": "Yapılandır",
+      "menuBarQuotaModalTitle": "Menü çubuğu kotası",
+      "menuBarQuotaModalDesc": "Yalnızca bu özellik için: geçerli hesabı izler. Codex API hizmeti: “API + havuz kalan %”; API Key hesabı: “API + kalan bakiye”; normal: e-posta öneki + % (en düşük; kırmızı/turuncu/yeşil).",
+      "menuBarQuotaPlatform": "Kota hesabı platformu",
+      "menuBarQuotaPlatformDesc": "O platformun etkin hesabını kullanır; yenileme veya geçişten sonra güncellenir",
+      "menuBarAccountPrefix": "E-postanın ilk 4 karakteri",
+      "menuBarAccountPrefixDesc": "Yalnızca normal hesaplar: kapalı e-posta önekini gizler. Codex API hizmeti / API Key yine API etiketini gösterir",
+      "menuBarQuotaConfirmEnable": "Etkinleştir"
     },
     "network": {
       "apiTitle": "Yerçekimine Karşı Kokpit API'si",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Agent Identity hesapları yalnızca API Hizmeti üzerinden kullanılabilir; doğrudan geçiş yapılamaz veya başlatılamaz.",
       "oauthBindingUnsupported": "Agent Identity hesapları yalnızca API Hizmeti içindir ve OAuth ile bağlanan hesap olarak kullanılamaz."
     },
+    "webSessionImport": {
+      "noticeTitle": "Web Session içe aktarma",
+      "noticeMessage": "{{count}} Web Session. Gerçek kullanım yok; yalnızca kota.",
+      "noticeQuotaOnly": "Yalnızca kota. İstemci/CLI/geçiş yok.",
+      "noticeNoApi": "API havuzu veya OAuth yok.",
+      "noticeConfirm": "Anladım, devam",
+      "actionBlocked": "Web Session yalnızca kota.",
+      "apiIneligible": "Web Session yalnızca kota; API yok",
+      "oauthBindingUnsupported": "Web Session OAuth için değil."
+    },
     "exportFormat": {
       "label": "Dışa aktarma biçimi",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} hesap · {{scope}}",
       "summaryMetaUnconfigured": "Yapılandırılmadı · {{scope}}",
       "memberTitle": "Koleksiyon üyeleri",
+      "memberPriorityLabel": "Öncelik",
+      "memberPriorityLowest": "En düşük",
+      "memberPriorityNormal": "Olağan",
+      "memberPriorityHighest": "En yüksek",
+      "memberPriorityDesc": "En yüksek önce kullanılır, Olağan mevcut kuralları izler, En düşük ise yalnızca diğer hesaplar kullanılamadığında kullanılır.",
       "stats": {
         "requests": "İstekler",
         "requestsDetail": "OK {{success}} / Hata {{failed}} / İptal {{canceled}} / Kaynak {{upstreamFailed}} / Eksik {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Otomatik"
     },
     "exportAuthFailed": "Hataları dışa aktar",
-    "exportAuthFailedTitle": "Tüm auth hatalı hesapları dışa aktar",
-    "webSessionImport": {
-      "noticeTitle": "Web Session içe aktarma",
-      "noticeMessage": "{{count}} Web Session. Gerçek kullanım yok; yalnızca kota.",
-      "noticeQuotaOnly": "Yalnızca kota. İstemci/CLI/geçiş yok.",
-      "noticeNoApi": "API havuzu veya OAuth yok.",
-      "noticeConfirm": "Anladım, devam",
-      "actionBlocked": "Web Session yalnızca kota.",
-      "apiIneligible": "Web Session yalnızca kota; API yok",
-      "oauthBindingUnsupported": "Web Session OAuth için değil."
-    }
+    "exportAuthFailedTitle": "Tüm auth hatalı hesapları dışa aktar"
   },
   "githubCopilot": {
     "title": "GitHub Copilot Hesap Yönetimi",

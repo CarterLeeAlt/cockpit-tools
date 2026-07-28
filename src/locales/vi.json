@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Danh sách domain WebDAV",
       "webdavAllowedDomainsDesc": "Cách nhau bằng dấu phẩy; trống = không giới hạn",
       "claudeQuotaDisplayRemaining": "Claude hiển thị % còn lại",
-      "claudeQuotaDisplayRemainingDesc": "Mặc định % đã dùng. Bật = % còn lại. Tự chuyển và cảnh báo vẫn theo đã dùng."
+      "claudeQuotaDisplayRemainingDesc": "Mặc định % đã dùng. Bật = % còn lại. Tự chuyển và cảnh báo vẫn theo đã dùng.",
+      "menuBarQuota": "Hạn mức trực tiếp trên thanh menu",
+      "menuBarQuotaDesc": "Khi bật, hiển thị hạn mức còn lại của tài khoản hiện tại nền tảng đã chọn cạnh biểu tượng. Tùy chọn nền tảng trong hộp thoại.",
+      "menuBarQuotaEnabledDesc": "Đang bật · {{platform}} · còn lại của tài khoản hiện tại nền tảng đó (thấp nhất trong các hạn mức)",
+      "menuBarQuotaConfigure": "Cấu hình",
+      "menuBarQuotaModalTitle": "Hạn mức thanh menu",
+      "menuBarQuotaModalDesc": "Chỉ tùy chọn của tính năng này: theo tài khoản hiện tại. Dịch vụ API Codex: “API + % còn lại của pool”; tài khoản API Key: “API + số dư còn lại”; thường: tiền tố email + % (thấp nhất; đỏ/cam/xanh).",
+      "menuBarQuotaPlatform": "Nền tảng tài khoản",
+      "menuBarQuotaPlatformDesc": "Dùng tài khoản đang dùng của nền tảng đó; cập nhật sau làm mới hoặc chuyển",
+      "menuBarAccountPrefix": "4 ký tự đầu email",
+      "menuBarAccountPrefixDesc": "Chỉ tài khoản thường: tắt sẽ ẩn tiền tố email. Dịch vụ API Codex / API Key vẫn hiện nhãn API",
+      "menuBarQuotaConfirmEnable": "Bật"
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Tài khoản Agent Identity chỉ khả dụng qua Dịch vụ API và không thể chuyển sang hoặc khởi chạy trực tiếp.",
       "oauthBindingUnsupported": "Tài khoản Agent Identity chỉ dành cho Dịch vụ API và không thể dùng làm tài khoản liên kết OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Lưu ý Web Session",
+      "noticeMessage": "{{count}} Web Session. Không dùng thật; chỉ xem hạn mức.",
+      "noticeQuotaOnly": "Chỉ hạn mức. Không client/CLI/đổi tài khoản.",
+      "noticeNoApi": "Không vào API hay OAuth.",
+      "noticeConfirm": "Đã hiểu, tiếp tục",
+      "actionBlocked": "Web Session chỉ xem hạn mức.",
+      "apiIneligible": "Web Session chỉ hạn mức, không API",
+      "oauthBindingUnsupported": "Web Session không dùng OAuth."
+    },
     "exportFormat": {
       "label": "Định dạng xuất",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} tài khoản · {{scope}}",
       "summaryMetaUnconfigured": "Chưa cấu hình · {{scope}}",
       "memberTitle": "Thành viên bộ sưu tập",
+      "memberPriorityLabel": "Ưu tiên",
+      "memberPriorityLowest": "Thấp nhất",
+      "memberPriorityNormal": "Bình thường",
+      "memberPriorityHighest": "Cao nhất",
+      "memberPriorityDesc": "Cao nhất được dùng trước, Bình thường theo quy tắc hiện tại, còn Thấp nhất chỉ dùng khi các tài khoản khác không khả dụng.",
       "stats": {
         "requests": "Yêu cầu",
         "requestsDetail": "OK {{success}} / Lỗi {{failed}} / Hủy {{canceled}} / Nguồn {{upstreamFailed}} / Chưa xong {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Tự động"
     },
     "exportAuthFailed": "Xuất lỗi",
-    "exportAuthFailedTitle": "Xuất tất cả tài khoản auth lỗi",
-    "webSessionImport": {
-      "noticeTitle": "Lưu ý Web Session",
-      "noticeMessage": "{{count}} Web Session. Không dùng thật; chỉ xem hạn mức.",
-      "noticeQuotaOnly": "Chỉ hạn mức. Không client/CLI/đổi tài khoản.",
-      "noticeNoApi": "Không vào API hay OAuth.",
-      "noticeConfirm": "Đã hiểu, tiếp tục",
-      "actionBlocked": "Web Session chỉ xem hạn mức.",
-      "apiIneligible": "Web Session chỉ hạn mức, không API",
-      "oauthBindingUnsupported": "Web Session không dùng OAuth."
-    }
+    "exportAuthFailedTitle": "Xuất tất cả tài khoản auth lỗi"
   },
   "githubCopilot": {
     "title": "Quản lý tài khoản GitHub Copilot",

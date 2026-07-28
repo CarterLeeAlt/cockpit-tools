@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "WebDAV-Domain-Whitelist",
       "webdavAllowedDomainsDesc": "Kommagetrennt; leer = kein Limit",
       "claudeQuotaDisplayRemaining": "Claude-Kontingent als Rest-%",
-      "claudeQuotaDisplayRemainingDesc": "Standard: verbraucht %. Ein = Rest %. Auto-Wechsel/Warnungen weiter nach Verbrauch."
+      "claudeQuotaDisplayRemainingDesc": "Standard: verbraucht %. Ein = Rest %. Auto-Wechsel/Warnungen weiter nach Verbrauch.",
+      "menuBarQuota": "Live-Kontingent in der Menüleiste",
+      "menuBarQuotaDesc": "Zeigt bei Aktivierung das Restkontingent des aktuellen Kontos der gewählten Plattform neben dem Menüleistensymbol. Plattformoptionen im Dialog.",
+      "menuBarQuotaEnabledDesc": "An · {{platform}} · Rest des aktuellen Kontos dieser Plattform (niedrigstes Kontingent)",
+      "menuBarQuotaConfigure": "Konfigurieren",
+      "menuBarQuotaModalTitle": "Menüleisten-Kontingent",
+      "menuBarQuotaModalDesc": "Nur für das Menüleisten-Kontingent: folgt dem aktuellen Konto der gewählten Plattform. Codex-API-Dienst: „API + Pool-Rest-%“; API-Key-Konto: „API + Restguthaben“; normal: E-Mail-Präfix + Rest-% (niedrigstes Kontingent; rot/orange/grün).",
+      "menuBarQuotaPlatform": "Kontingent-Plattform",
+      "menuBarQuotaPlatformDesc": "Nutzt das aktive Konto dieser Plattform; aktualisiert nach Refresh oder Wechsel",
+      "menuBarAccountPrefix": "Erste 4 E-Mail-Zeichen",
+      "menuBarAccountPrefixDesc": "Nur normale Konten: Aus blendet das E-Mail-Präfix aus. Codex-API-Dienst / API-Key behalten das API-Label",
+      "menuBarQuotaConfirmEnable": "Aktivieren"
     },
     "network": {
       "apiTitle": "Antigravity-Cockpit-API",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Agent-Identity-Konten sind nur über den API-Dienst verfügbar und können nicht direkt gewechselt oder gestartet werden.",
       "oauthBindingUnsupported": "Agent-Identity-Konten sind nur für den API-Dienst bestimmt und können nicht als OAuth-Verknüpfungskonto verwendet werden."
     },
+    "webSessionImport": {
+      "noticeTitle": "Hinweis Web-Session-Import",
+      "noticeMessage": "{{count}} Web-Session(s). Nicht nutzbar, nur Kontingentanzeige.",
+      "noticeQuotaOnly": "Nur Kontingent. Kein Client/CLI/Kontowechsel.",
+      "noticeNoApi": "Nicht in API-Pool oder als OAuth-Bindung.",
+      "noticeConfirm": "Verstanden, fortfahren",
+      "actionBlocked": "Web Session nur Kontingent – kein Wechsel/Start.",
+      "apiIneligible": "Web Session nur Kontingent, kein API",
+      "oauthBindingUnsupported": "Web Session nicht als OAuth-Bindung."
+    },
     "exportFormat": {
       "label": "Exportformat",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} Konten · {{scope}}",
       "summaryMetaUnconfigured": "Nicht konfiguriert · {{scope}}",
       "memberTitle": "Sammlungsmitglieder",
+      "memberPriorityLabel": "Priorität",
+      "memberPriorityLowest": "Niedrig",
+      "memberPriorityNormal": "Regulär",
+      "memberPriorityHighest": "Hoch",
+      "memberPriorityDesc": "Hoch wird bevorzugt, Regulär folgt den aktuellen Regeln und Niedrig wird nur verwendet, wenn andere Konten nicht verfügbar sind.",
       "stats": {
         "requests": "Anfragen",
         "requestsDetail": "OK {{success}} / Fehler {{failed}} / Abbr. {{canceled}} / Quelle {{upstreamFailed}} / Unvollst. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Automatisch"
     },
     "exportAuthFailed": "Fehler export.",
-    "exportAuthFailedTitle": "Alle Auth-Fehler-Konten exportieren",
-    "webSessionImport": {
-      "noticeTitle": "Hinweis Web-Session-Import",
-      "noticeMessage": "{{count}} Web-Session(s). Nicht nutzbar, nur Kontingentanzeige.",
-      "noticeQuotaOnly": "Nur Kontingent. Kein Client/CLI/Kontowechsel.",
-      "noticeNoApi": "Nicht in API-Pool oder als OAuth-Bindung.",
-      "noticeConfirm": "Verstanden, fortfahren",
-      "actionBlocked": "Web Session nur Kontingent – kein Wechsel/Start.",
-      "apiIneligible": "Web Session nur Kontingent, kein API",
-      "oauthBindingUnsupported": "Web Session nicht als OAuth-Bindung."
-    }
+    "exportAuthFailedTitle": "Alle Auth-Fehler-Konten exportieren"
   },
   "githubCopilot": {
     "title": "GitHub Copilot-Konten verwalten",

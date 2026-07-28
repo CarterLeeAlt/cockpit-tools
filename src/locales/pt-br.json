@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Lista branca WebDAV",
       "webdavAllowedDomainsDesc": "Separado por vírgulas; vazio = sem limite",
       "claudeQuotaDisplayRemaining": "Cota Claude como % restante",
-      "claudeQuotaDisplayRemainingDesc": "Padrão: % usado. Ativar = % restante. Troca automática e alertas usam o consumo."
+      "claudeQuotaDisplayRemainingDesc": "Padrão: % usado. Ativar = % restante. Troca automática e alertas usam o consumo.",
+      "menuBarQuota": "Cota ao vivo na barra de menus",
+      "menuBarQuotaDesc": "Quando ativado, mostra a cota restante da conta atual da plataforma escolhida ao lado do ícone. Opções de plataforma no diálogo.",
+      "menuBarQuotaEnabledDesc": "Ativo · {{platform}} · restante da conta atual dessa plataforma (menor entre cotas)",
+      "menuBarQuotaConfigure": "Configurar",
+      "menuBarQuotaModalTitle": "Cota da barra de menus",
+      "menuBarQuotaModalDesc": "Opções só desta função: segue a conta atual. Serviço API do Codex: “API + % restante do pool”; conta API Key: “API + saldo restante”; normal: prefixo do e-mail + % restante (a menor; vermelho/laranja/verde).",
+      "menuBarQuotaPlatform": "Plataforma da conta",
+      "menuBarQuotaPlatformDesc": "Usa a conta ativa dessa plataforma; atualiza após atualizar ou trocar",
+      "menuBarAccountPrefix": "4 primeiros do e-mail",
+      "menuBarAccountPrefixDesc": "Só contas normais: desligado oculta o prefixo do e-mail. Serviço API do Codex / API Key ainda mostram API",
+      "menuBarQuotaConfirmEnable": "Ativar"
     },
     "network": {
       "apiTitle": "API de cockpit antigravidade",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Contas Agent Identity estão disponíveis somente pelo Serviço de API e não podem ser alternadas ou iniciadas diretamente.",
       "oauthBindingUnsupported": "Contas Agent Identity são exclusivas do Serviço de API e não podem ser usadas como contas vinculadas via OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Aviso importação Web Session",
+      "noticeMessage": "{{count}} Web Session. Sem uso real; só cota.",
+      "noticeQuotaOnly": "Só cota. Sem cliente/CLI/troca de conta.",
+      "noticeNoApi": "Sem pool API nem OAuth.",
+      "noticeConfirm": "Entendi, continuar",
+      "actionBlocked": "Web Session só cota; sem troca/iniciar.",
+      "apiIneligible": "Web Session só cota; sem API",
+      "oauthBindingUnsupported": "Web Session não serve para OAuth."
+    },
     "exportFormat": {
       "label": "Formato de exportação",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} contas · {{scope}}",
       "summaryMetaUnconfigured": "Não configurado · {{scope}}",
       "memberTitle": "Membros da coleção",
+      "memberPriorityLabel": "Prioridade",
+      "memberPriorityLowest": "Mínima",
+      "memberPriorityNormal": "Padrão",
+      "memberPriorityHighest": "Máxima",
+      "memberPriorityDesc": "Máxima é usada primeiro, Padrão segue as regras atuais e Mínima só é usada se as outras contas estiverem indisponíveis.",
       "stats": {
         "requests": "Requisições",
         "requestsDetail": "OK {{success}} / Falha {{failed}} / Canc. {{canceled}} / Origem {{upstreamFailed}} / Incomp. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Automático"
     },
     "exportAuthFailed": "Exportar falhas",
-    "exportAuthFailedTitle": "Exportar todas as contas com falha de auth",
-    "webSessionImport": {
-      "noticeTitle": "Aviso importação Web Session",
-      "noticeMessage": "{{count}} Web Session. Sem uso real; só cota.",
-      "noticeQuotaOnly": "Só cota. Sem cliente/CLI/troca de conta.",
-      "noticeNoApi": "Sem pool API nem OAuth.",
-      "noticeConfirm": "Entendi, continuar",
-      "actionBlocked": "Web Session só cota; sem troca/iniciar.",
-      "apiIneligible": "Web Session só cota; sem API",
-      "oauthBindingUnsupported": "Web Session não serve para OAuth."
-    }
+    "exportAuthFailedTitle": "Exportar todas as contas com falha de auth"
   },
   "githubCopilot": {
     "title": "Gerenciamento de contas do GitHub Copilot",

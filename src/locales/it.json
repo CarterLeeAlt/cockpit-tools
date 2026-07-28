@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "Whitelist domini WebDAV",
       "webdavAllowedDomainsDesc": "Separati da virgola; vuoto = nessun limite",
       "claudeQuotaDisplayRemaining": "Quota Claude come % residua",
-      "claudeQuotaDisplayRemainingDesc": "Predefinito: % usata. Attiva = % residua. Auto-switch e avvisi restano sull’uso."
+      "claudeQuotaDisplayRemainingDesc": "Predefinito: % usata. Attiva = % residua. Auto-switch e avvisi restano sull’uso.",
+      "menuBarQuota": "Quota live nella barra menu",
+      "menuBarQuotaDesc": "Se attivo, mostra la quota residua dell’account corrente della piattaforma scelta accanto all’icona. Opzioni piattaforma nella finestra.",
+      "menuBarQuotaEnabledDesc": "Attivo · {{platform}} · residuo dell’account corrente di quella piattaforma (minimo tra le quote)",
+      "menuBarQuotaConfigure": "Configura",
+      "menuBarQuotaModalTitle": "Quota barra menu",
+      "menuBarQuotaModalDesc": "Opzioni solo per questa funzione: segue l’account corrente. Servizio API Codex: «API + % residuo del pool»; account API Key: «API + saldo residuo»; normale: prefisso e-mail + % residuo (il più basso; rosso/arancio/verde).",
+      "menuBarQuotaPlatform": "Piattaforma account",
+      "menuBarQuotaPlatformDesc": "Usa l’account attivo di quella piattaforma; si aggiorna dopo refresh o cambio",
+      "menuBarAccountPrefix": "Primi 4 dell’e-mail",
+      "menuBarAccountPrefixDesc": "Solo account normali: disattivo nasconde il prefisso e-mail. Servizio API Codex / API Key mostrano ancora API",
+      "menuBarQuotaConfirmEnable": "Attiva"
     },
     "network": {
       "apiTitle": "API della cabina di pilotaggio antigravità",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Gli account Agent Identity sono disponibili solo tramite il Servizio API e non possono essere selezionati o avviati direttamente.",
       "oauthBindingUnsupported": "Gli account Agent Identity sono destinati solo al Servizio API e non possono essere usati come account associati tramite OAuth."
     },
+    "webSessionImport": {
+      "noticeTitle": "Avviso Web Session",
+      "noticeMessage": "{{count}} Web Session. Solo quota, non per uso reale.",
+      "noticeQuotaOnly": "Solo quota. Niente client/CLI/cambio account.",
+      "noticeNoApi": "Non nel pool API né OAuth.",
+      "noticeConfirm": "Ho capito, continua",
+      "actionBlocked": "Web Session: solo quota.",
+      "apiIneligible": "Web Session solo quota, no API",
+      "oauthBindingUnsupported": "Web Session non per OAuth."
+    },
     "exportFormat": {
       "label": "Formato di esportazione",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}} account · {{scope}}",
       "summaryMetaUnconfigured": "Non configurato · {{scope}}",
       "memberTitle": "Membri della raccolta",
+      "memberPriorityLabel": "Priorità",
+      "memberPriorityLowest": "Minima",
+      "memberPriorityNormal": "Normale",
+      "memberPriorityHighest": "Massima",
+      "memberPriorityDesc": "Massima viene usata per prima, Normale segue le regole attuali e Minima solo se gli altri account non sono disponibili.",
       "stats": {
         "requests": "Richieste",
         "requestsDetail": "OK {{success}} / Errori {{failed}} / Annull. {{canceled}} / Monte {{upstreamFailed}} / Incompl. {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "Automatico"
     },
     "exportAuthFailed": "Esporta errori",
-    "exportAuthFailedTitle": "Esporta tutti gli account con auth non riuscita",
-    "webSessionImport": {
-      "noticeTitle": "Avviso Web Session",
-      "noticeMessage": "{{count}} Web Session. Solo quota, non per uso reale.",
-      "noticeQuotaOnly": "Solo quota. Niente client/CLI/cambio account.",
-      "noticeNoApi": "Non nel pool API né OAuth.",
-      "noticeConfirm": "Ho capito, continua",
-      "actionBlocked": "Web Session: solo quota.",
-      "apiIneligible": "Web Session solo quota, no API",
-      "oauthBindingUnsupported": "Web Session non per OAuth."
-    }
+    "exportAuthFailedTitle": "Esporta tutti gli account con auth non riuscita"
   },
   "githubCopilot": {
     "title": "Gestione account GitHub Copilot",

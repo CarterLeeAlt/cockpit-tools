@@ -853,7 +853,18 @@
       "webdavAllowedDomains": "WebDAV 도메인 허용 목록",
       "webdavAllowedDomainsDesc": "쉼표 구분; 비우면 제한 없음",
       "claudeQuotaDisplayRemaining": "Claude 잔여 % 표시",
-      "claudeQuotaDisplayRemainingDesc": "기본은 사용 %. 켜면 잔여 %. 자동 전환·경고는 사용 비율 기준."
+      "claudeQuotaDisplayRemainingDesc": "기본은 사용 %. 켜면 잔여 %. 자동 전환·경고는 사용 비율 기준.",
+      "menuBarQuota": "메뉴 막대에 실시간 한도 표시",
+      "menuBarQuotaDesc": "켜면 선택한 플랫폼 현재 계정의 남은 한도를 메뉴 막대 아이콘 옆에 표시합니다. 플랫폼 등 전용 옵션은 대화상자에서 설정합니다.",
+      "menuBarQuotaEnabledDesc": "사용 중 · {{platform}} · 해당 플랫폼 현재 계정 남은 한도(여러 항목 중 최저)",
+      "menuBarQuotaConfigure": "설정",
+      "menuBarQuotaModalTitle": "메뉴 막대 한도",
+      "menuBarQuotaModalDesc": "메뉴 막대 한도 전용 옵션입니다. 선택한 플랫폼의 현재 계정을 따릅니다. Codex API 서비스면 「API + 풀 남은 %」, API Key 계정이면 「API + 잔여 한도」, 일반 계정은 이메일 접두사 + 남은 %(여러 항목 중 최저, 낮음 빨강·중간 주황·높음 초록).",
+      "menuBarQuotaPlatform": "한도 계정 플랫폼",
+      "menuBarQuotaPlatformDesc": "해당 플랫폼의 사용 중 계정을 따르며, 새로고침 또는 전환 후 자동 갱신",
+      "menuBarAccountPrefix": "이메일 앞 4자 표시",
+      "menuBarAccountPrefixDesc": "일반 계정만: 끄면 이메일 접두사 숨김. Codex API 서비스 / API Key는 API 라벨 유지",
+      "menuBarQuotaConfirmEnable": "사용"
     },
     "network": {
       "apiTitle": "반중력 조종석 API",
@@ -1840,6 +1851,16 @@
       "apiOnlyActionError": "Agent Identity 계정은 API 서비스에서만 사용할 수 있으며 일반 전환이나 직접 실행은 지원하지 않습니다.",
       "oauthBindingUnsupported": "Agent Identity 계정은 API 서비스 전용이며 OAuth 연결 계정으로 사용할 수 없습니다."
     },
+    "webSessionImport": {
+      "noticeTitle": "Web Session 가져오기 안내",
+      "noticeMessage": "Web Session {{count}}개 감지. 실제 사용 불가, 할당량 조회만.",
+      "noticeQuotaOnly": "할당량 조회만. 클라이언트/CLI 실행·전환 불가.",
+      "noticeNoApi": "API 서비스·OAuth 연결 불가.",
+      "noticeConfirm": "확인하고 계속",
+      "actionBlocked": "Web Session은 할당량 조회만 가능합니다.",
+      "apiIneligible": "Web Session은 할당량만, API 불가",
+      "oauthBindingUnsupported": "Web Session은 OAuth 연결 불가."
+    },
     "exportFormat": {
       "label": "내보내기 형식",
       "cockpitTools": "Cockpit Tools​",
@@ -1950,6 +1971,11 @@
       "summaryMeta": "{{count}}개 계정 · {{scope}}",
       "summaryMetaUnconfigured": "미설정 · {{scope}}",
       "memberTitle": "컬렉션 멤버",
+      "memberPriorityLabel": "우선순위",
+      "memberPriorityLowest": "최저",
+      "memberPriorityNormal": "보통",
+      "memberPriorityHighest": "최고",
+      "memberPriorityDesc": "최고는 우선 사용하고, 보통은 현재 규칙에 따라 배정하며, 최저는 다른 계정을 사용할 수 없을 때만 사용합니다.",
       "stats": {
         "requests": "요청",
         "requestsDetail": "성공 {{success}} / 실패 {{failed}} / 취소 {{canceled}} / 업스트림 {{upstreamFailed}} / 미완료 {{incomplete}}",
@@ -3682,17 +3708,7 @@
       "autoSyncBadge": "자동"
     },
     "exportAuthFailed": "실패 내보내기",
-    "exportAuthFailedTitle": "인증 실패 계정 모두 내보내기",
-    "webSessionImport": {
-      "noticeTitle": "Web Session 가져오기 안내",
-      "noticeMessage": "Web Session {{count}}개 감지. 실제 사용 불가, 할당량 조회만.",
-      "noticeQuotaOnly": "할당량 조회만. 클라이언트/CLI 실행·전환 불가.",
-      "noticeNoApi": "API 서비스·OAuth 연결 불가.",
-      "noticeConfirm": "확인하고 계속",
-      "actionBlocked": "Web Session은 할당량 조회만 가능합니다.",
-      "apiIneligible": "Web Session은 할당량만, API 불가",
-      "oauthBindingUnsupported": "Web Session은 OAuth 연결 불가."
-    }
+    "exportAuthFailedTitle": "인증 실패 계정 모두 내보내기"
   },
   "githubCopilot": {
     "title": "GitHub Copilot 계정 관리",

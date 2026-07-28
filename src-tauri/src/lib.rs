@@ -342,6 +342,23 @@ pub fn run() {
 
             {
                 let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    match modules::codex_app_injection::restore_running_profiles(app_handle) {
+                        Ok(0) => {}
+                        Ok(count) => logger::log_info(&format!(
+                            "[Codex App Injection] 启动恢复完成: count={}",
+                            count
+                        )),
+                        Err(err) => logger::log_warn(&format!(
+                            "[Codex App Injection] 启动恢复失败: {}",
+                            err
+                        )),
+                    }
+                });
+            }
+
+            {
+                let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     modules::codex_oauth::restore_pending_oauth_listener(app_handle);
                     modules::windsurf_oauth::restore_pending_oauth_listener();

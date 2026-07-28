@@ -1776,14 +1776,6 @@ export function QoderAccountsPage() {
     if (viewMode === 'grid') {
       return (
         <div className="grid-view-container">
-          {paginatedAccounts.length > 0 && (
-            <div className="grid-view-header" style={{ marginBottom: '12px', paddingLeft: '4px' }}>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text-color)' }}>
-                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-                {t('common.selectAll', '全选')}
-              </label>
-            </div>
-          )}
           {!groupByTag ? (
             <div className="ghcp-accounts-grid">{renderGridCards(paginatedAccounts)}</div>
           ) : (
