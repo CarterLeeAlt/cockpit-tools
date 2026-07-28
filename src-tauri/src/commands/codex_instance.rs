@@ -825,17 +825,34 @@ fn escape_applescript(value: &str) -> String {
 /// Cockpit's `Command::spawn` uses `CreateProcess` directly and bypasses the OS default-terminal
 /// redirection, so for `default_terminal = "system"` we probe for `wt.exe` and route through
 /// Windows Terminal when available.
-#[cfg(any(target_os = "windows", test))]
+///
+/// Compiled on all targets so shared helpers (and macOS/Linux CI) type-check; non-Windows always
+/// returns false.
 fn windows_terminal_available() -> bool {
-    windows_terminal_available_on_paths(std::env::var_os("PATH"))
+    #[cfg(target_os = "windows")]
+    {
+        return windows_terminal_available_on_paths(std::env::var_os("PATH"));
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        false
+    }
 }
 
-#[cfg(any(target_os = "windows", test))]
+#[cfg_attr(not(any(target_os = "windows", test)), allow(dead_code))]
 fn windows_terminal_available_on_paths(path: Option<std::ffi::OsString>) -> bool {
-    let candidates = ["wt.exe", "wt"];
-    let paths = path.as_deref();
-    std::env::split_paths(paths.unwrap_or_default())
-        .any(|dir| candidates.iter().any(|name| dir.join(name).is_file()))
+    #[cfg(target_os = "windows")]
+    {
+        let candidates = ["wt.exe", "wt"];
+        let paths = path.as_deref();
+        return std::env::split_paths(paths.unwrap_or_default())
+            .any(|dir| candidates.iter().any(|name| dir.join(name).is_file()));
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = path;
+        false
+    }
 }
 
 #[cfg_attr(not(any(target_os = "windows", test)), allow(dead_code))]
@@ -864,6 +881,8 @@ fn build_windows_codex_terminal_launch_plan(
 ) -> CodexTerminalLaunchPlan {
     let normalized = terminal.trim().to_ascii_lowercase();
     // `system` honors OS default: prefer Windows Terminal when installed, else PowerShell.
+    // `windows_terminal_available()` is a no-op false on non-Windows so this helper stays
+    // cross-platform for unit tests and CI.
     let use_windows_terminal =
         (normalized == "system" && windows_terminal_available()) || normalized == "wt";
     let (program, args, terminal_name) = if normalized == "pwsh" {
