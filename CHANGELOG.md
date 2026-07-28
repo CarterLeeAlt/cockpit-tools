@@ -7,6 +7,29 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.3.15] - 2026-07-28
+
+### Added
+
+- **WorkBuddy supports configurable auto check-in**: off by default; users can set per-account random check-in windows and log retention, and saved accounts are never checked in while the feature is disabled.
+- **macOS menu bar can show live quota**: off by default; users can pick the monitored platform and optionally show an account-prefix badge.
+- **MFA vault supports Google Authenticator migration QR batch import**: `otpauth-migration://` payloads can be scanned and saved into local MFA records in bulk.
+- **Claude quota display can switch between used % and remaining %**: used percentage remains the default; enabling remaining % only changes presentation while auto-switch and alert thresholds still use the used ratio.
+
+### Changed
+
+- **ChatGPT Web Session imports now support quota viewing only**: they are no longer registered automatically as Agent Identity accounts and are not added to the Codex API Service account pool; after import, quota can still be checked, but switching, launching the official client or CLI, joining API Service, and OAuth binding are blocked.
+- **Responses relay API Key projections now use the built-in OpenAI provider with `openai_base_url`**: this aligns desktop switch projections with official direct routing and avoids the local-access provider id for ordinary relays.
+- **CI build-matrix and release workflows are faster**: preflight work is split into parallel jobs with improved caching and matrix scheduling.
+
+### Fixed
+
+- **Fixed ChatGPT Web Session imports failing when Agent Identity runtime registration returned HTTP 403**: this format no longer attempts runtime registration and is imported as a quota-only account.
+- **Fixed Windows Desktop session working-directory normalization when paths use the `\\?\` prefix**.
+- **Fixed layout breakage when custom icon localStorage writes hit quota errors**.
+- **Fixed Windows CLI quick launch opening a bare PowerShell window for the `system` terminal**: when Windows Terminal is available the launch goes through `wt`, otherwise the previous PowerShell fallback remains.
+- **Fixed hardcoded Chinese fallback strings on the Codex API Service page and related controls**: missing i18n keys and default strings are filled in.
+
 ## [1.3.14] - 2026-07-22
 
 ### Added

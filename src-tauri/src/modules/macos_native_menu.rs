@@ -3150,18 +3150,28 @@ mod imp {
             .map(|account| {
                 let mut rows = Vec::new();
                 if let Some(quota) = account.quota.as_ref() {
+                    let show_remaining =
+                        crate::modules::config::get_user_config().claude_quota_display_remaining;
                     let five_hour_used = quota.five_hour_percentage.clamp(0, 100);
-                    let five_hour_remaining = (100 - five_hour_used).clamp(0, 100);
+                    let five_hour_display = if show_remaining {
+                        (100 - five_hour_used).clamp(0, 100)
+                    } else {
+                        five_hour_used
+                    };
                     rows.push(make_progress_row(
                         translate_or(lang, "claude.quota.fiveHour", "Current session", &[]),
-                        format!("{five_hour_remaining}%"),
-                        five_hour_remaining,
+                        format!("{five_hour_display}%"),
+                        five_hour_display,
                         format_reset_subtext(lang, quota.five_hour_reset_time),
                         usage_warning_tone(five_hour_used),
                     ));
 
                     let seven_day_used = quota.seven_day_percentage.clamp(0, 100);
-                    let seven_day_remaining = (100 - seven_day_used).clamp(0, 100);
+                    let seven_day_display = if show_remaining {
+                        (100 - seven_day_used).clamp(0, 100)
+                    } else {
+                        seven_day_used
+                    };
                     rows.push(make_progress_row(
                         translate_or(
                             lang,
@@ -3169,8 +3179,8 @@ mod imp {
                             "Current week (all models)",
                             &[],
                         ),
-                        format!("{seven_day_remaining}%"),
-                        seven_day_remaining,
+                        format!("{seven_day_display}%"),
+                        seven_day_display,
                         format_reset_subtext(lang, quota.seven_day_reset_time),
                         usage_warning_tone(seven_day_used),
                     ));

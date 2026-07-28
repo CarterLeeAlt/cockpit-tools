@@ -1089,16 +1089,30 @@ fn build_claude_display_info(lang: &str, desktop: bool) -> AccountDisplayInfo {
     }
 
     if let Some(quota) = &account.quota {
+        // Default: used%. Remaining% is opt-in via user config (see claude_quota_display_remaining).
+        let show_remaining = crate::modules::config::get_user_config().claude_quota_display_remaining;
+        let five_hour = quota.five_hour_percentage.clamp(0, 100);
+        let seven_day = quota.seven_day_percentage.clamp(0, 100);
+        let five_display = if show_remaining {
+            (100 - five_hour).clamp(0, 100)
+        } else {
+            five_hour
+        };
+        let seven_display = if show_remaining {
+            (100 - seven_day).clamp(0, 100)
+        } else {
+            seven_day
+        };
         quota_lines.push(format_quota_line(
             lang,
             &get_text("claude_current_session", lang),
-            &format_percent_text((100 - quota.five_hour_percentage.clamp(0, 100)).clamp(0, 100)),
+            &format_percent_text(five_display),
             Some(&format_reset_time_from_ts(lang, quota.five_hour_reset_time)),
         ));
         quota_lines.push(format_quota_line(
             lang,
             &get_text("claude_current_week_all_models", lang),
-            &format_percent_text((100 - quota.seven_day_percentage.clamp(0, 100)).clamp(0, 100)),
+            &format_percent_text(seven_display),
             Some(&format_reset_time_from_ts(lang, quota.seven_day_reset_time)),
         ));
     } else if let Some(error) = &account.quota_error {

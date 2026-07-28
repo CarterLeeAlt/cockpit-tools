@@ -749,9 +749,9 @@
       "codebuddyAutoRefresh": "التحديث التلقائي لحصة CodeBuddy",
       "codebuddyAutoRefreshDesc": "فاصل التحديث التلقائي في الخلفية",
       "codebuddyShareSessionsOnSwitch": "مشاركة الجلسات المحلية عند التبديل",
-    "codebuddyShareSessionsOnSwitchDesc": "يدمج الجلسات المحلية وحالة الاستعادة بين حسابات CodeBuddy على هذا الجهاز. تتم قراءة محتوى الجلسات وكتابته محليًا فقط ولا يتم رفعه.",
-    "workbuddyShareSessionsOnSwitch": "مشاركة الجلسات المحلية عند التبديل",
-    "workbuddyShareSessionsOnSwitchDesc": "يدمج الجلسات المحلية وحالة الاستعادة بين حسابات WorkBuddy على هذا الجهاز. تتم قراءة محتوى الجلسات وكتابته محليًا فقط ولا يتم رفعه.",
+      "codebuddyShareSessionsOnSwitchDesc": "يدمج الجلسات المحلية وحالة الاستعادة بين حسابات CodeBuddy على هذا الجهاز. تتم قراءة محتوى الجلسات وكتابته محليًا فقط ولا يتم رفعه.",
+      "workbuddyShareSessionsOnSwitch": "مشاركة الجلسات المحلية عند التبديل",
+      "workbuddyShareSessionsOnSwitchDesc": "يدمج الجلسات المحلية وحالة الاستعادة بين حسابات WorkBuddy على هذا الجهاز. تتم قراءة محتوى الجلسات وكتابته محليًا فقط ولا يتم رفعه.",
       "codebuddyAppPath": "مسار تشغيل CodeBuddy",
       "codebuddyAppPathDesc": "اتركه فارغًا لاستخدام المسار الافتراضي",
       "codebuddyAppPathPlaceholder": "المسار الافتراضي",
@@ -898,7 +898,9 @@
       "externalNetwork": "السماح بالشبكة الخارجية",
       "externalNetworkDesc": "عند الإيقاف: يمنع WebDAV واستخدام OpenRouter والإعلانات وفحص التحديث التلقائي (المحلي يستمر).",
       "webdavAllowedDomains": "قائمة نطاقات WebDAV",
-      "webdavAllowedDomainsDesc": "مفصولة بفواصل؛ فارغ = بلا حد"
+      "webdavAllowedDomainsDesc": "مفصولة بفواصل؛ فارغ = بلا حد",
+      "claudeQuotaDisplayRemaining": "حصة Claude كنسبة متبقية",
+      "claudeQuotaDisplayRemainingDesc": "الافتراضي: % مستخدم. التفعيل = % متبقي. التبديل والتنبيهات حسب الاستخدام."
     },
     "network": {
       "apiTitle": "واجهة برمجة تطبيقات قمرة القيادة المضادة للجاذبية",
@@ -1882,12 +1884,6 @@
       "formatBatchLabel": "مثال دفعي"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "تنبيه استيراد Web Session",
-      "noticeMessage": "تم اكتشاف {{count}} من حسابات Web Session. عند المتابعة ستُسجّل تلقائيًا كـ Agent Identity.",
-      "noticeApiOnly": "هذه الحسابات مخصصة لخدمة API فقط وستُضاف تلقائيًا إلى مجموعة حساباتها.",
-      "noticeNoSwitch": "لا يمكن استخدامها لتبديل حساب Codex العادي أو لتشغيل العميل الرسمي أو CLI مباشرةً أو كحساب مرتبط عبر OAuth.",
-      "noticeCredential": "ينشئ التطبيق مفتاح Agent Identity خاصًا ويحفظه محليًا. احمِ النسخ الاحتياطية المصدّرة مثل كلمات المرور.",
-      "noticeConfirm": "أفهم ذلك، متابعة",
       "apiOnlyActionError": "حسابات Agent Identity متاحة عبر خدمة API فقط ولا يمكن التبديل إليها أو تشغيلها مباشرةً.",
       "oauthBindingUnsupported": "حسابات Agent Identity مخصصة لخدمة API فقط ولا يمكن استخدامها كحسابات مرتبطة عبر OAuth."
     },
@@ -2018,7 +2014,8 @@
         "images": "طلبات الصور",
         "imagesDetail": "إنشاء {{generate}} / تعديل {{edit}} / صلاحية {{blocked}}",
         "estimatedCost": "القيمة المقدرة",
-        "estimatedCostDetail": "مجموع لقطات سعر كل طلب"
+        "estimatedCostDetail": "مجموع لقطات سعر كل طلب",
+        "successRateLabel": "معدل النجاح"
       },
       "routingLabel": "توجيه",
       "routingSaveSuccess": "تم تحديث توجيه خدمة API",
@@ -3429,7 +3426,9 @@
         "excludedModels": "النماذج المستبعدة",
         "excludedModelsPlaceholder": "نموذج أو نمط في كل سطر",
         "savePolicy": "حفظ السياسة",
-        "policySaved": "تم حفظ سياسة نماذج Key"
+        "policySaved": "تم حفظ سياسة نماذج Key",
+        "lastUsed": "آخر استخدام",
+        "routingAccounts": "حسابات التوجيه"
       },
       "routing": {
         "optionsTitle": "خيارات التوجيه",
@@ -3466,7 +3465,10 @@
         "loading": "جار تحميل سجلات الطلبات",
         "gatewayModeUnknown": "وضع غير معروف",
         "requestIdShort": "المعرّف {{id}}",
-        "httpStatus": "حالة HTTP {{status}}"
+        "httpStatus": "حالة HTTP {{status}}",
+        "allInstances": "كل المثيلات",
+        "instanceFilter": "المثيل",
+        "instanceUnknown": "مثيل -"
       },
       "timeouts": {
         "entryLabel": "متقدم",
@@ -3527,6 +3529,10 @@
         "clearSelection": "مسح التحديد",
         "saveSuccess": "تم حفظ حظر نماذج الحساب",
         "cardCount": "{{count}} محظور"
+      },
+      "usage": {
+        "title": "إحصاءات الاستخدام",
+        "lastRecorded": "آخر تسجيل"
       }
     },
     "apiKey": {
@@ -3723,7 +3729,17 @@
       "autoSyncBadge": "آلي"
     },
     "exportAuthFailed": "تصدير الفاشل",
-    "exportAuthFailedTitle": "تصدير كل الحسابات ذات فشل المصادقة"
+    "exportAuthFailedTitle": "تصدير كل الحسابات ذات فشل المصادقة",
+    "webSessionImport": {
+      "noticeTitle": "تنبيه استيراد Web Session",
+      "noticeMessage": "{{count}} Web Session. غير مدعوم للاستخدام؛ عرض الحصة فقط.",
+      "noticeQuotaOnly": "عرض الحصة فقط. بلا عميل/CLI/تبديل.",
+      "noticeNoApi": "لا إلى خدمة API ولا OAuth.",
+      "noticeConfirm": "فهمت، متابعة",
+      "actionBlocked": "Web Session لعرض الحصة فقط.",
+      "apiIneligible": "Web Session حصة فقط؛ بلا API",
+      "oauthBindingUnsupported": "Web Session ليس لـ OAuth."
+    }
   },
   "githubCopilot": {
     "title": "إدارة حسابات GitHub Copilot",
@@ -5143,7 +5159,13 @@
     "saveAccountName": "حفظ اسم الحساب",
     "cancelEditAccountName": "إلغاء التعديل",
     "accountNameRequired": "اسم الحساب مطلوب.",
-    "copySecret": "نسخ السر"
+    "copySecret": "نسخ السر",
+    "migrationBatchProgress": "مسح {{current}}/{{total}}",
+    "migrationBatchIncomplete": "غير مكتمل؛ احفظ جزئيًا أو تابع.",
+    "continueMigrationScan": "متابعة المسح",
+    "savePartialMigrationBatch": "حفظ جزئي",
+    "saveCompleteMigrationBatch": "حفظ كامل",
+    "clearMigrationBatch": "مسح الدفعة"
   },
   "logViewer": {
     "fileLabel": "ملف السجل",

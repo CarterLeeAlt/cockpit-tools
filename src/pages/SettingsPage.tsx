@@ -33,6 +33,9 @@ import {
 } from '../utils/updaterReleaseNotes';
 import { applyReducedMotion } from '../utils/reducedMotion';
 import { UI_SCALE_OPTION_STRINGS as UI_SCALE_OPTIONS } from '../utils/uiScale';
+import {
+  setClaudeQuotaDisplayRemainingEnabled,
+} from '../utils/claudeQuotaDisplayPreference';
 import { getSubscriptionTier } from '../utils/account';
 import type { Account } from '../types/account';
 import type { CodexAccount } from '../types/codex';
@@ -245,6 +248,7 @@ interface GeneralConfig {
   codex_quota_alert_threshold: number;
   claude_quota_alert_enabled: boolean;
   claude_quota_alert_threshold: number;
+  claude_quota_display_remaining?: boolean;
   ghcp_quota_alert_enabled: boolean;
   ghcp_quota_alert_threshold: number;
   windsurf_quota_alert_enabled: boolean;
@@ -669,6 +673,7 @@ export function SettingsPage() {
   const [codexQuotaAlertThreshold, setCodexQuotaAlertThreshold] = useState('20');
   const [claudeQuotaAlertEnabled, setClaudeQuotaAlertEnabled] = useState(false);
   const [claudeQuotaAlertThreshold, setClaudeQuotaAlertThreshold] = useState('20');
+  const [claudeQuotaDisplayRemaining, setClaudeQuotaDisplayRemaining] = useState(false);
   const [ghcpQuotaAlertEnabled, setGhcpQuotaAlertEnabled] = useState(false);
   const [ghcpQuotaAlertThreshold, setGhcpQuotaAlertThreshold] = useState('20');
   const [windsurfQuotaAlertEnabled, setWindsurfQuotaAlertEnabled] = useState(false);
@@ -1148,6 +1153,10 @@ export function SettingsPage() {
       claude_quota_alert_threshold: Number.isNaN(parsedClaudeQuotaAlertThreshold)
         ? 20
         : parsedClaudeQuotaAlertThreshold,
+      claude_quota_display_remaining: (() => {
+        setClaudeQuotaDisplayRemainingEnabled(claudeQuotaDisplayRemaining);
+        return claudeQuotaDisplayRemaining;
+      })(),
       ghcp_quota_alert_enabled: ghcpQuotaAlertEnabled,
       ghcp_quota_alert_threshold: Number.isNaN(parsedGhcpQuotaAlertThreshold)
         ? 20
@@ -1362,6 +1371,7 @@ export function SettingsPage() {
     codexQuotaAlertThreshold,
     claudeQuotaAlertEnabled,
     claudeQuotaAlertThreshold,
+    claudeQuotaDisplayRemaining,
     ghcpQuotaAlertEnabled,
     ghcpQuotaAlertThreshold,
     windsurfQuotaAlertEnabled,
@@ -1748,6 +1758,9 @@ export function SettingsPage() {
       setCodexQuotaAlertThreshold(String(config.codex_quota_alert_threshold ?? 20));
       setClaudeQuotaAlertEnabled(config.claude_quota_alert_enabled ?? false);
       setClaudeQuotaAlertThreshold(String(config.claude_quota_alert_threshold ?? 20));
+      const claudeRemainingDisplay = config.claude_quota_display_remaining ?? false;
+      setClaudeQuotaDisplayRemaining(claudeRemainingDisplay);
+      setClaudeQuotaDisplayRemainingEnabled(claudeRemainingDisplay);
       setGhcpQuotaAlertEnabled(config.ghcp_quota_alert_enabled ?? false);
       setGhcpQuotaAlertThreshold(String(config.ghcp_quota_alert_threshold ?? 20));
       setWindsurfQuotaAlertEnabled(config.windsurf_quota_alert_enabled ?? false);
@@ -4942,6 +4955,36 @@ export function SettingsPage() {
                   })}
                   {renderCurrentAccountRefreshRow('claude')}
                   {renderAccountLevelRefreshConfig('claude')}
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">
+                        {t(
+                          'settings.general.claudeQuotaDisplayRemaining',
+                          'Claude 额度显示剩余%',
+                        )}
+                      </div>
+                      <div className="row-desc">
+                        {t(
+                          'settings.general.claudeQuotaDisplayRemainingDesc',
+                          '默认显示已用百分比；开启后改为显示剩余百分比。自动切号与预警仍按已用比例计算。',
+                        )}
+                      </div>
+                    </div>
+                    <div className="row-control">
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={claudeQuotaDisplayRemaining}
+                          onChange={(e) => {
+                            const enabled = e.target.checked;
+                            setClaudeQuotaDisplayRemaining(enabled);
+                            setClaudeQuotaDisplayRemainingEnabled(enabled);
+                          }}
+                        />
+                        <span className="slider" />
+                      </label>
+                    </div>
+                  </div>
                   <div className="settings-row settings-row--align-start">
                     <div className="row-label">
                       <div className="row-title">

@@ -50,9 +50,11 @@ import {
   getClaudeAccountDisplayEmail,
   getClaudePlanBadge,
   getClaudePlanBadgeClass,
-  getClaudeRemainingPercentage,
-  getClaudeRemainingQuotaClass,
 } from "../types/claude";
+import {
+  resolveClaudeDisplayPercentage,
+  resolveClaudeDisplayQuotaClass,
+} from "../utils/claudeQuotaDisplayPreference";
 import {
   formatGitHubCopilotResetTime,
   getGitHubCopilotPlanBadge,
@@ -788,27 +790,31 @@ export function buildClaudeAccountPresentation(
 ): UnifiedAccountPresentation {
   const quotaItems: UnifiedQuotaMetric[] = [];
   if (account.quota) {
-    const fiveHourRemaining = getClaudeRemainingPercentage(
+    const fiveHourDisplay = resolveClaudeDisplayPercentage(
       account.quota.five_hour_percentage,
     );
-    const sevenDayRemaining = getClaudeRemainingPercentage(
+    const sevenDayDisplay = resolveClaudeDisplayPercentage(
       account.quota.seven_day_percentage,
     );
     quotaItems.push({
       key: "five_hour",
       label: t("claude.quota.fiveHour", "Current session"),
-      percentage: fiveHourRemaining,
-      quotaClass: getClaudeRemainingQuotaClass(fiveHourRemaining),
-      valueText: `${fiveHourRemaining}%`,
+      percentage: fiveHourDisplay,
+      quotaClass: resolveClaudeDisplayQuotaClass(
+        account.quota.five_hour_percentage,
+      ),
+      valueText: `${fiveHourDisplay}%`,
       resetText: formatClaudeResetTime(account.quota.five_hour_reset_time),
       resetAt: account.quota.five_hour_reset_time,
     });
     quotaItems.push({
       key: "seven_day",
       label: t("claude.quota.sevenDay", "Current week (all models)"),
-      percentage: sevenDayRemaining,
-      quotaClass: getClaudeRemainingQuotaClass(sevenDayRemaining),
-      valueText: `${sevenDayRemaining}%`,
+      percentage: sevenDayDisplay,
+      quotaClass: resolveClaudeDisplayQuotaClass(
+        account.quota.seven_day_percentage,
+      ),
+      valueText: `${sevenDayDisplay}%`,
       resetText: formatClaudeResetTime(account.quota.seven_day_reset_time),
       resetAt: account.quota.seven_day_reset_time,
     });

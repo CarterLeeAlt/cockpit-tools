@@ -7,6 +7,29 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [1.3.15] - 2026-07-28
+
+### 新增
+
+- **WorkBuddy 支持可配置自动签到**：默认关闭；可按账号设置随机签到时间段与日志保留，不会在未开启时对已有账号发起签到。
+- **macOS 菜单栏可显示实时额度**：默认关闭；可在设置中选择监控平台，并可选显示账号标识前缀。
+- **MFA 速查支持 Google Authenticator 迁移二维码批量导入**：可扫描 `otpauth-migration://` 迁移码并批量写入本地 MFA 记录。
+- **Claude 额度展示可切换「已用% / 剩余%」**：默认仍为已用百分比；开启后仅改变 UI 展示，自动切号与预警阈值仍按已用比例计算。
+
+### 变更
+
+- **ChatGPT Web Session 导入改为仅支持查看额度**：不再自动注册为 Agent Identity，也不再加入 Codex API 服务账号池；导入后可查看额度，但不能切号、启动官方客户端或 CLI，也不能加入 API 服务或作为 OAuth 绑定账号。
+- **Responses 中转类 API Key 切号改为走内置 OpenAI provider + `openai_base_url`**：与官方直连投影方式对齐，避免误用 local-access provider 标识。
+- **CI 构建矩阵与正式发布工作流加速**：preflight 拆分为可并行步骤，并优化缓存与矩阵调度。
+
+### 修复
+
+- **修复导入 ChatGPT Web Session 时因 Agent Identity runtime 注册返回 HTTP 403 导致导入失败的问题**：此类格式不再发起 runtime 注册，按仅查额账号导入。
+- **修复 Windows Desktop 会话路径含 `\\?\` 前缀时工作目录规范化异常的问题**。
+- **修复自定义图标写入 localStorage 配额失败时可能撑坏布局的问题**。
+- **修复 Windows CLI 快速启动在 `system` 终端下弹出裸 PowerShell 的问题**：检测到 Windows Terminal 时优先通过 `wt` 启动，未安装时保持原有回退。
+- **修复 Codex API 服务页等处硬编码中文 fallback 的问题**：补齐对应 i18n 键与默认文案。
+
 ## [1.3.14] - 2026-07-22
 
 ### 新增

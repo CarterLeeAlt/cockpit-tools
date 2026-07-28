@@ -484,6 +484,9 @@ pub struct UserConfig {
     /// Claude 配额预警阈值（百分比）
     #[serde(default = "default_claude_quota_alert_threshold")]
     pub claude_quota_alert_threshold: i32,
+    /// Claude 额度 UI 是否显示「剩余%」（默认 false，保持历史「已用%」）
+    #[serde(default = "default_claude_quota_display_remaining")]
+    pub claude_quota_display_remaining: bool,
     /// 是否启用 CodeBuddy 配额预警通知
     #[serde(default = "default_codebuddy_quota_alert_enabled")]
     pub codebuddy_quota_alert_enabled: bool,
@@ -1072,6 +1075,9 @@ fn default_grok_quota_alert_enabled() -> bool {
 fn default_grok_quota_alert_threshold() -> i32 {
     20
 }
+fn default_claude_quota_display_remaining() -> bool {
+    false
+}
 fn default_claude_quota_alert_enabled() -> bool {
     false
 }
@@ -1266,6 +1272,7 @@ impl Default for UserConfig {
             grok_quota_alert_enabled: default_grok_quota_alert_enabled(),
             grok_quota_alert_threshold: default_grok_quota_alert_threshold(),
             claude_quota_alert_enabled: default_claude_quota_alert_enabled(),
+            claude_quota_display_remaining: default_claude_quota_display_remaining(),
             claude_quota_alert_threshold: default_claude_quota_alert_threshold(),
             codebuddy_quota_alert_enabled: default_codebuddy_quota_alert_enabled(),
             codebuddy_quota_alert_threshold: default_codebuddy_quota_alert_threshold(),
@@ -2079,6 +2086,12 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "claude_quota_alert_threshold".to_string(),
                 json!(legacy_threshold),
+            );
+        }
+        if !obj.contains_key("claude_quota_display_remaining") {
+            obj.insert(
+                "claude_quota_display_remaining".to_string(),
+                json!(default_claude_quota_display_remaining()),
             );
         }
         if !obj.contains_key("codebuddy_quota_alert_enabled") {

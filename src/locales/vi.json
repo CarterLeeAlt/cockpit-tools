@@ -706,9 +706,9 @@
       "codebuddyAutoRefresh": "Tự động làm mới hạn ngạch CodeBuddy",
       "codebuddyAutoRefreshDesc": "Tần suất tự động cập nhật nền",
       "codebuddyShareSessionsOnSwitch": "Chia sẻ phiên cục bộ khi chuyển tài khoản",
-    "codebuddyShareSessionsOnSwitchDesc": "Hợp nhất phiên cục bộ và trạng thái khôi phục giữa các tài khoản CodeBuddy trên thiết bị này. Nội dung chỉ được đọc và ghi cục bộ, không được tải lên.",
-    "workbuddyShareSessionsOnSwitch": "Chia sẻ phiên cục bộ khi chuyển tài khoản",
-    "workbuddyShareSessionsOnSwitchDesc": "Hợp nhất phiên cục bộ và trạng thái khôi phục giữa các tài khoản WorkBuddy trên thiết bị này. Nội dung chỉ được đọc và ghi cục bộ, không được tải lên.",
+      "codebuddyShareSessionsOnSwitchDesc": "Hợp nhất phiên cục bộ và trạng thái khôi phục giữa các tài khoản CodeBuddy trên thiết bị này. Nội dung chỉ được đọc và ghi cục bộ, không được tải lên.",
+      "workbuddyShareSessionsOnSwitch": "Chia sẻ phiên cục bộ khi chuyển tài khoản",
+      "workbuddyShareSessionsOnSwitchDesc": "Hợp nhất phiên cục bộ và trạng thái khôi phục giữa các tài khoản WorkBuddy trên thiết bị này. Nội dung chỉ được đọc và ghi cục bộ, không được tải lên.",
       "codebuddyAppPath": "Đường dẫn khởi động CodeBuddy",
       "codebuddyAppPathDesc": "Để trống để dùng đường dẫn mặc định",
       "codebuddyAppPathPlaceholder": "Đường dẫn mặc định",
@@ -851,7 +851,9 @@
       "externalNetwork": "Cho phép mạng ngoài",
       "externalNetworkDesc": "Tắt: chặn WebDAV, usage OpenRouter, thông báo và kiểm tra cập nhật (tính năng local vẫn chạy).",
       "webdavAllowedDomains": "Danh sách domain WebDAV",
-      "webdavAllowedDomainsDesc": "Cách nhau bằng dấu phẩy; trống = không giới hạn"
+      "webdavAllowedDomainsDesc": "Cách nhau bằng dấu phẩy; trống = không giới hạn",
+      "claudeQuotaDisplayRemaining": "Claude hiển thị % còn lại",
+      "claudeQuotaDisplayRemainingDesc": "Mặc định % đã dùng. Bật = % còn lại. Tự chuyển và cảnh báo vẫn theo đã dùng."
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -1835,12 +1837,6 @@
       "formatBatchLabel": "Ví dụ hàng loạt"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "Lưu ý khi nhập Web Session",
-      "noticeMessage": "Đã phát hiện {{count}} tài khoản Web Session. Khi tiếp tục, các tài khoản sẽ tự động được đăng ký dưới dạng Agent Identity.",
-      "noticeApiOnly": "Các tài khoản này chỉ dành cho Dịch vụ API và sẽ tự động được thêm vào nhóm tài khoản của dịch vụ.",
-      "noticeNoSwitch": "Không thể dùng chúng để chuyển tài khoản Codex thông thường, khởi chạy trực tiếp ứng dụng chính thức hay CLI hoặc làm tài khoản liên kết OAuth.",
-      "noticeCredential": "Ứng dụng tạo và lưu cục bộ khóa riêng Agent Identity. Hãy bảo vệ bản sao xuất ra như mật khẩu.",
-      "noticeConfirm": "Tôi đã hiểu, tiếp tục",
       "apiOnlyActionError": "Tài khoản Agent Identity chỉ khả dụng qua Dịch vụ API và không thể chuyển sang hoặc khởi chạy trực tiếp.",
       "oauthBindingUnsupported": "Tài khoản Agent Identity chỉ dành cho Dịch vụ API và không thể dùng làm tài khoản liên kết OAuth."
     },
@@ -1971,7 +1967,8 @@
         "images": "Yêu cầu ảnh",
         "imagesDetail": "Tạo {{generate}} / Sửa {{edit}} / Quyền {{blocked}}",
         "estimatedCost": "Giá trị ước tính",
-        "estimatedCostDetail": "Cộng dồn từ ảnh chụp giá của từng yêu cầu"
+        "estimatedCostDetail": "Cộng dồn từ ảnh chụp giá của từng yêu cầu",
+        "successRateLabel": "Tỷ lệ thành công"
       },
       "routingLabel": "Định tuyến",
       "routingSaveSuccess": "Đã cập nhật định tuyến dịch vụ API",
@@ -3382,7 +3379,9 @@
         "excludedModels": "Mô hình loại trừ",
         "excludedModelsPlaceholder": "Mỗi dòng một mô hình hoặc mẫu",
         "savePolicy": "Lưu chính sách",
-        "policySaved": "Đã lưu chính sách mô hình của Key"
+        "policySaved": "Đã lưu chính sách mô hình của Key",
+        "lastUsed": "Dùng gần nhất",
+        "routingAccounts": "Tài khoản định tuyến"
       },
       "routing": {
         "optionsTitle": "Tùy chọn định tuyến",
@@ -3419,7 +3418,10 @@
         "loading": "Đang tải nhật ký",
         "gatewayModeUnknown": "Che do khong xac dinh",
         "requestIdShort": "ID yêu cầu {{id}}",
-        "httpStatus": "Trạng thái HTTP {{status}}"
+        "httpStatus": "Trạng thái HTTP {{status}}",
+        "allInstances": "Mọi instance",
+        "instanceFilter": "Phiên bản",
+        "instanceUnknown": "Phiên bản không rõ"
       },
       "timeouts": {
         "entryLabel": "Nâng cao",
@@ -3480,6 +3482,10 @@
         "clearSelection": "Bỏ chọn",
         "saveSuccess": "Đã lưu chặn mô hình tài khoản",
         "cardCount": "Chặn {{count}}"
+      },
+      "usage": {
+        "title": "Thống kê dùng",
+        "lastRecorded": "Ghi nhận gần nhất"
       }
     },
     "apiKey": {
@@ -3676,7 +3682,17 @@
       "autoSyncBadge": "Tự động"
     },
     "exportAuthFailed": "Xuất lỗi",
-    "exportAuthFailedTitle": "Xuất tất cả tài khoản auth lỗi"
+    "exportAuthFailedTitle": "Xuất tất cả tài khoản auth lỗi",
+    "webSessionImport": {
+      "noticeTitle": "Lưu ý Web Session",
+      "noticeMessage": "{{count}} Web Session. Không dùng thật; chỉ xem hạn mức.",
+      "noticeQuotaOnly": "Chỉ hạn mức. Không client/CLI/đổi tài khoản.",
+      "noticeNoApi": "Không vào API hay OAuth.",
+      "noticeConfirm": "Đã hiểu, tiếp tục",
+      "actionBlocked": "Web Session chỉ xem hạn mức.",
+      "apiIneligible": "Web Session chỉ hạn mức, không API",
+      "oauthBindingUnsupported": "Web Session không dùng OAuth."
+    }
   },
   "githubCopilot": {
     "title": "Quản lý tài khoản GitHub Copilot",
@@ -5143,7 +5159,13 @@
     "saveAccountName": "Lưu tên tài khoản",
     "cancelEditAccountName": "Hủy chỉnh sửa",
     "accountNameRequired": "Tên tài khoản là bắt buộc.",
-    "copySecret": "Sao chép mã bí mật"
+    "copySecret": "Sao chép mã bí mật",
+    "migrationBatchProgress": "Quét {{current}}/{{total}}",
+    "migrationBatchIncomplete": "Chưa xong; lưu một phần hoặc tiếp tục.",
+    "continueMigrationScan": "Tiếp tục quét",
+    "savePartialMigrationBatch": "Lưu một phần",
+    "saveCompleteMigrationBatch": "Lưu toàn bộ",
+    "clearMigrationBatch": "Xóa lô"
   },
   "logViewer": {
     "fileLabel": "Tệp nhật ký",

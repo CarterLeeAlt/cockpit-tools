@@ -71,6 +71,8 @@ const CODEX_AUTO_SWITCH_ACCOUNT_SCOPE_ALL: &str = "all_accounts";
 const CODEX_AUTO_SWITCH_ACCOUNT_SCOPE_SELECTED: &str = "selected_accounts";
 const DISK_FULL_ERROR_CODE: &str = "DISK_FULL";
 const CODEX_TOKEN_SOURCE_MANAGED: &str = "managed";
+/// ChatGPT Web Session import: quota-only.
+const CODEX_TOKEN_SOURCE_WEB_SESSION: &str = "chatgpt_web_session";
 const CODEX_AUTHORIZATION_STATUS_PENDING: &str = "pending";
 const CODEX_MISSING_REFRESH_TOKEN_REAUTH_REASON: &str =
     "Codex 登录授权缺少 refresh_token，无法自动续期；当前 access_token 已不可用，请重新登录。";
@@ -5754,6 +5756,9 @@ pub async fn prepare_account_for_injection_from_auth_dir(
     if account.is_agent_identity_auth() {
         return Err("Agent Identity 账号仅支持 API 服务，无法用于客户端或 CLI 启动".to_string());
     }
+    if account.is_web_session_auth() {
+        return Err("Web Session 账号仅支持查看额度，无法用于客户端或 CLI 启动".to_string());
+    }
     if account.is_api_key_auth() {
         if let Some(dir) = auth_dir {
             if normalize_optional_ref(account.bound_oauth_account_id.as_deref()).is_some() {
@@ -5896,6 +5901,9 @@ pub async fn switch_account_managed(account_id: &str) -> Result<CodexAccount, St
         .ok_or_else(|| format!("账号不存在: {}", account_id))?;
     if account.is_agent_identity_auth() {
         return Err("Agent Identity 账号仅支持 API 服务，无法作为普通账号切换".to_string());
+    }
+    if account.is_web_session_auth() {
+        return Err("Web Session 账号仅支持查看额度，无法作为普通账号切换或启动".to_string());
     }
     if account.is_api_key_auth() {
         if normalize_optional_ref(account.bound_oauth_account_id.as_deref()).is_none() {
@@ -6853,6 +6861,17 @@ fn apply_web_session_agent_identity_metadata(
     Ok(account)
 }
 
+fn mark_imported_web_session_account(mut account: CodexAccount) -> Result<CodexAccount, String> {
+    if account.is_api_key_auth() || account.is_agent_identity_auth() {
+        return Ok(account);
+    }
+    if account.token_source_mode.trim() != CODEX_TOKEN_SOURCE_WEB_SESSION {
+        account.token_source_mode = CODEX_TOKEN_SOURCE_WEB_SESSION.to_string();
+        save_account(&account)?;
+    }
+    Ok(account)
+}
+
 async fn register_web_session_as_agent_identity_with_base_url(
     value: &serde_json::Value,
     agent_identity_auth_api_base_url: &str,
@@ -7427,6 +7446,8 @@ async fn import_sub2api_export_from_value(
 async fn import_account_from_json_value(
     value: serde_json::Value,
 ) -> Result<Option<CodexAccount>, String> {
+    let is_web_session = normalize_codex_session_value(&value, 0).is_some();
+
     if let Some(identity) = parse_agent_identity_from_value(&value)? {
         return Ok(Some(upsert_agent_identity_account(identity)?));
     }
@@ -7479,11 +7500,21 @@ async fn import_account_from_json_value(
     }
 
     if let Some(candidate) = extract_codex_import_candidate_from_value(&value) {
-        return Ok(Some(import_codex_candidate(candidate).await?));
+        let account = import_codex_candidate(candidate).await?;
+        return Ok(Some(if is_web_session {
+            mark_imported_web_session_account(account)?
+        } else {
+            account
+        }));
     }
 
     if let Ok(account) = serde_json::from_value::<CodexAccount>(value) {
-        return Ok(Some(import_account_struct(account)?));
+        let account = import_account_struct(account)?;
+        return Ok(Some(if is_web_session {
+            mark_imported_web_session_account(account)?
+        } else {
+            account
+        }));
     }
 
     Ok(None)
@@ -7734,13 +7765,10 @@ async fn import_from_json_with_agent_identity_auto_registration_base_url(
     }
 }
 
-/// 从 JSON 字符串导入账号；识别到 Web Session 时自动注册为 Agent Identity。
+/// 从 JSON 字符串导入账号。
+/// Web Session 不再自动注册 Agent Identity（上游 runtime 注册已失效）；按普通 Token 导入并标记仅查额。
 pub async fn import_from_json(json_content: &str) -> Result<Vec<CodexAccount>, String> {
-    import_from_json_with_agent_identity_auto_registration_base_url(
-        json_content,
-        codex_agent_identity::AGENT_IDENTITY_AUTH_API_BASE_URL,
-    )
-    .await
+    import_from_json_without_web_session_registration(json_content).await
 }
 
 /// 导出账号为 JSON

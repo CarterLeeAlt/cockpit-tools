@@ -702,9 +702,9 @@
       "codebuddyAutoRefresh": "Actualisation automatique du quota CodeBuddy",
       "codebuddyAutoRefreshDesc": "Intervalle d'actualisation en arriere-plan",
       "codebuddyShareSessionsOnSwitch": "Partager les sessions locales au changement",
-    "codebuddyShareSessionsOnSwitchDesc": "Fusionne les sessions locales et l’état de restauration entre les comptes CodeBuddy de cet appareil. Le contenu reste lu et écrit localement et n’est pas téléversé.",
-    "workbuddyShareSessionsOnSwitch": "Partager les sessions locales au changement",
-    "workbuddyShareSessionsOnSwitchDesc": "Fusionne les sessions locales et l’état de restauration entre les comptes WorkBuddy de cet appareil. Le contenu reste lu et écrit localement et n’est pas téléversé.",
+      "codebuddyShareSessionsOnSwitchDesc": "Fusionne les sessions locales et l’état de restauration entre les comptes CodeBuddy de cet appareil. Le contenu reste lu et écrit localement et n’est pas téléversé.",
+      "workbuddyShareSessionsOnSwitch": "Partager les sessions locales au changement",
+      "workbuddyShareSessionsOnSwitchDesc": "Fusionne les sessions locales et l’état de restauration entre les comptes WorkBuddy de cet appareil. Le contenu reste lu et écrit localement et n’est pas téléversé.",
       "codebuddyAppPath": "Chemin de lancement de CodeBuddy",
       "codebuddyAppPathDesc": "Laisser vide pour utiliser le chemin par defaut",
       "codebuddyAppPathPlaceholder": "Chemin par defaut",
@@ -851,7 +851,9 @@
       "externalNetwork": "Autoriser le réseau externe",
       "externalNetworkDesc": "Désactivé : bloque WebDAV, usage OpenRouter, annonces et vérif. de mise à jour (le local continue).",
       "webdavAllowedDomains": "Liste blanche domaines WebDAV",
-      "webdavAllowedDomainsDesc": "Séparés par des virgules ; vide = sans limite"
+      "webdavAllowedDomainsDesc": "Séparés par des virgules ; vide = sans limite",
+      "claudeQuotaDisplayRemaining": "Quota Claude en % restant",
+      "claudeQuotaDisplayRemainingDesc": "Par défaut : % utilisé. Activer = % restant. Bascules/alertes restent sur l’usage."
     },
     "network": {
       "apiTitle": "API du cockpit antigravité",
@@ -1835,12 +1837,6 @@
       "formatBatchLabel": "Exemple groupé"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "Avis d’importation Web Session",
-      "noticeMessage": "{{count}} compte(s) Web Session détecté(s). Continuer les enregistrera automatiquement comme Agent Identity.",
-      "noticeApiOnly": "Ces comptes sont réservés au service API et seront ajoutés automatiquement à son pool de comptes.",
-      "noticeNoSwitch": "Ils ne peuvent pas servir au changement normal de compte Codex, au lancement direct du client officiel ou de la CLI, ni comme compte lié via OAuth.",
-      "noticeCredential": "L’application génère et conserve localement une clé privée Agent Identity. Protégez les sauvegardes exportées comme des mots de passe.",
-      "noticeConfirm": "J’ai compris, continuer",
       "apiOnlyActionError": "Les comptes Agent Identity sont disponibles uniquement via le service API et ne peuvent pas être activés ou lancés directement.",
       "oauthBindingUnsupported": "Les comptes Agent Identity sont réservés au service API et ne peuvent pas servir de comptes liés via OAuth."
     },
@@ -1971,7 +1967,8 @@
         "images": "Requêtes image",
         "imagesDetail": "Génération {{generate}} / Retouche {{edit}} / Droit {{blocked}}",
         "estimatedCost": "Valeur estimée",
-        "estimatedCostDetail": "Cumulée depuis l’instantané de prix de chaque requête"
+        "estimatedCostDetail": "Cumulée depuis l’instantané de prix de chaque requête",
+        "successRateLabel": "Taux de succès"
       },
       "routingLabel": "Routage",
       "routingSaveSuccess": "Le routage du service API a été mis à jour",
@@ -3382,7 +3379,9 @@
         "excludedModels": "Modèles exclus",
         "excludedModelsPlaceholder": "Un modèle ou motif par ligne",
         "savePolicy": "Enregistrer",
-        "policySaved": "Politique du Key enregistrée"
+        "policySaved": "Politique du Key enregistrée",
+        "lastUsed": "Dernière utilisation",
+        "routingAccounts": "Comptes de routage"
       },
       "routing": {
         "optionsTitle": "Options de routage",
@@ -3419,7 +3418,10 @@
         "loading": "Chargement des logs",
         "gatewayModeUnknown": "Mode inconnu",
         "requestIdShort": "ID requête {{id}}",
-        "httpStatus": "Statut HTTP {{status}}"
+        "httpStatus": "Statut HTTP {{status}}",
+        "allInstances": "Toutes les instances",
+        "instanceFilter": "Environnement",
+        "instanceUnknown": "Env. inconnu"
       },
       "timeouts": {
         "entryLabel": "Avancé",
@@ -3480,6 +3482,10 @@
         "clearSelection": "Effacer sélection",
         "saveSuccess": "Blocages de modèles enregistrés",
         "cardCount": "{{count}} bloqués"
+      },
+      "usage": {
+        "title": "Stats d’usage",
+        "lastRecorded": "Dernier enregistrement"
       }
     },
     "apiKey": {
@@ -3676,7 +3682,17 @@
       "autoSyncBadge": "Automatique"
     },
     "exportAuthFailed": "Exporter échecs",
-    "exportAuthFailedTitle": "Exporter tous les comptes en échec d’auth"
+    "exportAuthFailedTitle": "Exporter tous les comptes en échec d’auth",
+    "webSessionImport": {
+      "noticeTitle": "Avis import Web Session",
+      "noticeMessage": "{{count}} Web Session. Usage non supporté, quota seulement.",
+      "noticeQuotaOnly": "Quota seul. Pas de client/CLI/changement de compte.",
+      "noticeNoApi": "Pas de pool API ni liaison OAuth.",
+      "noticeConfirm": "Compris, continuer",
+      "actionBlocked": "Web Session : quota seul, pas de bascule/lancement.",
+      "apiIneligible": "Web Session : quota seul, hors API",
+      "oauthBindingUnsupported": "Web Session non utilisable en OAuth."
+    }
   },
   "githubCopilot": {
     "title": "Gestion des comptes GitHub Copilot",
@@ -5143,7 +5159,13 @@
     "saveAccountName": "Enregistrer le nom du compte",
     "cancelEditAccountName": "Annuler la modification",
     "accountNameRequired": "Le nom du compte est requis.",
-    "copySecret": "Copier le secret"
+    "copySecret": "Copier le secret",
+    "migrationBatchProgress": "Scan {{current}}/{{total}}",
+    "migrationBatchIncomplete": "Incomplet ; enregistrer partiel ou continuer.",
+    "continueMigrationScan": "Continuer le scan",
+    "savePartialMigrationBatch": "Enregistrer partiel",
+    "saveCompleteMigrationBatch": "Enregistrer tout",
+    "clearMigrationBatch": "Vider le lot"
   },
   "logViewer": {
     "fileLabel": "Fichier journal",

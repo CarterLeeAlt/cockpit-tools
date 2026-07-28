@@ -101,6 +101,7 @@ import {
   formatCodexResetTimeAbsolute,
   isCodexApiKeyAccount,
   isCodexAgentIdentityAccount,
+  isCodexWebSessionAccount,
   isCodexChatCompletionsApiKeyAccount,
   isCodexNewApiAccount,
   isCodexPendingOAuthAccount,
@@ -5123,6 +5124,16 @@ export function CodexAccountsPage() {
       });
       return;
     }
+    if (isCodexWebSessionAccount(account)) {
+      setMessage({
+        text: t(
+          "codex.webSessionImport.actionBlocked",
+          "Web Session 账号仅支持查看额度，无法切换或启动。",
+        ),
+        tone: "error",
+      });
+      return;
+    }
     try {
       await executeCodexAccountSwitch(accountId);
     } catch (e) {
@@ -5498,6 +5509,16 @@ export function CodexAccountsPage() {
         text: t(
           "codex.agentIdentityRegistration.apiOnlyActionError",
           "Agent Identity 账号仅支持 API 服务，无法作为普通账号切换或启动。",
+        ),
+        tone: "error",
+      });
+      return;
+    }
+    if (isCodexWebSessionAccount(account)) {
+      setMessage({
+        text: t(
+          "codex.webSessionImport.actionBlocked",
+          "Web Session 账号仅支持查看额度，无法切换或启动。",
         ),
         tone: "error",
       });
@@ -17428,7 +17449,7 @@ export function CodexAccountsPage() {
                   <h2>
                     <CircleAlert size={18} />
                     {t(
-                      "codex.agentIdentityRegistration.noticeTitle",
+                      "codex.webSessionImport.noticeTitle",
                       "Web Session 导入须知",
                     )}
                   </h2>
@@ -17443,8 +17464,8 @@ export function CodexAccountsPage() {
                 <div className="modal-body">
                   <p className="codex-local-access-hide-confirm-desc">
                     {t(
-                      "codex.agentIdentityRegistration.noticeMessage",
-                      "检测到 {{count}} 个 Web Session 账号。继续后将自动注册为 Agent Identity。",
+                      "codex.webSessionImport.noticeMessage",
+                      "检测到 {{count}} 个 Web Session 账号。此格式不支持实际使用，仅支持查看额度。",
                       { count: pendingWebSessionImport.accountLabels.length },
                     )}
                   </p>
@@ -17466,8 +17487,8 @@ export function CodexAccountsPage() {
                       <span className="codex-local-access-hide-confirm-dot" />
                       <span>
                         {t(
-                          "codex.agentIdentityRegistration.noticeApiOnly",
-                          "这类账号仅用于 API 服务，确认后会自动加入 API 服务账号池。",
+                          "codex.webSessionImport.noticeQuotaOnly",
+                          "仅支持查看额度，不能启动官方客户端或 CLI，也不能切号。",
                         )}
                       </span>
                     </div>
@@ -17475,17 +17496,8 @@ export function CodexAccountsPage() {
                       <span className="codex-local-access-hide-confirm-dot" />
                       <span>
                         {t(
-                          "codex.agentIdentityRegistration.noticeNoSwitch",
-                          "无法作为普通 Codex 账号切号，不能直接启动官方客户端或 CLI，也不能作为 OAuth 绑定账号。",
-                        )}
-                      </span>
-                    </div>
-                    <div className="codex-local-access-hide-confirm-point">
-                      <span className="codex-local-access-hide-confirm-dot" />
-                      <span>
-                        {t(
-                          "codex.agentIdentityRegistration.noticeCredential",
-                          "应用会在本机生成并保存 Agent Identity 私钥；导出备份时请像密码一样保护。",
+                          "codex.webSessionImport.noticeNoApi",
+                          "不能加入 Codex API 服务账号池，也不能作为 OAuth 绑定账号。",
                         )}
                       </span>
                     </div>
@@ -17503,11 +17515,11 @@ export function CodexAccountsPage() {
                     onClick={() => {
                       const pending = pendingWebSessionImport;
                       setPendingWebSessionImport(null);
-                      void performTokenImport(pending.content, true);
+                      void performTokenImport(pending.content, false);
                     }}
                   >
                     {t(
-                      "codex.agentIdentityRegistration.noticeConfirm",
+                      "codex.webSessionImport.noticeConfirm",
                       "已知晓，继续导入",
                     )}
                   </button>

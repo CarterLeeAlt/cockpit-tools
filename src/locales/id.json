@@ -753,9 +753,9 @@
       "codebuddyAutoRefresh": "Penyegaran Otomatis Kuota CodeBuddy",
       "codebuddyAutoRefreshDesc": "Interval penyegaran otomatis latar belakang",
       "codebuddyShareSessionsOnSwitch": "Bagikan sesi lokal saat beralih",
-    "codebuddyShareSessionsOnSwitchDesc": "Menggabungkan sesi lokal dan status pemulihan antar akun CodeBuddy di perangkat ini. Konten hanya dibaca dan ditulis secara lokal dan tidak diunggah.",
-    "workbuddyShareSessionsOnSwitch": "Bagikan sesi lokal saat beralih",
-    "workbuddyShareSessionsOnSwitchDesc": "Menggabungkan sesi lokal dan status pemulihan antar akun WorkBuddy di perangkat ini. Konten hanya dibaca dan ditulis secara lokal dan tidak diunggah.",
+      "codebuddyShareSessionsOnSwitchDesc": "Menggabungkan sesi lokal dan status pemulihan antar akun CodeBuddy di perangkat ini. Konten hanya dibaca dan ditulis secara lokal dan tidak diunggah.",
+      "workbuddyShareSessionsOnSwitch": "Bagikan sesi lokal saat beralih",
+      "workbuddyShareSessionsOnSwitchDesc": "Menggabungkan sesi lokal dan status pemulihan antar akun WorkBuddy di perangkat ini. Konten hanya dibaca dan ditulis secara lokal dan tidak diunggah.",
       "codebuddyAppPath": "Jalur Peluncuran CodeBuddy",
       "codebuddyAppPathDesc": "Biarkan kosong untuk jalur bawaan",
       "codebuddyAppPathPlaceholder": "Jalur bawaan",
@@ -898,7 +898,9 @@
       "externalNetwork": "Izinkan jaringan eksternal",
       "externalNetworkDesc": "Mati: memblokir WebDAV, usage OpenRouter, pengumuman, dan cek pembaruan (fitur lokal tetap).",
       "webdavAllowedDomains": "Daftar domain WebDAV",
-      "webdavAllowedDomainsDesc": "Pisahkan koma; kosong = tanpa batas"
+      "webdavAllowedDomainsDesc": "Pisahkan koma; kosong = tanpa batas",
+      "claudeQuotaDisplayRemaining": "Kuota Claude sebagai % sisa",
+      "claudeQuotaDisplayRemainingDesc": "Default: % terpakai. Aktif = % sisa. Auto-switch & peringatan tetap pakai rasio terpakai."
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -1885,12 +1887,6 @@
       "formatBatchLabel": "Contoh batch"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "Pemberitahuan impor Web Session",
-      "noticeMessage": "Terdeteksi {{count}} akun Web Session. Jika dilanjutkan, akun akan otomatis didaftarkan sebagai Agent Identity.",
-      "noticeApiOnly": "Akun ini hanya untuk Layanan API dan akan otomatis ditambahkan ke kumpulan akunnya.",
-      "noticeNoSwitch": "Akun tidak dapat digunakan untuk pergantian akun Codex biasa, menjalankan klien resmi maupun CLI secara langsung, atau sebagai akun pengikatan OAuth.",
-      "noticeCredential": "Aplikasi membuat dan menyimpan kunci privat Agent Identity secara lokal. Lindungi cadangan ekspor seperti kata sandi.",
-      "noticeConfirm": "Saya paham, lanjutkan",
       "apiOnlyActionError": "Akun Agent Identity hanya tersedia melalui Layanan API dan tidak dapat dialihkan atau dijalankan langsung.",
       "oauthBindingUnsupported": "Akun Agent Identity hanya untuk Layanan API dan tidak dapat digunakan sebagai akun pengikatan OAuth."
     },
@@ -2021,7 +2017,8 @@
         "images": "Permintaan gambar",
         "imagesDetail": "Buat {{generate}} / Edit {{edit}} / Izin {{blocked}}",
         "estimatedCost": "Nilai estimasi",
-        "estimatedCostDetail": "Akumulasi dari snapshot harga tiap permintaan"
+        "estimatedCostDetail": "Akumulasi dari snapshot harga tiap permintaan",
+        "successRateLabel": "Tingkat sukses"
       },
       "routingLabel": "Rute",
       "routingSaveSuccess": "Rute layanan API diperbarui",
@@ -3429,7 +3426,9 @@
         "excludedModels": "Model Dikecualikan",
         "excludedModelsPlaceholder": "Satu model atau pola per baris",
         "savePolicy": "Simpan Kebijakan",
-        "policySaved": "Kebijakan model Key tersimpan"
+        "policySaved": "Kebijakan model Key tersimpan",
+        "lastUsed": "Terakhir dipakai",
+        "routingAccounts": "Akun routing"
       },
       "routing": {
         "optionsTitle": "Opsi Routing",
@@ -3466,7 +3465,10 @@
         "loading": "Memuat log permintaan",
         "gatewayModeUnknown": "Mode tidak diketahui",
         "requestIdShort": "ID permintaan {{id}}",
-        "httpStatus": "Status HTTP {{status}}"
+        "httpStatus": "Status HTTP {{status}}",
+        "allInstances": "Semua instance",
+        "instanceFilter": "Instansi",
+        "instanceUnknown": "Instansi tak dikenal"
       },
       "timeouts": {
         "entryLabel": "Lanjutan",
@@ -3527,6 +3529,10 @@
         "clearSelection": "Hapus Pilihan",
         "saveSuccess": "Blokir model akun tersimpan",
         "cardCount": "{{count}} diblokir"
+      },
+      "usage": {
+        "title": "Statistik pemakaian",
+        "lastRecorded": "Terakhir dicatat"
       }
     },
     "apiKey": {
@@ -3723,7 +3729,17 @@
       "autoSyncBadge": "Mobil"
     },
     "exportAuthFailed": "Ekspor gagal",
-    "exportAuthFailedTitle": "Ekspor semua akun auth gagal"
+    "exportAuthFailedTitle": "Ekspor semua akun auth gagal",
+    "webSessionImport": {
+      "noticeTitle": "Pemberitahuan Web Session",
+      "noticeMessage": "{{count}} Web Session. Tidak untuk dipakai; hanya kuota.",
+      "noticeQuotaOnly": "Hanya kuota. Tanpa klien/CLI/ganti akun.",
+      "noticeNoApi": "Tidak ke pool API atau OAuth.",
+      "noticeConfirm": "Mengerti, lanjut",
+      "actionBlocked": "Web Session hanya kuota.",
+      "apiIneligible": "Web Session hanya kuota, bukan API",
+      "oauthBindingUnsupported": "Web Session tidak untuk OAuth."
+    }
   },
   "codebuddy": {
     "title": "Akun CodeBuddy",
@@ -5103,7 +5119,13 @@
     "saveAccountName": "Simpan Nama Akun",
     "cancelEditAccountName": "Batalkan Edit",
     "accountNameRequired": "Nama akun diperlukan.",
-    "copySecret": "Salin Secret"
+    "copySecret": "Salin Secret",
+    "migrationBatchProgress": "Pindai {{current}}/{{total}}",
+    "migrationBatchIncomplete": "Belum selesai; simpan sebagian atau lanjut.",
+    "continueMigrationScan": "Lanjut pindai",
+    "savePartialMigrationBatch": "Simpan sebagian",
+    "saveCompleteMigrationBatch": "Simpan lengkap",
+    "clearMigrationBatch": "Hapus batch"
   },
   "twoFactorAuth": {
     "pageTitle": "2FA​",

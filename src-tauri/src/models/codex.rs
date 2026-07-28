@@ -498,6 +498,11 @@ impl CodexAccount {
         self.agent_identity.is_some()
     }
 
+    /// ChatGPT Web Session import: quota view only.
+    pub fn is_web_session_auth(&self) -> bool {
+        self.token_source_mode.trim() == "chatgpt_web_session"
+    }
+
     pub fn update_last_used(&mut self) {
         self.last_used = chrono::Utc::now().timestamp();
     }

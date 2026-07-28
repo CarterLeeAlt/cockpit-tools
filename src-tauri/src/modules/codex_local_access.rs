@@ -14258,6 +14258,9 @@ fn local_access_ineligible_reason(
     {
         return Some("pending_oauth");
     }
+    if account.is_web_session_auth() {
+        return Some("web_session_quota_only");
+    }
     if is_chat_completions_api_key_account(account) {
         return Some("chat_completions_api_key");
     }

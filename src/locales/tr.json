@@ -706,9 +706,9 @@
       "codebuddyAutoRefresh": "CodeBuddy Kota Otomatik Yenileme",
       "codebuddyAutoRefreshDesc": "Arka plan otomatik yenileme aralığı",
       "codebuddyShareSessionsOnSwitch": "Geçişte yerel oturumları paylaş",
-    "codebuddyShareSessionsOnSwitchDesc": "Bu cihazdaki CodeBuddy hesapları arasında yerel oturumları ve geri yükleme durumunu birleştirir. Oturum içeriği yalnızca yerel olarak okunup yazılır ve yüklenmez.",
-    "workbuddyShareSessionsOnSwitch": "Geçişte yerel oturumları paylaş",
-    "workbuddyShareSessionsOnSwitchDesc": "Bu cihazdaki WorkBuddy hesapları arasında yerel oturumları ve geri yükleme durumunu birleştirir. Oturum içeriği yalnızca yerel olarak okunup yazılır ve yüklenmez.",
+      "codebuddyShareSessionsOnSwitchDesc": "Bu cihazdaki CodeBuddy hesapları arasında yerel oturumları ve geri yükleme durumunu birleştirir. Oturum içeriği yalnızca yerel olarak okunup yazılır ve yüklenmez.",
+      "workbuddyShareSessionsOnSwitch": "Geçişte yerel oturumları paylaş",
+      "workbuddyShareSessionsOnSwitchDesc": "Bu cihazdaki WorkBuddy hesapları arasında yerel oturumları ve geri yükleme durumunu birleştirir. Oturum içeriği yalnızca yerel olarak okunup yazılır ve yüklenmez.",
       "codebuddyAppPath": "CodeBuddy Başlatma Yolu",
       "codebuddyAppPathDesc": "Varsayılan yol için boş bırakın",
       "codebuddyAppPathPlaceholder": "Varsayılan yol",
@@ -851,7 +851,9 @@
       "externalNetwork": "Harici ağa izin ver",
       "externalNetworkDesc": "Kapalı: WebDAV, OpenRouter kullanımı, duyurular ve otomatik güncelleme kontrolünü engeller (yerel sürer).",
       "webdavAllowedDomains": "WebDAV alan adı listesi",
-      "webdavAllowedDomainsDesc": "Virgülle ayır; boş = sınır yok"
+      "webdavAllowedDomainsDesc": "Virgülle ayır; boş = sınır yok",
+      "claudeQuotaDisplayRemaining": "Claude kotayı kalan % olarak göster",
+      "claudeQuotaDisplayRemainingDesc": "Varsayılan: kullanılan %. Açık = kalan %. Otomatik geçiş ve uyarılar kullanıma göre."
     },
     "network": {
       "apiTitle": "Yerçekimine Karşı Kokpit API'si",
@@ -1835,12 +1837,6 @@
       "formatBatchLabel": "Toplu örnek"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "Web Session içe aktarma bildirimi",
-      "noticeMessage": "{{count}} Web Session hesabı algılandı. Devam edildiğinde bunlar otomatik olarak Agent Identity şeklinde kaydedilir.",
-      "noticeApiOnly": "Bu hesaplar yalnızca API Hizmeti içindir ve hesap havuzuna otomatik olarak eklenir.",
-      "noticeNoSwitch": "Normal Codex hesap geçişi, resmi istemciyi ya da CLI'ı doğrudan başlatmak veya OAuth ile bağlanan hesap olarak kullanılamazlar.",
-      "noticeCredential": "Uygulama Agent Identity özel anahtarını yerel olarak oluşturur ve saklar. Dışa aktarılan yedekleri parola gibi koruyun.",
-      "noticeConfirm": "Anladım, devam et",
       "apiOnlyActionError": "Agent Identity hesapları yalnızca API Hizmeti üzerinden kullanılabilir; doğrudan geçiş yapılamaz veya başlatılamaz.",
       "oauthBindingUnsupported": "Agent Identity hesapları yalnızca API Hizmeti içindir ve OAuth ile bağlanan hesap olarak kullanılamaz."
     },
@@ -1971,7 +1967,8 @@
         "images": "Görsel istekleri",
         "imagesDetail": "Üret {{generate}} / Düzenle {{edit}} / Yetki {{blocked}}",
         "estimatedCost": "Tahmini değer",
-        "estimatedCostDetail": "Her isteğin fiyat anlık görüntüsünden toplanır"
+        "estimatedCostDetail": "Her isteğin fiyat anlık görüntüsünden toplanır",
+        "successRateLabel": "Başarı oranı"
       },
       "routingLabel": "Yönlendirme",
       "routingSaveSuccess": "API hizmeti yönlendirmesi güncellendi",
@@ -3382,7 +3379,9 @@
         "excludedModels": "Dışlanan modeller",
         "excludedModelsPlaceholder": "Her satıra bir model veya desen",
         "savePolicy": "İlkeyi kaydet",
-        "policySaved": "Key model ilkesi kaydedildi"
+        "policySaved": "Key model ilkesi kaydedildi",
+        "lastUsed": "Son kullanım",
+        "routingAccounts": "Yönlendirme hesapları"
       },
       "routing": {
         "optionsTitle": "Yönlendirme seçenekleri",
@@ -3419,7 +3418,10 @@
         "loading": "İstek günlükleri yükleniyor",
         "gatewayModeUnknown": "Bilinmeyen mod",
         "requestIdShort": "İstek ID {{id}}",
-        "httpStatus": "HTTP durumu {{status}}"
+        "httpStatus": "HTTP durumu {{status}}",
+        "allInstances": "Tüm örnekler",
+        "instanceFilter": "Örnek",
+        "instanceUnknown": "Örnek -"
       },
       "timeouts": {
         "entryLabel": "Gelişmiş",
@@ -3480,6 +3482,10 @@
         "clearSelection": "Seçimi temizle",
         "saveSuccess": "Hesap model engelleri kaydedildi",
         "cardCount": "{{count}} engelli"
+      },
+      "usage": {
+        "title": "Kullanım istatistikleri",
+        "lastRecorded": "Son kayıt"
       }
     },
     "apiKey": {
@@ -3676,7 +3682,17 @@
       "autoSyncBadge": "Otomatik"
     },
     "exportAuthFailed": "Hataları dışa aktar",
-    "exportAuthFailedTitle": "Tüm auth hatalı hesapları dışa aktar"
+    "exportAuthFailedTitle": "Tüm auth hatalı hesapları dışa aktar",
+    "webSessionImport": {
+      "noticeTitle": "Web Session içe aktarma",
+      "noticeMessage": "{{count}} Web Session. Gerçek kullanım yok; yalnızca kota.",
+      "noticeQuotaOnly": "Yalnızca kota. İstemci/CLI/geçiş yok.",
+      "noticeNoApi": "API havuzu veya OAuth yok.",
+      "noticeConfirm": "Anladım, devam",
+      "actionBlocked": "Web Session yalnızca kota.",
+      "apiIneligible": "Web Session yalnızca kota; API yok",
+      "oauthBindingUnsupported": "Web Session OAuth için değil."
+    }
   },
   "githubCopilot": {
     "title": "GitHub Copilot Hesap Yönetimi",
@@ -5143,7 +5159,13 @@
     "saveAccountName": "Hesap adını kaydet",
     "cancelEditAccountName": "Düzenlemeyi iptal et",
     "accountNameRequired": "Hesap adı gerekli.",
-    "copySecret": "Gizli anahtarı kopyala"
+    "copySecret": "Gizli anahtarı kopyala",
+    "migrationBatchProgress": "Tarama {{current}}/{{total}}",
+    "migrationBatchIncomplete": "Tamamlanmadı; kısmi kaydet veya devam.",
+    "continueMigrationScan": "Taramaya devam",
+    "savePartialMigrationBatch": "Kısmi kaydet",
+    "saveCompleteMigrationBatch": "Tam kaydet",
+    "clearMigrationBatch": "Toplu temizle"
   },
   "logViewer": {
     "fileLabel": "Günlük dosyası",

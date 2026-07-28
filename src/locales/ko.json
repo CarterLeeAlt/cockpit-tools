@@ -706,9 +706,9 @@
       "codebuddyAutoRefresh": "CodeBuddy 자동 할당량 새로고침",
       "codebuddyAutoRefreshDesc": "백그라운드 자동 업데이트 주기",
       "codebuddyShareSessionsOnSwitch": "계정 전환 시 로컬 대화 공유",
-    "codebuddyShareSessionsOnSwitchDesc": "이 기기의 CodeBuddy 계정 간에 로컬 대화와 복원 상태를 병합합니다. 대화 내용은 로컬에서만 읽고 쓰며 업로드하지 않습니다.",
-    "workbuddyShareSessionsOnSwitch": "계정 전환 시 로컬 대화 공유",
-    "workbuddyShareSessionsOnSwitchDesc": "이 기기의 WorkBuddy 계정 간에 로컬 대화와 복원 상태를 병합합니다. 대화 내용은 로컬에서만 읽고 쓰며 업로드하지 않습니다.",
+      "codebuddyShareSessionsOnSwitchDesc": "이 기기의 CodeBuddy 계정 간에 로컬 대화와 복원 상태를 병합합니다. 대화 내용은 로컬에서만 읽고 쓰며 업로드하지 않습니다.",
+      "workbuddyShareSessionsOnSwitch": "계정 전환 시 로컬 대화 공유",
+      "workbuddyShareSessionsOnSwitchDesc": "이 기기의 WorkBuddy 계정 간에 로컬 대화와 복원 상태를 병합합니다. 대화 내용은 로컬에서만 읽고 쓰며 업로드하지 않습니다.",
       "codebuddyAppPath": "CodeBuddy 실행 경로",
       "codebuddyAppPathDesc": "비워 두면 기본 경로를 사용합니다",
       "codebuddyAppPathPlaceholder": "기본 경로",
@@ -851,7 +851,9 @@
       "externalNetwork": "외부 네트워크 허용",
       "externalNetworkDesc": "끄면 WebDAV, OpenRouter 사용량, 공지, 자동 업데이트 확인을 차단합니다(로컬 기능은 유지).",
       "webdavAllowedDomains": "WebDAV 도메인 허용 목록",
-      "webdavAllowedDomainsDesc": "쉼표 구분; 비우면 제한 없음"
+      "webdavAllowedDomainsDesc": "쉼표 구분; 비우면 제한 없음",
+      "claudeQuotaDisplayRemaining": "Claude 잔여 % 표시",
+      "claudeQuotaDisplayRemainingDesc": "기본은 사용 %. 켜면 잔여 %. 자동 전환·경고는 사용 비율 기준."
     },
     "network": {
       "apiTitle": "반중력 조종석 API",
@@ -1835,12 +1837,6 @@
       "formatBatchLabel": "일괄 예시"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "Web Session 가져오기 안내",
-      "noticeMessage": "Web Session 계정 {{count}}개를 감지했습니다. 계속하면 Agent Identity로 자동 등록됩니다.",
-      "noticeApiOnly": "이 계정은 API 서비스 전용이며 해당 계정 풀에 자동으로 추가됩니다.",
-      "noticeNoSwitch": "일반 Codex 계정 전환, 공식 클라이언트 또는 CLI 직접 실행, OAuth 연결 계정으로는 사용할 수 없습니다.",
-      "noticeCredential": "앱이 Agent Identity 개인 키를 로컬에서 생성하고 저장합니다. 내보낸 백업은 비밀번호처럼 보호하세요.",
-      "noticeConfirm": "확인하고 계속",
       "apiOnlyActionError": "Agent Identity 계정은 API 서비스에서만 사용할 수 있으며 일반 전환이나 직접 실행은 지원하지 않습니다.",
       "oauthBindingUnsupported": "Agent Identity 계정은 API 서비스 전용이며 OAuth 연결 계정으로 사용할 수 없습니다."
     },
@@ -1971,7 +1967,8 @@
         "images": "이미지 요청",
         "imagesDetail": "생성 {{generate}} / 편집 {{edit}} / 권한 {{blocked}}",
         "estimatedCost": "예상 가치",
-        "estimatedCostDetail": "각 요청의 가격 스냅샷 기준 누적"
+        "estimatedCostDetail": "각 요청의 가격 스냅샷 기준 누적",
+        "successRateLabel": "성공률"
       },
       "routingLabel": "라우팅",
       "routingSaveSuccess": "API 서비스 라우팅을 업데이트했습니다",
@@ -3382,7 +3379,9 @@
         "excludedModels": "제외 모델",
         "excludedModelsPlaceholder": "줄마다 모델 또는 와일드카드",
         "savePolicy": "정책 저장",
-        "policySaved": "Key 모델 정책 저장됨"
+        "policySaved": "Key 모델 정책 저장됨",
+        "lastUsed": "최근 사용",
+        "routingAccounts": "라우팅 계정"
       },
       "routing": {
         "optionsTitle": "라우팅 옵션",
@@ -3419,7 +3418,10 @@
         "loading": "요청 로그 로드 중",
         "gatewayModeUnknown": "알 수 없는 모드",
         "requestIdShort": "요청 ID {{id}}",
-        "httpStatus": "HTTP 상태 {{status}}"
+        "httpStatus": "HTTP 상태 {{status}}",
+        "allInstances": "전체 인스턴스",
+        "instanceFilter": "인스턴스",
+        "instanceUnknown": "인스턴스 -"
       },
       "timeouts": {
         "entryLabel": "고급",
@@ -3480,6 +3482,10 @@
         "clearSelection": "선택 해제",
         "saveSuccess": "계정 모델 차단 규칙이 저장되었습니다",
         "cardCount": "{{count}}개 차단"
+      },
+      "usage": {
+        "title": "사용 통계",
+        "lastRecorded": "최근 기록"
       }
     },
     "apiKey": {
@@ -3676,7 +3682,17 @@
       "autoSyncBadge": "자동"
     },
     "exportAuthFailed": "실패 내보내기",
-    "exportAuthFailedTitle": "인증 실패 계정 모두 내보내기"
+    "exportAuthFailedTitle": "인증 실패 계정 모두 내보내기",
+    "webSessionImport": {
+      "noticeTitle": "Web Session 가져오기 안내",
+      "noticeMessage": "Web Session {{count}}개 감지. 실제 사용 불가, 할당량 조회만.",
+      "noticeQuotaOnly": "할당량 조회만. 클라이언트/CLI 실행·전환 불가.",
+      "noticeNoApi": "API 서비스·OAuth 연결 불가.",
+      "noticeConfirm": "확인하고 계속",
+      "actionBlocked": "Web Session은 할당량 조회만 가능합니다.",
+      "apiIneligible": "Web Session은 할당량만, API 불가",
+      "oauthBindingUnsupported": "Web Session은 OAuth 연결 불가."
+    }
   },
   "githubCopilot": {
     "title": "GitHub Copilot 계정 관리",
@@ -5143,7 +5159,13 @@
     "saveAccountName": "계정 이름 저장",
     "cancelEditAccountName": "편집 취소",
     "accountNameRequired": "계정 이름은 필수입니다.",
-    "copySecret": "시크릿 복사"
+    "copySecret": "시크릿 복사",
+    "migrationBatchProgress": "스캔 {{current}}/{{total}}",
+    "migrationBatchIncomplete": "미완료. 일부 저장 또는 계속.",
+    "continueMigrationScan": "스캔 계속",
+    "savePartialMigrationBatch": "일부 저장",
+    "saveCompleteMigrationBatch": "전체 저장",
+    "clearMigrationBatch": "배치 지우기"
   },
   "logViewer": {
     "fileLabel": "로그 파일",
