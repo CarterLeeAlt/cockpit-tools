@@ -129,6 +129,12 @@ pub struct GeneralConfig {
     pub hide_dock_icon: bool,
     /// 菜单栏图标样式（macOS）: "template", "color"
     pub tray_icon_style: String,
+    /// 是否在 macOS 菜单栏显示当前账号剩余额度
+    pub menu_bar_quota_enabled: bool,
+    /// 是否显示账号标识前 4 位
+    pub menu_bar_show_account_prefix: bool,
+    /// 菜单栏额度监控平台
+    pub menu_bar_quota_platform: String,
     /// 是否在启动时显示悬浮卡片
     pub floating_card_show_on_startup: bool,
     /// 是否在启动后自动最小化主窗口
@@ -179,6 +185,8 @@ pub struct GeneralConfig {
     pub cursor_app_path: String,
     /// CodeBuddy 启动路径（为空则使用默认路径）
     pub codebuddy_app_path: String,
+    /// 切换 CodeBuddy 账号时是否在本机账号间合并本地会话
+    pub codebuddy_share_sessions_on_switch: bool,
     /// CodeBuddy CN 启动路径（为空则使用默认路径）
     pub codebuddy_cn_app_path: String,
     /// Qoder 启动路径（为空则使用默认路径）
@@ -197,6 +205,8 @@ pub struct GeneralConfig {
     pub trae_solo_cn_app_scan_roots: String,
     /// WorkBuddy 启动路径（为空则使用默认路径）
     pub workbuddy_app_path: String,
+    /// 切换 WorkBuddy 账号时是否在本机账号间合并本地会话
+    pub workbuddy_share_sessions_on_switch: bool,
     /// 切换 Codex 时是否自动重启 OpenCode
     pub opencode_sync_on_switch: bool,
     /// 切换 Codex 时是否覆盖 OpenCode 登录信息
@@ -558,6 +568,7 @@ fn read_powershell_json_for_antigravity_exe(
     exe_path: &Path,
     script: &str,
 ) -> Option<serde_json::Value> {
+    let _spawn_guard = modules::app_lifecycle::acquire_process_spawn_guard("PowerShell").ok()?;
     let mut command = std::process::Command::new("powershell");
     {
         use std::os::windows::process::CommandExt;
@@ -1049,6 +1060,9 @@ fn is_general_config_patch_field(key: &str) -> bool {
             | "minimize_behavior"
             | "hide_dock_icon"
             | "tray_icon_style"
+            | "menu_bar_quota_enabled"
+            | "menu_bar_show_account_prefix"
+            | "menu_bar_quota_platform"
             | "floating_card_show_on_startup"
             | "startup_minimized"
             | "remember_main_window_state"
@@ -1074,6 +1088,7 @@ fn is_general_config_patch_field(key: &str) -> bool {
             | "kiro_app_path"
             | "cursor_app_path"
             | "codebuddy_app_path"
+            | "codebuddy_share_sessions_on_switch"
             | "codebuddy_cn_app_path"
             | "qoder_app_path"
             | "zcode_app_path"
@@ -1086,6 +1101,7 @@ fn is_general_config_patch_field(key: &str) -> bool {
             | "trae_cn_app_scan_roots"
             | "trae_solo_cn_app_scan_roots"
             | "workbuddy_app_path"
+            | "workbuddy_share_sessions_on_switch"
             | "opencode_sync_on_switch"
             | "opencode_auth_overwrite_on_switch"
             | "ghcp_opencode_sync_on_switch"
@@ -1202,6 +1218,12 @@ fn apply_general_config_updates(
     }
     if updates.contains_key("theme_color") {
         next.theme_color = config::normalize_theme_color(&next.theme_color);
+    }
+    if updates.contains_key("menu_bar_quota_platform") {
+        let platform = next.menu_bar_quota_platform.trim();
+        next.menu_bar_quota_platform = modules::tray::PlatformId::from_str(platform)
+            .map(|value| value.as_str().to_string())
+            .unwrap_or_else(|| "codex".to_string());
     }
     if updates.contains_key("webdav_allowed_domains") {
         next.webdav_allowed_domains = next
@@ -2380,7 +2402,7 @@ pub async fn get_available_terminals() -> Result<Vec<String>, String> {
     #[cfg(target_os = "windows")]
     {
         // Windows 下检查可执行文件是否在 PATH 中
-        let terminals = ["cmd", "powershell", "pwsh", "wt"];
+        let terminals = ["cmd", "PowerShell", "pwsh", "wt"];
         for name in terminals {
             if is_command_available(name) {
                 available.push(name.to_string());
@@ -2519,6 +2541,9 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         minimize_behavior: minimize_behavior_str.to_string(),
         hide_dock_icon: user_config.hide_dock_icon,
         tray_icon_style: user_config.tray_icon_style.as_str().to_string(),
+        menu_bar_quota_enabled: user_config.menu_bar_quota_enabled,
+        menu_bar_show_account_prefix: user_config.menu_bar_show_account_prefix,
+        menu_bar_quota_platform: user_config.menu_bar_quota_platform,
         floating_card_show_on_startup: user_config.floating_card_show_on_startup,
         startup_minimized: user_config.startup_minimized,
         remember_main_window_state: user_config.remember_main_window_state,
@@ -2570,6 +2595,7 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         codebuddy_app_path: modules::process::normalize_windows_user_facing_path(
             &user_config.codebuddy_app_path,
         ),
+        codebuddy_share_sessions_on_switch: user_config.codebuddy_share_sessions_on_switch,
         codebuddy_cn_app_path: modules::process::normalize_windows_user_facing_path(
             &user_config.codebuddy_cn_app_path,
         ),
@@ -2598,6 +2624,7 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         workbuddy_app_path: modules::process::normalize_windows_user_facing_path(
             &user_config.workbuddy_app_path,
         ),
+        workbuddy_share_sessions_on_switch: user_config.workbuddy_share_sessions_on_switch,
         opencode_sync_on_switch: user_config.opencode_sync_on_switch,
         opencode_auth_overwrite_on_switch: user_config.opencode_auth_overwrite_on_switch,
         ghcp_opencode_sync_on_switch: user_config.ghcp_opencode_sync_on_switch,
@@ -2731,6 +2758,8 @@ pub fn patch_general_config(
     let mut hide_dock_icon_changed = false;
     #[cfg(target_os = "macos")]
     let mut tray_icon_style_changed = false;
+    #[cfg(target_os = "macos")]
+    let mut menu_bar_quota_changed = false;
 
     let patch_result = config::patch_user_config(|current| {
         let previous_language = current.language.clone();
@@ -2741,6 +2770,12 @@ pub fn patch_general_config(
         let previous_hide_dock_icon = current.hide_dock_icon;
         #[cfg(target_os = "macos")]
         let previous_tray_icon_style = current.tray_icon_style;
+        #[cfg(target_os = "macos")]
+        let previous_menu_bar_quota = (
+            current.menu_bar_quota_enabled,
+            current.menu_bar_show_account_prefix,
+            current.menu_bar_quota_platform.clone(),
+        );
 
         apply_general_config_updates(current, &updates)?;
 
@@ -2755,6 +2790,12 @@ pub fn patch_general_config(
         {
             hide_dock_icon_changed = previous_hide_dock_icon != current.hide_dock_icon;
             tray_icon_style_changed = previous_tray_icon_style != current.tray_icon_style;
+            menu_bar_quota_changed = previous_menu_bar_quota
+                != (
+                    current.menu_bar_quota_enabled,
+                    current.menu_bar_show_account_prefix,
+                    current.menu_bar_quota_platform.clone(),
+                );
         }
         Ok(())
     });
@@ -2807,6 +2848,13 @@ pub fn patch_general_config(
     if tray_icon_style_changed {
         if let Err(err) = modules::tray::apply_tray_icon_style(&app) {
             modules::logger::log_warn(&format!("[Tray] 保存通用设置后应用图标样式失败: {}", err));
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    if menu_bar_quota_changed {
+        if let Err(err) = modules::tray::update_tray_menu(&app) {
+            modules::logger::log_warn(&format!("[Tray] 保存菜单栏额度设置后刷新失败: {}", err));
         }
     }
 
@@ -4072,6 +4120,24 @@ mod tests {
 
         assert_eq!(config.theme, "light");
         assert_eq!(config.auto_refresh_minutes, 10);
+    }
+
+    #[test]
+    fn general_config_patch_persists_session_sharing_switches() {
+        let mut config = UserConfig::default();
+        let updates = serde_json::json!({
+            "codebuddy_share_sessions_on_switch": true,
+            "workbuddy_share_sessions_on_switch": true,
+        })
+        .as_object()
+        .expect("patch should be an object")
+        .clone();
+
+        apply_general_config_updates(&mut config, &updates)
+            .expect("session sharing patch should succeed");
+
+        assert!(config.codebuddy_share_sessions_on_switch);
+        assert!(config.workbuddy_share_sessions_on_switch);
     }
 
     #[test]

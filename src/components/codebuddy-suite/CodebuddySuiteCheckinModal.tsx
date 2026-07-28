@@ -23,10 +23,19 @@ import {
   Flame,
   Trophy,
   Ban,
+  Settings,
+  Clock,
 } from 'lucide-react';
 import type { CodebuddySuiteAccountBase, WorkbuddyAccount } from '../../types/codebuddy-suite';
 import type { CheckinStatusResponse, CheckinResponse } from '../../types/codebuddy';
 import { useEscClose } from '../../hooks/useEscClose';
+import { WorkbuddyAutoCheckinConfigModal } from './WorkbuddyAutoCheckinConfigModal';
+import {
+  getWorkbuddyAutoCheckinConfig,
+  saveWorkbuddyAutoCheckinConfig,
+  WORKBUDDY_AUTO_CHECKIN_CONFIG_CHANGED_EVENT,
+  WorkbuddyAutoCheckinConfig,
+} from '../../services/workbuddyAutoCheckinService';
 
 interface CodebuddySuiteCheckinModalProps<TAccount extends CodebuddySuiteAccountBase> {
   accounts: TAccount[];
@@ -87,6 +96,20 @@ export function CodebuddySuiteCheckinModal<TAccount extends CodebuddySuiteAccoun
   const [accountStates, setAccountStates] = useState<Record<string, AccountCheckinState>>({});
   const [checkAllLoading, setCheckAllLoading] = useState(false);
   const [refreshLoading, setRefreshLoading] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [autoCheckinConfig, setAutoCheckinConfig] = useState<WorkbuddyAutoCheckinConfig>(() =>
+    getWorkbuddyAutoCheckinConfig(),
+  );
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      setAutoCheckinConfig(getWorkbuddyAutoCheckinConfig());
+    };
+    window.addEventListener(WORKBUDDY_AUTO_CHECKIN_CONFIG_CHANGED_EVENT, handleConfigChange);
+    return () => {
+      window.removeEventListener(WORKBUDDY_AUTO_CHECKIN_CONFIG_CHANGED_EVENT, handleConfigChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (accounts.length > 0) {
@@ -332,6 +355,39 @@ export function CodebuddySuiteCheckinModal<TAccount extends CodebuddySuiteAccoun
                 {t('workbuddy.checkin.inactive', '不可用')}
               </span>
             )}
+            <span
+              className={`checkin-stat auto-checkin-badge ${
+                autoCheckinConfig.enabled ? 'enabled' : 'disabled'
+              }`}
+              onClick={() => setShowConfigModal(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowConfigModal(true);
+                }
+              }}
+              title={
+                autoCheckinConfig.enabled
+                  ? t(
+                      'workbuddy.checkin.autoCheckinEnabledHint',
+                      '自动签到已开启：将在 {{start}} 至 {{end}} 随机签到（点击设置）',
+                      {
+                        start: autoCheckinConfig.startTime,
+                        end: autoCheckinConfig.endTime,
+                      },
+                    )
+                  : t('workbuddy.checkin.autoCheckinDisabledHint', '自动签到未开启（点击设置）')
+              }
+            >
+              <Clock size={14} />
+              {autoCheckinConfig.enabled
+                ? `${t('workbuddy.checkin.autoCheckinLabel', '自动签到')} (${
+                    autoCheckinConfig.startTime
+                  }-${autoCheckinConfig.endTime})`
+                : t('workbuddy.checkin.autoCheckinOff', '自动签到未开启')}
+            </span>
           </div>
           <div className="checkin-actions">
             <button
@@ -571,11 +627,30 @@ export function CodebuddySuiteCheckinModal<TAccount extends CodebuddySuiteAccoun
           )}
         </div>
 
-        <div className="modal-footer">
+        <div className="modal-footer checkin-modal-footer">
+          <button
+            className="btn btn-secondary icon-only"
+            onClick={() => setShowConfigModal(true)}
+            title={t('workbuddy.checkin.autoCheckinSettings', '自动签到设置')}
+            aria-label={t('workbuddy.checkin.autoCheckinSettings', '自动签到设置')}
+          >
+            <Settings size={14} />
+          </button>
           <button className="btn btn-secondary" onClick={onClose}>
             {t('common.close', '关闭')}
           </button>
         </div>
+
+        {showConfigModal && (
+          <WorkbuddyAutoCheckinConfigModal
+            config={autoCheckinConfig}
+            onSave={(newConfig) => {
+              saveWorkbuddyAutoCheckinConfig(newConfig);
+              setAutoCheckinConfig(newConfig);
+            }}
+            onClose={() => setShowConfigModal(false)}
+          />
+        )}
       </div>
     </div>
   );
