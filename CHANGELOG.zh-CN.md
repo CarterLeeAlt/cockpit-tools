@@ -7,6 +7,44 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [1.3.15] - 2026-07-28
+
+### 新增
+
+- **WorkBuddy 支持可配置自动签到**：默认关闭；可按账号设置随机签到时间段与日志保留，不会在未开启时对已有账号发起签到。
+- **macOS 菜单栏可显示实时额度**：默认关闭；可在设置中选择监控平台，并可选显示账号标识前缀。
+- **MFA 速查支持 Google Authenticator 迁移二维码批量导入**：可扫描 `otpauth-migration://` 迁移码并批量写入本地 MFA 记录。
+- **Claude 额度展示可切换「已用% / 剩余%」**：默认仍为已用百分比；开启后仅改变 UI 展示，自动切号与预警阈值仍按已用比例计算。
+
+### 变更
+
+- **ChatGPT Web Session 导入改为仅支持查看额度**：不再自动注册为 Agent Identity，也不再加入 Codex API 服务账号池；导入后可查看额度，但不能切号、启动官方客户端或 CLI，也不能加入 API 服务或作为 OAuth 绑定账号。
+- **Codex API 服务透明对齐官方 Multi-Agent V2 请求逻辑**：仅对 Codex Desktop 与 `codex-tui` 请求生效；网关按上游模型目录更新 `spawn_agent` 描述、规范化加密 agent 消息、为非 Codex 上游协议完成转换，并在响应中恢复 collaboration namespace，不新增用户操作流程或设置项。
+- **Codex API 用量统计升级为 canonical token accounting v2**：输入缓存读写、未缓存输入、普通输出与推理输出使用互斥桶统计；矛盾或无法分类的上游数据明确标记为 `inconsistent` / `unclassified`，避免缓存和推理 token 重复计数。
+- **Codex API 服务账号成员支持明确设置“最高 / 正常 / 最低”三级使用优先级**：三级优先级统一作用于所有调度策略与会话亲和；最高优先使用，正常账号继续遵循所选调度规则，最低仅在更高优先级账号不可用时使用。旧版备用账号配置继续兼容并视为最低优先级。
+- **Codex API 服务主页面的调度选项补齐会话亲和及过期时间设置**：可直接启用或关闭会话亲和，并配置与成员管理弹框一致的 60～86400 秒 TTL。
+- **Responses 中转类 API Key 切号改为走内置 OpenAI provider + `openai_base_url`**：与官方直连投影方式对齐，避免误用 local-access provider 标识。
+- **CI 构建矩阵与正式发布工作流加速**：preflight 拆分为可并行步骤，并优化缓存与矩阵调度。
+
+### 修复
+
+- **修复导入 ChatGPT Web Session 时因 Agent Identity runtime 注册返回 HTTP 403 导致导入失败的问题**：此类格式不再发起 runtime 注册，按仅查额账号导入。
+- **修复 Windows Desktop 会话路径含 `\\?\\` 前缀时工作目录规范化异常的问题**。
+- **修复自定义图标写入 localStorage 配额失败时可能撑坏布局的问题**。
+- **修复 Windows CLI 快速启动在 `system` 终端下弹出裸 PowerShell 的问题**：检测到 Windows Terminal 时优先通过 `wt` 启动，未安装时保持原有回退。
+- **修复 Codex API 服务页等处硬编码中文 fallback 的问题**：补齐对应 i18n 键与默认文案。
+- **修复 Codex Responses 在 HTTP 与 WebSocket 切换、上游 1009 关闭或失败 tool turn 后可能丢失上下文或污染后续请求的问题**：增量请求只复用原 WebSocket 与原账号，无法安全续接时要求完整重放；1009 不再触发账号轮转，失败 turn 不再写入全局 tool cache。
+- **修复第三方 Responses 上游明确拒绝 `input[N].namespace` 或 `max_output_tokens` 时请求直接失败的问题**：仅在 400 且上游明确返回 unknown/unsupported parameter 时删除被拒字段并安全重试，保留最多 6 次、请求体去重及工具项类型校验。
+- **修复 Codex Responses 输入项 ID 超出 64 字符导致上游拒绝的问题**：超长 ID 按 Unicode 字符确定性缩短并避免冲突；携带加密内容的超长 reasoning 项按官方兼容规则移除。
+- **修复 Codex API 服务混合套餐账号池可能将 Spark 请求路由到无权限账号的问题**：网关根据账号额度中的模型权限生成账号级排除规则，并在会话亲和及其他调度规则前过滤不支持的账号；OAuth 与限定账号范围的 API Key 池均会只把 Spark 请求发送给真正可用的账号。感谢 @kin001（[#1759](https://github.com/jlcodes99/cockpit-tools/pull/1759)）。
+- **修复 Codex 切号会重置 Memories 等官方 `[features]` 设置的问题**：启动前清理现在会完整保留官方 features 表，仅继续修复 Cockpit 管理的配置格式。感谢 @we1jia（[#1734](https://github.com/jlcodes99/cockpit-tools/pull/1734)）。
+- **修复 Cockpit 重启而受管 Codex 实例仍在运行时额度浮层无法恢复的问题**：启动后会在后台识别已经运行的默认实例与多开实例，恢复其真实 CDP 端口及 profile 专属注入，不阻塞主窗口显示。
+- **修复 Codex profile 切回内置 OpenAI 模式后仍残留 API 服务模型目录的问题**：只清理 Cockpit 预留的目录及接管备份，保留用户自定义目录，后续切号或 API Key 模型目录同步不再复用过期模型。感谢 @kin001（[#1718](https://github.com/jlcodes99/cockpit-tools/pull/1718)）。
+- **修复 New API 供应商仅返回 Token 分配或计费字段时账号不显示额度的问题**：账号页、首页与供应商页面统一兼容 `quotaLimit`、`quotaRemaining` 和 `accessUntil` 备用字段。感谢 @kin001（[#1712](https://github.com/jlcodes99/cockpit-tools/pull/1712)）。
+- **修复二进制或无效 UTF-8 rollout 文件导致 Codex 启动或会话可见性修复失败的问题**：修复流程现在只处理普通 `rollout-*.jsonl` 文件，遇到不可读条目会记录诊断并跳过，不再中断启动。感谢 @kin001（[#1710](https://github.com/jlcodes99/cockpit-tools/pull/1710)）。
+- **修复 xAI 图片生成与编辑请求遗漏用量统计的问题**：成功请求、上游失败、限流和请求构造失败都会写入用量事件，并记录实际请求模型。感谢 @Ac-spider（[#1629](https://github.com/jlcodes99/cockpit-tools/pull/1629)）。
+- **修复 Codex 批量导入过快完成时可能一直停留在准备状态的问题**：扫描先于前端取得会话 ID 完成时，会立即恢复已持久化的最终预览，不改变导入协议或凭据格式。感谢 @HUF457（[#1716](https://github.com/jlcodes99/cockpit-tools/pull/1716)）。
+
 ## [1.3.14] - 2026-07-22
 
 ### 新增

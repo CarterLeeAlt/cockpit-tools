@@ -170,6 +170,15 @@ pub struct UserConfig {
     /// 菜单栏图标样式（macOS）
     #[serde(default = "default_tray_icon_style")]
     pub tray_icon_style: TrayIconStyle,
+    /// 是否在 macOS 菜单栏图标旁显示当前账号剩余额度
+    #[serde(default = "default_menu_bar_quota_enabled")]
+    pub menu_bar_quota_enabled: bool,
+    /// 是否在 macOS 菜单栏额度前显示账号标识前 4 位
+    #[serde(default = "default_menu_bar_show_account_prefix")]
+    pub menu_bar_show_account_prefix: bool,
+    /// macOS 菜单栏额度监控平台
+    #[serde(default = "default_menu_bar_quota_platform")]
+    pub menu_bar_quota_platform: String,
     /// 是否在启动后自动显示悬浮卡片
     #[serde(default = "default_floating_card_show_on_startup")]
     pub floating_card_show_on_startup: bool,
@@ -475,6 +484,9 @@ pub struct UserConfig {
     /// Claude 配额预警阈值（百分比）
     #[serde(default = "default_claude_quota_alert_threshold")]
     pub claude_quota_alert_threshold: i32,
+    /// Claude 额度 UI 是否显示「剩余%」（默认 false，保持历史「已用%」）
+    #[serde(default = "default_claude_quota_display_remaining")]
+    pub claude_quota_display_remaining: bool,
     /// 是否启用 CodeBuddy 配额预警通知
     #[serde(default = "default_codebuddy_quota_alert_enabled")]
     pub codebuddy_quota_alert_enabled: bool,
@@ -727,6 +739,15 @@ fn default_hide_dock_icon() -> bool {
 }
 fn default_tray_icon_style() -> TrayIconStyle {
     TrayIconStyle::Template
+}
+fn default_menu_bar_quota_enabled() -> bool {
+    false
+}
+fn default_menu_bar_show_account_prefix() -> bool {
+    true
+}
+fn default_menu_bar_quota_platform() -> String {
+    "codex".to_string()
 }
 fn default_floating_card_show_on_startup() -> bool {
     false
@@ -1054,6 +1075,9 @@ fn default_grok_quota_alert_enabled() -> bool {
 fn default_grok_quota_alert_threshold() -> i32 {
     20
 }
+fn default_claude_quota_display_remaining() -> bool {
+    false
+}
 fn default_claude_quota_alert_enabled() -> bool {
     false
 }
@@ -1138,6 +1162,9 @@ impl Default for UserConfig {
             minimize_behavior: default_minimize_behavior(),
             hide_dock_icon: default_hide_dock_icon(),
             tray_icon_style: default_tray_icon_style(),
+            menu_bar_quota_enabled: default_menu_bar_quota_enabled(),
+            menu_bar_show_account_prefix: default_menu_bar_show_account_prefix(),
+            menu_bar_quota_platform: default_menu_bar_quota_platform(),
             floating_card_show_on_startup: default_floating_card_show_on_startup(),
             startup_minimized: default_startup_minimized(),
             remember_main_window_state: default_remember_main_window_state(),
@@ -1245,6 +1272,7 @@ impl Default for UserConfig {
             grok_quota_alert_enabled: default_grok_quota_alert_enabled(),
             grok_quota_alert_threshold: default_grok_quota_alert_threshold(),
             claude_quota_alert_enabled: default_claude_quota_alert_enabled(),
+            claude_quota_display_remaining: default_claude_quota_display_remaining(),
             claude_quota_alert_threshold: default_claude_quota_alert_threshold(),
             codebuddy_quota_alert_enabled: default_codebuddy_quota_alert_enabled(),
             codebuddy_quota_alert_threshold: default_codebuddy_quota_alert_threshold(),
@@ -1597,6 +1625,27 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "tray_icon_style".to_string(),
                 json!(default_tray_icon_style()),
+            );
+        }
+
+        if !obj.contains_key("menu_bar_quota_enabled") {
+            obj.insert(
+                "menu_bar_quota_enabled".to_string(),
+                json!(default_menu_bar_quota_enabled()),
+            );
+        }
+
+        if !obj.contains_key("menu_bar_show_account_prefix") {
+            obj.insert(
+                "menu_bar_show_account_prefix".to_string(),
+                json!(default_menu_bar_show_account_prefix()),
+            );
+        }
+
+        if !obj.contains_key("menu_bar_quota_platform") {
+            obj.insert(
+                "menu_bar_quota_platform".to_string(),
+                json!(default_menu_bar_quota_platform()),
             );
         }
 
@@ -2037,6 +2086,12 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "claude_quota_alert_threshold".to_string(),
                 json!(legacy_threshold),
+            );
+        }
+        if !obj.contains_key("claude_quota_display_remaining") {
+            obj.insert(
+                "claude_quota_display_remaining".to_string(),
+                json!(default_claude_quota_display_remaining()),
             );
         }
         if !obj.contains_key("codebuddy_quota_alert_enabled") {

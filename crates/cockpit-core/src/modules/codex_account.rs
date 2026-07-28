@@ -29,13 +29,13 @@ const CODEX_CONFIG_FILE_NAME: &str = "config.toml";
 const CODEX_CONFIG_OPENAI_BASE_URL_KEY: &str = "openai_base_url";
 const CODEX_CONFIG_MODEL_PROVIDER_KEY: &str = "model_provider";
 const CODEX_CONFIG_MODEL_PROVIDERS_KEY: &str = "model_providers";
-const CODEX_CONFIG_EXPERIMENTAL_BEARER_TOKEN_KEY: &str = "experimental_bearer_token";
 const CODEX_CONFIG_MODEL_CONTEXT_WINDOW_KEY: &str = "model_context_window";
 const CODEX_CONFIG_MODEL_AUTO_COMPACT_TOKEN_LIMIT_KEY: &str = "model_auto_compact_token_limit";
 const CODEX_DEFAULT_OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
+const CODEX_COCKPIT_API_PROVIDER_ID: &str = "cockpit_api";
 const CODEX_OPENAI_PROVIDER_ID: &str = "openai";
 const CODEX_RUNTIME_MODEL_PROVIDER_ID: &str = "codex_local_access";
-const CODEX_DEFAULT_RUNTIME_PROVIDER_NAME: &str = "OpenAI Official";
+const CODEX_LEGACY_API_KEY_OPENAI_PROVIDER_ID: &str = "openai_api_key";
 const CODEX_PROVIDER_WIRE_API: &str = "responses";
 const CODEX_CONTEXT_WINDOW_1M_VALUE: i64 = 1_000_000;
 const CODEX_AUTO_COMPACT_DEFAULT_LIMIT: i64 = 900_000;
@@ -81,6 +81,20 @@ fn normalize_api_base_url(raw: Option<&str>) -> Option<String> {
         return None;
     }
     Some(trimmed.trim_end_matches('/').to_string())
+}
+
+fn normalize_api_base_url_for_match(raw: Option<&str>) -> Option<String> {
+    let parsed = reqwest::Url::parse(raw?.trim()).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return None;
+    }
+    let host = parsed.host_str()?;
+    let port = parsed
+        .port()
+        .map(|value| format!(":{}", value))
+        .unwrap_or_default();
+    let path = parsed.path().trim_end_matches('/');
+    Some(format!("{}://{}{}{}", parsed.scheme(), host, port, path).to_ascii_lowercase())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,6 +243,33 @@ fn infer_api_provider_config(
         provider_id: None,
         provider_name: None,
     })
+}
+
+fn canonical_openai_base_url_for_match(raw: Option<&str>) -> Option<String> {
+    normalize_api_base_url(raw)
+        .filter(|base_url| !is_default_openai_base_url(base_url))
+        .and_then(|base_url| normalize_api_base_url_for_match(Some(&base_url)))
+}
+
+fn should_preserve_account_provider_identity(
+    account_provider: &ApiProviderConfig,
+    config_provider: &ApiProviderConfig,
+    local_base_url: Option<&str>,
+) -> bool {
+    if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
+        return true;
+    }
+    if config_provider.provider_id.is_some() {
+        return false;
+    }
+
+    matches!(
+        (
+            canonical_openai_base_url_for_match(local_base_url),
+            canonical_openai_base_url_for_match(account_provider.base_url.as_deref()),
+        ),
+        (Some(local), Some(account)) if local == account
+    )
 }
 
 fn is_http_like_url(raw: &str) -> bool {
@@ -741,7 +782,7 @@ fn write_api_provider_to_config_toml(
     match provider_config.mode {
         CodexApiProviderMode::OpenaiBuiltin => {
             let _ = doc.remove(CODEX_CONFIG_MODEL_PROVIDER_KEY);
-            remove_runtime_model_provider_from_doc(&mut doc);
+            remove_managed_api_key_model_providers_from_doc(&mut doc);
             match normalized.as_deref() {
                 Some(base_url) => {
                     doc[CODEX_CONFIG_OPENAI_BASE_URL_KEY] = value(base_url);
@@ -791,12 +832,23 @@ fn write_api_provider_to_config_toml(
     fs::write(&config_path, doc.to_string()).map_err(|e| format!("写入 config.toml 失败: {}", e))
 }
 
-fn remove_runtime_model_provider_from_doc(doc: &mut Document) {
+fn collect_managed_api_key_provider_ids() -> HashSet<String> {
+    HashSet::from([
+        CODEX_RUNTIME_MODEL_PROVIDER_ID.to_string(),
+        CODEX_COCKPIT_API_PROVIDER_ID.to_string(),
+        CODEX_LEGACY_API_KEY_OPENAI_PROVIDER_ID.to_string(),
+    ])
+}
+
+fn remove_managed_api_key_model_providers_from_doc(doc: &mut Document) {
+    let managed_provider_ids = collect_managed_api_key_provider_ids();
     let should_remove_model_providers = doc
         .get_mut(CODEX_CONFIG_MODEL_PROVIDERS_KEY)
         .and_then(|item| item.as_table_mut())
         .map(|model_providers| {
-            let _ = model_providers.remove(CODEX_RUNTIME_MODEL_PROVIDER_ID);
+            for provider_id in &managed_provider_ids {
+                let _ = model_providers.remove(provider_id.as_str());
+            }
             model_providers.is_empty()
         })
         .unwrap_or(false);
@@ -809,52 +861,16 @@ fn remove_runtime_model_provider_from_doc(doc: &mut Document) {
 fn write_api_key_provider_to_config_toml(
     base_dir: &Path,
     provider_config: &ApiProviderConfig,
-    bearer_token: &str,
-    supports_websockets: bool,
 ) -> Result<(), String> {
-    let config_path = get_config_toml_path(base_dir);
-    let bearer_token = normalize_api_key(bearer_token)
-        .ok_or_else(|| "API Key 账号缺少可写入 provider 的密钥".to_string())?;
-    let base_url = provider_config
-        .base_url
-        .as_deref()
-        .unwrap_or(CODEX_DEFAULT_OPENAI_BASE_URL);
-    let provider_name = provider_config
-        .provider_name
-        .as_deref()
-        .filter(|name| !name.trim().is_empty())
-        .unwrap_or(CODEX_DEFAULT_RUNTIME_PROVIDER_NAME);
-
-    let existing = fs::read_to_string(&config_path).unwrap_or_default();
-    let mut doc = if existing.trim().is_empty() {
-        Document::new()
-    } else {
-        existing
-            .parse::<Document>()
-            .map_err(|e| format!("解析 config.toml 失败: {}", e))?
-    };
-
-    let _ = doc.remove(CODEX_CONFIG_OPENAI_BASE_URL_KEY);
-    doc[CODEX_CONFIG_MODEL_PROVIDER_KEY] = value(CODEX_RUNTIME_MODEL_PROVIDER_ID);
-    doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY] = toml_edit::table();
-    let model_providers = doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY]
-        .as_table_mut()
-        .ok_or("config.toml 中 model_providers 不是合法表结构")?;
-    model_providers[CODEX_RUNTIME_MODEL_PROVIDER_ID] = toml_edit::table();
-    let provider_table = model_providers[CODEX_RUNTIME_MODEL_PROVIDER_ID]
-        .as_table_mut()
-        .ok_or("config.toml 中目标 provider 不是合法表结构")?;
-    provider_table["name"] = value(provider_name);
-    provider_table["base_url"] = value(base_url);
-    provider_table["wire_api"] = value(CODEX_PROVIDER_WIRE_API);
-    provider_table["requires_openai_auth"] = value(true);
-    provider_table[CODEX_CONFIG_EXPERIMENTAL_BEARER_TOKEN_KEY] = value(bearer_token);
-    provider_table["supports_websockets"] = value(supports_websockets);
-
-    if let Some(parent) = config_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("创建 config.toml 目录失败: {}", e))?;
-    }
-    fs::write(&config_path, doc.to_string()).map_err(|e| format!("写入 config.toml 失败: {}", e))
+    // Keep relay identity in Cockpit's account record while routing the runtime through Codex's
+    // built-in `openai` provider with this account's own base URL and auth.json API key.
+    let builtin_openai_config = resolve_api_provider_config(
+        provider_config.base_url.as_deref(),
+        Some(CodexApiProviderMode::OpenaiBuiltin),
+        None,
+        None,
+    )?;
+    write_api_provider_to_config_toml(base_dir, &builtin_openai_config)
 }
 
 /// 旧版数据目录（~/Library/Application Support/com.antigravity.cockpit-tools/）
@@ -2179,37 +2195,39 @@ fn sync_api_key_account_from_local_state(account: &mut CodexAccount, base_dir: &
     }
 
     let config_provider = read_api_provider_from_config_toml(base_dir);
-    let provider_mode =
-        if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
-            account.api_provider_mode.clone()
-        } else {
-            config_provider.mode.clone()
-        };
-    let provider_id =
-        if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
-            account.api_provider_id.as_deref()
-        } else {
-            config_provider.provider_id.as_deref()
-        };
-    let provider_name =
-        if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
-            account.api_provider_name.as_deref()
-        } else {
-            config_provider.provider_name.as_deref()
-        };
-    let current_provider = infer_api_provider_config(
-        extract_api_base_url_from_auth_file(&auth_file)
-            .or_else(|| config_provider.base_url.clone())
-            .as_deref(),
-        Some(provider_mode),
-        provider_id,
-        provider_name,
-    );
+    let local_base_url = extract_api_base_url_from_auth_file(&auth_file)
+        .or_else(|| config_provider.base_url.clone());
     let account_provider = infer_api_provider_config(
         account.api_base_url.as_deref(),
         Some(account.api_provider_mode.clone()),
         account.api_provider_id.as_deref(),
         account.api_provider_name.as_deref(),
+    );
+    let preserve_account_provider_identity = should_preserve_account_provider_identity(
+        &account_provider,
+        &config_provider,
+        local_base_url.as_deref(),
+    );
+    let provider_mode = if preserve_account_provider_identity {
+        account.api_provider_mode.clone()
+    } else {
+        config_provider.mode.clone()
+    };
+    let provider_id = if preserve_account_provider_identity {
+        account.api_provider_id.as_deref()
+    } else {
+        config_provider.provider_id.as_deref()
+    };
+    let provider_name = if preserve_account_provider_identity {
+        account.api_provider_name.as_deref()
+    } else {
+        config_provider.provider_name.as_deref()
+    };
+    let current_provider = infer_api_provider_config(
+        local_base_url.as_deref(),
+        Some(provider_mode),
+        provider_id,
+        provider_name,
     );
 
     if account_provider == current_provider {
@@ -2474,21 +2492,13 @@ pub fn write_auth_file_to_dir(base_dir: &Path, account: &CodexAccount) -> Result
     })?;
 
     let provider_config = if account.is_api_key_auth() {
-        let api_key = normalize_api_key(account.openai_api_key.as_deref().unwrap_or_default())
-            .ok_or_else(|| "API Key 账号缺少 OPENAI_API_KEY".to_string())?;
         let provider_config = infer_api_provider_config(
             account.api_base_url.as_deref(),
             Some(account.api_provider_mode.clone()),
             account.api_provider_id.as_deref(),
             account.api_provider_name.as_deref(),
         );
-        write_api_key_provider_to_config_toml(
-            base_dir,
-            &provider_config,
-            &api_key,
-            account.api_provider_mode == CodexApiProviderMode::Custom
-                && account.api_supports_websockets,
-        )?;
+        write_api_key_provider_to_config_toml(base_dir, &provider_config)?;
         provider_config
     } else {
         let provider_config = ApiProviderConfig {
@@ -3486,13 +3496,14 @@ mod tests {
         get_accounts_storage_path, get_current_account, list_accounts_checked, load_account,
         load_account_index, looks_like_sub2api_export, read_api_provider_from_config_toml,
         read_quick_config_from_config_toml, resolve_api_provider_config, save_account,
-        save_account_index, sync_account_from_auth_dir, sync_managed_projection_from_auth_dir,
-        upsert_account, upsert_account_for_reauth, upsert_account_from_access_token,
-        upsert_account_from_auth_tokens, validate_api_key_credentials, write_account_bundle_to_dir,
+        save_account_index, sync_account_from_auth_dir, sync_api_key_account_from_local_state,
+        sync_managed_projection_from_auth_dir, upsert_account, upsert_account_for_reauth,
+        upsert_account_from_access_token, upsert_account_from_auth_tokens,
+        validate_api_key_credentials, write_account_bundle_to_dir,
         write_api_key_provider_to_config_toml, write_api_provider_to_config_toml,
-        write_quick_config_to_config_toml, ApiProviderConfig, CodexAccountIndex,
-        CodexAccountSummary, CodexAuthFile, CodexAuthTokens, CodexJsonImportCandidate,
-        CODEX_AUTO_COMPACT_DEFAULT_LIMIT, CODEX_CONTEXT_WINDOW_1M_VALUE,
+        write_auth_file_to_dir, write_quick_config_to_config_toml, ApiProviderConfig,
+        CodexAccountIndex, CodexAccountSummary, CodexAuthFile, CodexAuthTokens,
+        CodexJsonImportCandidate, CODEX_AUTO_COMPACT_DEFAULT_LIMIT, CODEX_CONTEXT_WINDOW_1M_VALUE,
     };
     use crate::models::codex::{CodexAccount, CodexApiProviderMode, CodexTokens};
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
@@ -4304,6 +4315,18 @@ wire_api = "responses"
 requires_openai_auth = true
 experimental_bearer_token = "sk-test"
 
+[model_providers.cockpit_api]
+name = "Cockpit Api"
+base_url = "https://chongcodex.cn/v1"
+wire_api = "responses"
+requires_openai_auth = false
+
+[model_providers.openai_api_key]
+name = "OpenAI Official"
+base_url = "https://api.openai.com/v1"
+wire_api = "responses"
+requires_openai_auth = false
+
 [model_providers.user_manual_provider_not_managed]
 name = "Manual"
 base_url = "https://manual.example.com/v1"
@@ -4325,6 +4348,8 @@ requires_openai_auth = false
         let content = fs::read_to_string(&config_path).expect("read config");
         assert!(!content.contains("model_provider = "));
         assert!(!content.contains("[model_providers.codex_local_access]"));
+        assert!(!content.contains("[model_providers.cockpit_api]"));
+        assert!(!content.contains("[model_providers.openai_api_key]"));
         assert!(!content.contains("experimental_bearer_token"));
         assert!(content.contains("[model_providers.user_manual_provider_not_managed]"));
         assert!(!content.contains("openai_base_url"));
@@ -4369,7 +4394,7 @@ requires_openai_auth = false
     }
 
     #[test]
-    fn api_key_config_toml_uses_runtime_provider_with_bearer_token() {
+    fn api_key_config_toml_uses_builtin_openai_for_responses_relay() {
         let base_dir = make_temp_dir("codex-config-api-key-provider-test");
         let provider_config = resolve_api_provider_config(
             Some("https://relay.example.com/v1/"),
@@ -4379,64 +4404,127 @@ requires_openai_auth = false
         )
         .expect("resolve provider config");
 
-        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", false)
-            .expect("write config");
+        write_api_key_provider_to_config_toml(&base_dir, &provider_config).expect("write config");
 
         let config_path = base_dir.join("config.toml");
         let content = fs::read_to_string(&config_path).expect("read config");
-        assert!(content.contains("model_provider = \"codex_local_access\""));
-        assert!(content.contains("[model_providers.codex_local_access]"));
-        assert!(content.contains("name = \"Relay\""));
-        assert!(content.contains("base_url = \"https://relay.example.com/v1\""));
-        assert!(content.contains("wire_api = \"responses\""));
-        assert!(content.contains("requires_openai_auth = true"));
-        assert!(content.contains("experimental_bearer_token = \"sk-test\""));
-        assert!(content.contains("supports_websockets = false"));
-        assert!(!content.contains("openai_base_url"));
-
-        fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
-    }
-
-    #[test]
-    fn api_key_config_toml_enables_websockets_when_account_supports_them() {
-        let base_dir = make_temp_dir("codex-config-api-key-websocket-test");
-        let provider_config = resolve_api_provider_config(
-            Some("https://relay.example.com/v1/"),
-            Some(CodexApiProviderMode::Custom),
-            Some("relay"),
-            Some("Relay"),
-        )
-        .expect("resolve provider config");
-
-        write_api_key_provider_to_config_toml(&base_dir, &provider_config, "sk-test", true)
-            .expect("write config");
-
-        let content = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
-        assert!(content.contains("supports_websockets = true"));
-
-        fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
-    }
-
-    #[test]
-    fn builtin_openai_api_key_account_keeps_websockets_disabled() {
-        let base_dir = make_temp_dir("codex-config-builtin-openai-websocket-test");
-        let mut account = CodexAccount::new_api_key(
-            "openai-api-key".to_string(),
-            "openai@example.com".to_string(),
-            "sk-openai".to_string(),
-            CodexApiProviderMode::OpenaiBuiltin,
-            Some("https://api.openai.com/v1".to_string()),
-            None,
-            None,
+        assert!(content.contains("openai_base_url = \"https://relay.example.com/v1\""));
+        assert!(!content.contains("model_provider = "));
+        assert!(!content.contains("[model_providers."));
+        assert!(!content.contains("experimental_bearer_token"));
+        assert_eq!(
+            read_api_provider_from_config_toml(&base_dir),
+            ApiProviderConfig {
+                mode: CodexApiProviderMode::OpenaiBuiltin,
+                base_url: Some("https://relay.example.com/v1".to_string()),
+                provider_id: None,
+                provider_name: None,
+            }
         );
-        account.api_supports_websockets = true;
-
-        write_account_bundle_to_dir(&base_dir, &account).expect("write account bundle");
-
-        let content = fs::read_to_string(base_dir.join("config.toml")).expect("read config");
-        assert!(content.contains("supports_websockets = false"));
 
         fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn api_key_account_switch_updates_relay_key_and_base_url_together() {
+        let base_dir = make_temp_dir("codex-api-key-relay-switch-test");
+        let mut first = CodexAccount::new_api_key(
+            "relay-a".to_string(),
+            "relay-a@example.com".to_string(),
+            "sk-relay-a".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay-a.example.com/v1".to_string()),
+            Some("relay_a".to_string()),
+            Some("Relay A".to_string()),
+        );
+
+        write_auth_file_to_dir(&base_dir, &first).expect("write first relay account");
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(base_dir.join("auth.json")).expect("read first auth"),
+        )
+        .expect("parse first auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-relay-a");
+        let config = fs::read_to_string(base_dir.join("config.toml")).expect("read first config");
+        assert!(config.contains("openai_base_url = \"https://relay-a.example.com/v1\""));
+        assert!(!config.contains("model_provider = "));
+
+        sync_api_key_account_from_local_state(&mut first, &base_dir);
+        assert_eq!(first.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(first.api_provider_id.as_deref(), Some("relay_a"));
+        assert_eq!(first.api_provider_name.as_deref(), Some("Relay A"));
+
+        let second = CodexAccount::new_api_key(
+            "relay-b".to_string(),
+            "relay-b@example.com".to_string(),
+            "sk-relay-b".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay-b.example.com/v1".to_string()),
+            Some("relay_b".to_string()),
+            Some("Relay B".to_string()),
+        );
+        write_auth_file_to_dir(&base_dir, &second).expect("write second relay account");
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(base_dir.join("auth.json")).expect("read second auth"),
+        )
+        .expect("parse second auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-relay-b");
+        let config = fs::read_to_string(base_dir.join("config.toml")).expect("read second config");
+        assert!(config.contains("openai_base_url = \"https://relay-b.example.com/v1\""));
+        assert!(!config.contains("relay-a.example.com"));
+        assert!(!config.contains("model_provider = "));
+
+        fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn api_key_import_preserves_relay_pair_and_provider_identity() {
+        let _lock = TEST_ENV_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+        let env = TestEnvGuard::new("codex-core-api-key-import-projection-test");
+        let account = CodexAccount::new_api_key(
+            "portable-relay".to_string(),
+            "portable-relay@example.com".to_string(),
+            "sk-core-imported-relay".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://core-imported-relay.example.com/v1".to_string()),
+            Some("core_imported_relay".to_string()),
+            Some("Core Imported Relay".to_string()),
+        );
+
+        let mut imported = super::import_account_struct(account).expect("import API key account");
+        assert_eq!(imported.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(
+            imported.api_provider_id.as_deref(),
+            Some("core_imported_relay")
+        );
+        assert_eq!(
+            imported.api_provider_name.as_deref(),
+            Some("Core Imported Relay")
+        );
+
+        let profile_dir = env.home_dir.join("imported-relay-profile");
+        write_account_bundle_to_dir(&profile_dir, &imported)
+            .expect("project imported API key account");
+        let auth: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(profile_dir.join("auth.json")).expect("read imported auth"),
+        )
+        .expect("parse imported auth");
+        assert_eq!(auth["OPENAI_API_KEY"], "sk-core-imported-relay");
+        let config =
+            fs::read_to_string(profile_dir.join("config.toml")).expect("read imported config");
+        assert!(config.contains("openai_base_url = \"https://core-imported-relay.example.com/v1\""));
+        assert!(!config.contains("model_provider = "));
+        assert!(!config.contains("[model_providers.core_imported_relay]"));
+
+        sync_api_key_account_from_local_state(&mut imported, &profile_dir);
+        assert_eq!(imported.api_provider_mode, CodexApiProviderMode::Custom);
+        assert_eq!(
+            imported.api_provider_id.as_deref(),
+            Some("core_imported_relay")
+        );
+        assert_eq!(
+            imported.api_provider_name.as_deref(),
+            Some("Core Imported Relay")
+        );
     }
 
     #[test]

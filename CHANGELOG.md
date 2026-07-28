@@ -7,6 +7,44 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.3.15] - 2026-07-28
+
+### Added
+
+- **WorkBuddy supports configurable auto check-in**: off by default; users can set per-account random check-in windows and log retention, and saved accounts are never checked in while the feature is disabled.
+- **macOS menu bar can show live quota**: off by default; users can pick the monitored platform and optionally show an account-prefix badge.
+- **MFA vault supports Google Authenticator migration QR batch import**: `otpauth-migration://` payloads can be scanned and saved into local MFA records in bulk.
+- **Claude quota display can switch between used % and remaining %**: used percentage remains the default; enabling remaining % only changes presentation while auto-switch and alert thresholds still use the used ratio.
+
+### Changed
+
+- **ChatGPT Web Session imports now support quota viewing only**: they are no longer registered automatically as Agent Identity accounts and are not added to the Codex API Service account pool; after import, quota can still be checked, but switching, launching the official client or CLI, joining API Service, and OAuth binding are blocked.
+- **Codex API Service now transparently aligns official Multi-Agent V2 requests with upstream behavior**: only Codex Desktop and `codex-tui` requests are eligible; the gateway refreshes `spawn_agent` model details, normalizes encrypted agent messages, converts them for non-Codex upstream protocols, and restores the collaboration namespace in responses without adding a user-facing workflow or setting.
+- **Codex API usage now follows canonical token accounting v2**: cache reads, cache writes, uncached input, non-reasoning output, and reasoning output use mutually exclusive buckets, while contradictory or unknown upstream data is explicitly classified as `inconsistent` or `unclassified` to prevent cache and reasoning token double-counting.
+- **Codex API Service account members now support explicit Highest, Normal, and Lowest usage priorities**: priority tiers apply consistently across every routing strategy and session affinity; Highest accounts are used first, Normal accounts keep the selected routing behavior, and Lowest accounts are used only when the higher tiers are unavailable. Existing backup-account settings remain compatible as Lowest priority.
+- **Codex API Service routing options now expose session affinity and its expiry in the main service page**: users can enable or disable affinity and set the same 60–86,400 second TTL available from the member-management dialog.
+- **Responses relay API Key projections now use the built-in OpenAI provider with `openai_base_url`**: this aligns desktop switch projections with official direct routing and avoids the local-access provider id for ordinary relays.
+- **CI build-matrix and release workflows are faster**: preflight work is split into parallel jobs with improved caching and matrix scheduling.
+
+### Fixed
+
+- **Fixed ChatGPT Web Session imports failing when Agent Identity runtime registration returned HTTP 403**: this format no longer attempts runtime registration and is imported as a quota-only account.
+- **Fixed Windows Desktop session working-directory normalization when paths use the `\\?\\` prefix**.
+- **Fixed layout breakage when custom icon localStorage writes hit quota errors**.
+- **Fixed Windows CLI quick launch opening a bare PowerShell window for the `system` terminal**: when Windows Terminal is available the launch goes through `wt`, otherwise the previous PowerShell fallback remains.
+- **Fixed hardcoded Chinese fallback strings on the Codex API Service page and related controls**: missing i18n keys and default strings are filled in.
+- **Fixed Codex Responses losing context or contaminating later requests after HTTP/WebSocket transport changes, upstream 1009 closes, or failed tool turns**: incremental requests remain bound to the original WebSocket and credential, unsafe continuation requires a full replay, 1009 no longer rotates credentials, and failed turns never commit to the global tool cache.
+- **Fixed third-party Responses requests failing immediately when upstream explicitly rejects `input[N].namespace` or `max_output_tokens`**: only explicit 400 unknown/unsupported-parameter responses remove the rejected field and retry, retaining the upstream six-attempt limit, body-state deduplication, and tool-item type checks.
+- **Fixed Codex Responses input item IDs longer than 64 characters being rejected upstream**: overlong IDs are shortened deterministically by Unicode character count with collision avoidance, while overlong reasoning items carrying encrypted content are removed according to the upstream compatibility rule.
+- **Fixed Codex API Service mixed-plan account pools routing Spark requests to accounts without access**: the gateway derives per-account model exclusions from quota entitlements and filters ineligible accounts before session affinity and other routing rules; both OAuth pools and API Key pools scoped to selected accounts now send Spark requests only to accounts that support it. Thanks @kin001 ([#1759](https://github.com/jlcodes99/cockpit-tools/pull/1759)).
+- **Fixed Codex account switching resetting official `[features]` settings such as Memories**: pre-launch cleanup now preserves the complete official features table while continuing to repair only Cockpit-owned configuration formatting. Thanks @we1jia ([#1734](https://github.com/jlcodes99/cockpit-tools/pull/1734)).
+- **Fixed quota overlays not recovering when Cockpit restarts while managed Codex instances remain open**: startup now discovers the already-running default and multi-instance processes in the background, recovers their actual CDP ports, and restores profile-specific injection without blocking the main window.
+- **Fixed stale API Service model catalogs remaining after switching a Codex profile back to built-in OpenAI mode**: Cockpit removes only its reserved catalog and takeover backup while preserving arbitrary user catalogs, so later account switches or API Key catalog synchronization no longer reuse stale models. Thanks @kin001 ([#1718](https://github.com/jlcodes99/cockpit-tools/pull/1718)).
+- **Fixed New API accounts showing no quota when the provider returns token-allocation or billing-only fields**: account, dashboard, and provider views now share normalized `quotaLimit`, `quotaRemaining`, and `accessUntil` fallbacks. Thanks @kin001 ([#1712](https://github.com/jlcodes99/cockpit-tools/pull/1712)).
+- **Fixed Codex startup or session-visibility repair failing on binary or invalid UTF-8 rollout files**: repair now handles only plain `rollout-*.jsonl` files and skips unreadable entries with diagnostics instead of cancelling startup. Thanks @kin001 ([#1710](https://github.com/jlcodes99/cockpit-tools/pull/1710)).
+- **Fixed xAI image generation and editing requests being omitted from usage statistics**: successful requests, upstream failures, rate limits, and request-construction failures now publish usage events with the actual requested model. Thanks @Ac-spider ([#1629](https://github.com/jlcodes99/cockpit-tools/pull/1629)).
+- **Fixed fast Codex batch imports sometimes remaining indefinitely in the preparing state**: when scanning completes before the frontend receives the session ID, the persisted terminal preview is reconciled immediately without changing the import protocol or credential format. Thanks @HUF457 ([#1716](https://github.com/jlcodes99/cockpit-tools/pull/1716)).
+
 ## [1.3.14] - 2026-07-22
 
 ### Added

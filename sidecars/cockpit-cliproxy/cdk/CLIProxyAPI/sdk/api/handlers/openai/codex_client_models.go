@@ -34,26 +34,33 @@ var codexClientAllowedReasoningLevels = map[string]struct{}{
 }
 
 func (h *OpenAIAPIHandler) codexClientModelsResponse() map[string]any {
-	return codexClientModelsResponse(h.Models(), registry.GetGlobalRegistry().GetModelProviders)
+	optimizeMultiAgentV2 := h != nil && h.Cfg != nil && h.Cfg.CodexOptimizeMultiAgentV2
+	return codexClientModelsResponse(h.Models(), registry.GetGlobalRegistry().GetModelProviders, optimizeMultiAgentV2)
 }
 
 func CodexClientModelsResponse(models []map[string]any) map[string]any {
-	return codexClientModelsResponse(models, nil)
+	return codexClientModelsResponse(models, nil, false)
 }
 
 // CodexClientModelsResponseWithProviders builds the Codex client model catalog
 // and gates search-tool support using the provider list for each model.
 func CodexClientModelsResponseWithProviders(models []map[string]any, providersForModel func(string) []string) map[string]any {
-	return codexClientModelsResponse(models, providersForModel)
+	return codexClientModelsResponse(models, providersForModel, false)
 }
 
-func codexClientModelsResponse(models []map[string]any, providersForModel codexClientModelProvidersFunc) map[string]any {
+// CodexClientModelsResponseWithMultiAgentV2 builds the Codex client model response
+// and advertises multi-agent v2 for synthesized models when enabled.
+func CodexClientModelsResponseWithMultiAgentV2(models []map[string]any, enabled bool) map[string]any {
+	return codexClientModelsResponse(models, nil, enabled)
+}
+
+func codexClientModelsResponse(models []map[string]any, providersForModel codexClientModelProvidersFunc, optimizeMultiAgentV2 bool) map[string]any {
 	return map[string]any{
-		"models": buildCodexClientModels(models, providersForModel),
+		"models": buildCodexClientModels(models, providersForModel, optimizeMultiAgentV2),
 	}
 }
 
-func buildCodexClientModels(models []map[string]any, providersForModel codexClientModelProvidersFunc) []map[string]any {
+func buildCodexClientModels(models []map[string]any, providersForModel codexClientModelProvidersFunc, optimizeMultiAgentV2 bool) []map[string]any {
 	templates, defaultTemplate, err := loadCodexClientModelTemplates()
 	if err != nil || defaultTemplate == nil {
 		return nil
@@ -77,7 +84,7 @@ func buildCodexClientModels(models []map[string]any, providersForModel codexClie
 		}
 
 		entry := cloneCodexClientModelMap(defaultTemplate)
-		applyCodexClientModelMetadata(entry, id, model)
+		applyCodexClientModelMetadata(entry, id, model, optimizeMultiAgentV2)
 		applyCodexClientSearchToolSupport(entry, id, false, providersForModel)
 		sanitizeCodexClientReasoningMetadata(entry)
 		applyCodexClientVisibilityOverride(entry, id)
@@ -228,7 +235,7 @@ func applyCodexClientSearchToolSupport(entry map[string]any, id string, template
 	}
 }
 
-func applyCodexClientModelMetadata(entry map[string]any, id string, model map[string]any) {
+func applyCodexClientModelMetadata(entry map[string]any, id string, model map[string]any, optimizeMultiAgentV2 bool) {
 	info := registry.LookupModelInfo(id)
 
 	displayName := stringModelValue(model, "display_name")
@@ -266,6 +273,9 @@ func applyCodexClientModelMetadata(entry map[string]any, id string, model map[st
 	entry["display_name"] = displayName
 	entry["description"] = description
 	entry["prefer_websockets"] = false
+	if optimizeMultiAgentV2 {
+		entry["multi_agent_version"] = "v2"
+	}
 	// Synthesized (non-template) models do not advertise official service tiers.
 	entry["service_tiers"] = []any{}
 	delete(entry, "apply_patch_tool_type")

@@ -87,12 +87,15 @@ import {
   getClaudeAuthModeLabel,
   getClaudePlanBadge,
   getClaudePlanBadgeClass,
-  getClaudeQuotaClass,
   isClaudeDesktopGatewayAccount,
   isClaudeDesktopOAuthAccount,
   isClaudeDesktopRuntimeAccount,
   normalizeClaudeAuthMode,
 } from '../types/claude';
+import {
+  resolveClaudeDisplayPercentage,
+  resolveClaudeQuotaClassForDisplayValue,
+} from '../utils/claudeQuotaDisplayPreference';
 import {
   CLAUDE_APIKEY_FUN_BASE_URL,
   CLAUDE_APIKEY_FUN_PROVIDER_ID,
@@ -705,13 +708,13 @@ function buildClaudeQuotaSummaryItems(account: ClaudeAccount, t: TFunction): Cla
     {
       key: 'five-hour',
       label: t('claude.quota.fiveHour', 'Current session'),
-      percentage: quota.five_hour_percentage,
+      percentage: resolveClaudeDisplayPercentage(quota.five_hour_percentage),
       resetTime: quota.five_hour_reset_time,
     },
     {
       key: 'seven-day',
       label: t('claude.quota.sevenDay', 'Current week (all models)'),
-      percentage: quota.seven_day_percentage,
+      percentage: resolveClaudeDisplayPercentage(quota.seven_day_percentage),
       resetTime: quota.seven_day_reset_time,
     },
   ];
@@ -2667,7 +2670,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
       <>
         {items.map((item) => {
           const percentage = clampQuotaPercentage(item.percentage);
-          const quotaClass = getClaudeQuotaClass(percentage);
+          const quotaClass = resolveClaudeQuotaClassForDisplayValue(percentage);
           const resetText = formatClaudeResetTime(item.resetTime);
           const resetDisplay = resetText || '-';
           const Icon = item.key === 'five-hour' ? Clock3 : CalendarDays;
@@ -2800,7 +2803,7 @@ export function ClaudeAccountsPage({ subPlatform = 'desktop' }: ClaudeAccountsPa
       <div className="page-top-strip">
         <div className="page-top-strip-left">
           <span className="page-top-strip-label">
-            {t('settings.general.account', '账号')}
+            {t('settings.general.account', 'Accounts')}
           </span>
           <ManualHelpIconButton className="platform-header-help" />
         </div>

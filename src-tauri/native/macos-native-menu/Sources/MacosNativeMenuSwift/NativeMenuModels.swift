@@ -59,4 +59,10 @@ struct NativeMenuSnapshot: Codable {
     let strings: NativeMenuStrings
     let platforms: [NativeMenuPlatform]
     let selected_platform_id: String
+    /// 开启菜单栏额度时：打开托盘菜单应强制选中配置平台并展示当前账号。
+    let prefer_selected_platform: Bool?
+
+    var shouldPreferSelectedPlatform: Bool {
+        self.prefer_selected_platform ?? false
+    }
 }

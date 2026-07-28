@@ -3,6 +3,7 @@ import {
   isCodexAgentIdentityAccount,
   isCodexExplicitFreePlanType,
   isCodexPendingOAuthAccount,
+  isCodexWebSessionAccount,
   type CodexAccount,
 } from '../types/codex.ts';
 
@@ -43,7 +44,8 @@ const CHAT_COMPLETIONS_PROVIDER_HOSTS = [
 export type CodexLocalAccessAccountIneligibleReason =
   | "chat_completions_api_key"
   | "free_restricted"
-  | "pending_oauth";
+  | "pending_oauth"
+  | "web_session_quota_only";
 
 export function isCodexChatCompletionsApiKeyAccount(account: CodexAccount): boolean {
   if (!isCodexApiKeyAccount(account)) {
@@ -80,6 +82,10 @@ export function getCodexLocalAccessAccountIneligibleReason(
   // Pending / incomplete OAuth accounts cannot serve API traffic.
   if (isCodexPendingOAuthAccount(account)) {
     return "pending_oauth";
+  }
+  // ChatGPT Web Session: quota view only, never join API service.
+  if (isCodexWebSessionAccount(account)) {
+    return "web_session_quota_only";
   }
   if (isCodexChatCompletionsApiKeyAccount(account)) {
     return "chat_completions_api_key";
@@ -121,6 +127,7 @@ export function isCodexOAuthBindingEligibleAccount(
   return (
     !isCodexApiKeyAccount(account) &&
     !isCodexAgentIdentityAccount(account) &&
+    !isCodexWebSessionAccount(account) &&
     Boolean(account.tokens.refresh_token?.trim())
   );
 }
@@ -169,13 +176,14 @@ export function resolveImportedCodexAccountIdsForLocalAccess(
   syncAllImportedAccounts: boolean,
   forceAgentIdentityAccounts: boolean,
 ): string[] {
+  const eligible = accounts.filter((account) => !isCodexWebSessionAccount(account));
   if (syncAllImportedAccounts) {
-    return accounts.map((account) => account.id);
+    return eligible.map((account) => account.id);
   }
   if (!forceAgentIdentityAccounts) {
     return [];
   }
-  return accounts
+  return eligible
     .filter(isCodexAgentIdentityAccount)
     .map((account) => account.id);
 }

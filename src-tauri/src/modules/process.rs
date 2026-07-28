@@ -417,8 +417,7 @@ fn build_powershell_command(args: &[&str]) -> Command {
 
 #[cfg(target_os = "windows")]
 fn powershell_output(args: &[&str]) -> std::io::Result<std::process::Output> {
-    let spawn_guard =
-        crate::modules::app_lifecycle::acquire_process_spawn_guard("PowerShell")?;
+    let spawn_guard = crate::modules::app_lifecycle::acquire_process_spawn_guard("PowerShell")?;
     let mut command = build_powershell_command(args);
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let preview = format_command_preview(&command);
@@ -438,8 +437,7 @@ fn powershell_output_with_timeout(
 ) -> std::io::Result<std::process::Output> {
     use std::io::{Error, ErrorKind, Read};
 
-    let spawn_guard =
-        crate::modules::app_lifecycle::acquire_process_spawn_guard("PowerShell")?;
+    let spawn_guard = crate::modules::app_lifecycle::acquire_process_spawn_guard("PowerShell")?;
     let mut command = build_powershell_command(args);
     command
         .stdin(Stdio::null())

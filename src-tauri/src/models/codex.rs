@@ -498,6 +498,11 @@ impl CodexAccount {
         self.agent_identity.is_some()
     }
 
+    /// ChatGPT Web Session 导入账号：仅支持查看额度，不可启动/切号/加入 API 服务。
+    pub fn is_web_session_auth(&self) -> bool {
+        self.token_source_mode.trim() == "chatgpt_web_session"
+    }
+
     pub fn update_last_used(&mut self) {
         self.last_used = chrono::Utc::now().timestamp();
     }

@@ -122,6 +122,11 @@ export function isCodexAgentIdentityAccount(account?: CodexAccount | null): bool
   return Boolean(account?.agent_identity?.agent_runtime_id?.trim());
 }
 
+/** ChatGPT Web Session 导入账号：仅支持查看额度，不可启动/切号/加入 API。 */
+export function isCodexWebSessionAccount(account?: CodexAccount | null): boolean {
+  return (account?.token_source_mode || "").trim() === "chatgpt_web_session";
+}
+
 /** Codex 配额数据 */
 export interface CodexQuota {
   /** 5小时配额百分比 (0-100) */

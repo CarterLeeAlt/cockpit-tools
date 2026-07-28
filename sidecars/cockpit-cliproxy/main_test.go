@@ -1537,6 +1537,72 @@ func TestBackupAccountSelectorOverridesCachedAffinityWhenRegularRecovers(t *test
 	}
 }
 
+func TestUsagePrioritySelectorPrefersHighestAcrossRoutingStrategies(t *testing.T) {
+	preferredAccount := &accountSpec{ID: "preferred", AuthID: "preferred.json"}
+	regularAccount := &accountSpec{ID: "regular", AuthID: "regular.json"}
+	backupAccount := &accountSpec{ID: "backup", AuthID: "backup.json"}
+	m := &manifest{
+		Accounts:        []accountSpec{*preferredAccount, *regularAccount, *backupAccount},
+		RoutingStrategy: "auto",
+		CustomRoutingRules: []customRoutingRule{
+			{AccountID: "preferred", IsPreferred: true},
+			{AccountID: "regular"},
+			{AccountID: "backup", IsBackup: true},
+		},
+		accountByID: map[string]*accountSpec{
+			"preferred": preferredAccount,
+			"regular":   regularAccount,
+			"backup":    backupAccount,
+		},
+		accountByAuthID: map[string]*accountSpec{
+			"preferred.json": preferredAccount,
+			"regular.json":   regularAccount,
+			"backup.json":    backupAccount,
+		},
+		originalIndexByID: map[string]int{"preferred": 0, "regular": 1, "backup": 2},
+	}
+	cfg := &config.Config{}
+	cfg.Routing.SessionAffinity = true
+	cfg.Routing.SessionAffinityTTL = time.Minute.String()
+	selector := buildCoreAuthSelector(cfg, &cockpitSelector{manifest: m}, m, nil)
+	if stoppable, ok := selector.(coreauth.StoppableSelector); ok {
+		defer stoppable.Stop()
+	}
+
+	preferredAuth := &coreauth.Auth{
+		ID:             "preferred.json",
+		Unavailable:    true,
+		NextRetryAfter: time.Now().Add(time.Minute),
+	}
+	regularAuth := &coreauth.Auth{ID: "regular.json"}
+	backupAuth := &coreauth.Auth{ID: "backup.json"}
+	auths := []*coreauth.Auth{preferredAuth, regularAuth, backupAuth}
+	opts := cliproxyexecutor.Options{
+		OriginalRequest: []byte(`{"metadata":{"user_id":"user_xxx_account__session_c425b37d-e64d-4798-aef9-c8b0402fd713"}}`),
+	}
+
+	selected, err := selector.Pick(context.Background(), "codex", "gpt-5.4", opts, auths)
+	if err != nil || selected == nil || selected.ID != "regular.json" {
+		t.Fatalf("expected regular while preferred is unavailable, got auth=%#v err=%v", selected, err)
+	}
+
+	preferredAuth.Unavailable = false
+	preferredAuth.NextRetryAfter = time.Time{}
+	selected, err = selector.Pick(context.Background(), "codex", "gpt-5.4", opts, auths)
+	if err != nil || selected == nil || selected.ID != "preferred.json" {
+		t.Fatalf("expected recovered preferred auth to override regular affinity, got auth=%#v err=%v", selected, err)
+	}
+
+	preferredAuth.Unavailable = true
+	preferredAuth.NextRetryAfter = time.Now().Add(time.Minute)
+	regularAuth.Unavailable = true
+	regularAuth.NextRetryAfter = time.Now().Add(time.Minute)
+	selected, err = selector.Pick(context.Background(), "codex", "gpt-5.4", opts, auths)
+	if err != nil || selected == nil || selected.ID != "backup.json" {
+		t.Fatalf("expected backup when preferred and regular are unavailable, got auth=%#v err=%v", selected, err)
+	}
+}
+
 func int64PointerForTest(value int64) *int64 {
 	return &value
 }
@@ -4073,5 +4139,133 @@ func TestRegisterManifestModelsForAuthRespectsPerAccountExclusions(t *testing.T)
 		if strings.EqualFold(model.ID, codexSparkModel) {
 			t.Fatalf("spark should not be registered for excluded auth: %#v", models)
 		}
+	}
+}
+
+func TestCoreAuthSelectorFiltersNewModelExclusionsBeforeSessionAffinity(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Routing.SessionAffinity = true
+	cfg.Routing.SessionAffinityTTL = "1h"
+	selector := buildCoreAuthSelector(cfg, &coreauth.RoundRobinSelector{}, &manifest{}, nil)
+	if stoppable, ok := selector.(coreauth.StoppableSelector); ok {
+		t.Cleanup(stoppable.Stop)
+	}
+
+	plus := &coreauth.Auth{
+		ID:       "plus.json",
+		Provider: "codex",
+		Status:   coreauth.StatusActive,
+		Metadata: map[string]any{},
+	}
+	pro := &coreauth.Auth{
+		ID:       "pro.json",
+		Provider: "codex",
+		Status:   coreauth.StatusActive,
+	}
+	auths := []*coreauth.Auth{plus, pro}
+	opts := cliproxyexecutor.Options{
+		Headers: http.Header{"Session_id": []string{"spark-session"}},
+	}
+
+	first, err := selector.Pick(context.Background(), "codex", codexSparkModel, opts, auths)
+	if err != nil {
+		t.Fatalf("initial Pick: %v", err)
+	}
+	if first == nil || first.ID != plus.ID {
+		t.Fatalf("initial Pick = %#v, want %q", first, plus.ID)
+	}
+
+	plus.Metadata["excluded_models"] = []any{codexSparkModel}
+	second, err := selector.Pick(context.Background(), "codex", codexSparkModel, opts, auths)
+	if err != nil {
+		t.Fatalf("Pick after exclusion: %v", err)
+	}
+	if second == nil || second.ID != pro.ID {
+		t.Fatalf("Pick after exclusion = %#v, want %q", second, pro.ID)
+	}
+}
+
+
+func TestSidecarRuntimeDoesNotSelectAccountWithExcludedModel(t *testing.T) {
+	tempDir := t.TempDir()
+	authDir := filepath.Join(tempDir, "auths")
+	if err := os.MkdirAll(authDir, 0o755); err != nil {
+		t.Fatalf("create auth dir: %v", err)
+	}
+	configPath := filepath.Join(tempDir, "config.json")
+	if err := os.WriteFile(configPath, []byte(`{}`), 0o644); err != nil {
+		t.Fatalf("write config path: %v", err)
+	}
+
+	blockedFile := "blocked-luna.json"
+	allowedFile := "allowed-luna.json"
+	if err := os.WriteFile(filepath.Join(authDir, blockedFile), []byte(`{
+  "type":"codex",
+  "email":"blocked@example.com",
+  "access_token":"blocked-token",
+  "account_id":"acct-blocked",
+  "excluded_models":["GPT-5.6-LUNA", "gpt-5.7-*"]
+}`), 0o600); err != nil {
+		t.Fatalf("write blocked auth: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(authDir, allowedFile), []byte(`{
+  "type":"codex",
+  "email":"allowed@example.com",
+  "access_token":"allowed-token",
+  "account_id":"acct-allowed"
+}`), 0o600); err != nil {
+		t.Fatalf("write allowed auth: %v", err)
+	}
+
+	m := &manifest{
+		Accounts: []accountSpec{
+			{ID: "blocked-account", Email: "blocked@example.com", AuthID: blockedFile, AuthKind: "oauth"},
+			{ID: "allowed-account", Email: "allowed@example.com", AuthID: allowedFile, AuthKind: "oauth"},
+		},
+		ModelIDs:         []string{"gpt-5.6-luna", "gpt-5.7-preview", "gpt-5.4"},
+		accountByID:      make(map[string]*accountSpec),
+		accountByAuthID:  make(map[string]*accountSpec),
+		accountByAPIKey:  make(map[string]*accountSpec),
+		accountByChatGPT: make(map[string]*accountSpec),
+		accountByEmail:   make(map[string]*accountSpec),
+	}
+	for index := range m.Accounts {
+		account := &m.Accounts[index]
+		m.accountByID[account.ID] = account
+		m.accountByAuthID[strings.ToLower(account.AuthID)] = account
+		m.accountByEmail[strings.ToLower(account.Email)] = account
+	}
+
+	cfg := &config.Config{AuthDir: authDir}
+	manager := buildCoreAuthManager(cfg, &cockpitSelector{manifest: m}, &authHook{manifest: m}, m, nil, newRequestUsageTracker())
+	runtime, err := newSidecarRuntime(context.Background(), configPath, cfg, m, manager)
+	if err != nil {
+		t.Fatalf("newSidecarRuntime: %v", err)
+	}
+	defer runtime.Stop()
+
+	for attempt := 0; attempt < 8; attempt++ {
+		selected, errSelect := manager.SelectAuth(context.Background(), "codex", "gpt-5.6-luna", cliproxyexecutor.Options{})
+		if errSelect != nil {
+			t.Fatalf("SelectAuth attempt %d: %v", attempt, errSelect)
+		}
+		if account := accountForAuthInManifest(m, selected); account == nil || account.ID != "allowed-account" {
+			t.Fatalf("SelectAuth attempt %d selected blocked account: auth=%#v account=%#v", attempt, selected, account)
+		}
+	}
+
+	blockedAuth, ok := manager.GetByID(blockedFile)
+	if !ok || blockedAuth == nil {
+		t.Fatalf("blocked auth %q was not registered", blockedFile)
+	}
+	blockedModels := registry.GetGlobalRegistry().GetModelsForClient(blockedAuth.ID)
+	if info := findModelInfoForTest(blockedModels, "gpt-5.6-luna"); info != nil {
+		t.Fatalf("blocked auth still advertises exact excluded model: %#v", info)
+	}
+	if info := findModelInfoForTest(blockedModels, "gpt-5.7-preview"); info != nil {
+		t.Fatalf("blocked auth still advertises wildcard-excluded model: %#v", info)
+	}
+	if info := findModelInfoForTest(blockedModels, "gpt-5.4"); info == nil {
+		t.Fatal("blocked auth lost a non-excluded model")
 	}
 }

@@ -706,9 +706,9 @@
       "codebuddyAutoRefresh": "Автообновление квоты CodeBuddy",
       "codebuddyAutoRefreshDesc": "Интервал фонового автообновления",
       "codebuddyShareSessionsOnSwitch": "Общие локальные сеансы при смене",
-    "codebuddyShareSessionsOnSwitchDesc": "Объединяет локальные сеансы и состояние восстановления между аккаунтами CodeBuddy на этом устройстве. Содержимое читается и записывается только локально и не отправляется.",
-    "workbuddyShareSessionsOnSwitch": "Общие локальные сеансы при смене",
-    "workbuddyShareSessionsOnSwitchDesc": "Объединяет локальные сеансы и состояние восстановления между аккаунтами WorkBuddy на этом устройстве. Содержимое читается и записывается только локально и не отправляется.",
+      "codebuddyShareSessionsOnSwitchDesc": "Объединяет локальные сеансы и состояние восстановления между аккаунтами CodeBuddy на этом устройстве. Содержимое читается и записывается только локально и не отправляется.",
+      "workbuddyShareSessionsOnSwitch": "Общие локальные сеансы при смене",
+      "workbuddyShareSessionsOnSwitchDesc": "Объединяет локальные сеансы и состояние восстановления между аккаунтами WorkBuddy на этом устройстве. Содержимое читается и записывается только локально и не отправляется.",
       "codebuddyAppPath": "Путь запуска CodeBuddy",
       "codebuddyAppPathDesc": "Оставьте пустым, чтобы использовать путь по умолчанию",
       "codebuddyAppPathPlaceholder": "Путь по умолчанию",
@@ -851,7 +851,20 @@
       "externalNetwork": "Разрешить внешнюю сеть",
       "externalNetworkDesc": "Выкл.: блокирует WebDAV, usage OpenRouter, объявления и автопроверку обновлений (локальное работает).",
       "webdavAllowedDomains": "Белый список WebDAV",
-      "webdavAllowedDomainsDesc": "Через запятую; пусто = без ограничений"
+      "webdavAllowedDomainsDesc": "Через запятую; пусто = без ограничений",
+      "claudeQuotaDisplayRemaining": "Квота Claude как % остатка",
+      "claudeQuotaDisplayRemainingDesc": "По умолчанию % использования. Вкл. = остаток. Авто-смена и алерты по использованию.",
+      "menuBarQuota": "Квота в строке меню",
+      "menuBarQuotaDesc": "При включении показывает остаток квоты текущего аккаунта выбранной платформы рядом с иконкой. Параметры платформы — в диалоге.",
+      "menuBarQuotaEnabledDesc": "Вкл. · {{platform}} · остаток текущего аккаунта этой платформы (минимум из квот)",
+      "menuBarQuotaConfigure": "Настроить",
+      "menuBarQuotaModalTitle": "Квота строки меню",
+      "menuBarQuotaModalDesc": "Только для этой функции: следует текущему аккаунту. API-сервис Codex: «API + % остатка пула»; API Key: «API + остаток»; обычный: префикс почты + % остатка (минимум; красный/оранжевый/зелёный).",
+      "menuBarQuotaPlatform": "Платформа аккаунта",
+      "menuBarQuotaPlatformDesc": "Берёт активный аккаунт этой платформы; обновляется после обновления или смены",
+      "menuBarAccountPrefix": "Первые 4 символа почты",
+      "menuBarAccountPrefixDesc": "Только обычные аккаунты: выкл. скрывает префикс почты. API-сервис Codex / API Key по-прежнему показывают API",
+      "menuBarQuotaConfirmEnable": "Включить"
     },
     "network": {
       "apiTitle": "API антигравитационной кабины",
@@ -1835,14 +1848,18 @@
       "formatBatchLabel": "Пакетный пример"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "Уведомление об импорте Web Session",
-      "noticeMessage": "Обнаружено аккаунтов Web Session: {{count}}. При продолжении они будут автоматически зарегистрированы как Agent Identity.",
-      "noticeApiOnly": "Эти аккаунты предназначены только для API-сервиса и будут автоматически добавлены в его пул.",
-      "noticeNoSwitch": "Их нельзя использовать для обычного переключения аккаунтов Codex, прямого запуска официального клиента или CLI либо как аккаунт, привязанный через OAuth.",
-      "noticeCredential": "Приложение локально создаёт и хранит закрытый ключ Agent Identity. Защищайте экспортированные копии как пароли.",
-      "noticeConfirm": "Понятно, продолжить",
       "apiOnlyActionError": "Аккаунты Agent Identity доступны только через API-сервис; на них нельзя напрямую переключиться или запустить их.",
       "oauthBindingUnsupported": "Аккаунты Agent Identity предназначены только для API-сервиса и не могут использоваться как аккаунты, привязанные через OAuth."
+    },
+    "webSessionImport": {
+      "noticeTitle": "Импорт Web Session",
+      "noticeMessage": "{{count}} Web Session. Только просмотр квоты.",
+      "noticeQuotaOnly": "Только квота. Без клиента/CLI/смены.",
+      "noticeNoApi": "Не в API-пул и не OAuth.",
+      "noticeConfirm": "Понятно, продолжить",
+      "actionBlocked": "Web Session только квота.",
+      "apiIneligible": "Web Session только квота, без API",
+      "oauthBindingUnsupported": "Web Session нельзя для OAuth."
     },
     "exportFormat": {
       "label": "Формат экспорта",
@@ -1954,6 +1971,11 @@
       "summaryMeta": "{{count}} аккаунтов · {{scope}}",
       "summaryMetaUnconfigured": "Не настроено · {{scope}}",
       "memberTitle": "Участники коллекции",
+      "memberPriorityLabel": "Приоритет",
+      "memberPriorityLowest": "Низкий",
+      "memberPriorityNormal": "Обычный",
+      "memberPriorityHighest": "Высокий",
+      "memberPriorityDesc": "Высокий используется первым, обычный — по текущим правилам, низкий — только когда другие аккаунты недоступны.",
       "stats": {
         "requests": "Запросы",
         "requestsDetail": "ОК {{success}} / Ошибка {{failed}} / Отмена {{canceled}} / Источник {{upstreamFailed}} / Неполн. {{incomplete}}",
@@ -1971,7 +1993,8 @@
         "images": "Запросы изображений",
         "imagesDetail": "Создание {{generate}} / Правка {{edit}} / Доступ {{blocked}}",
         "estimatedCost": "Оценка стоимости",
-        "estimatedCostDetail": "Сумма по снимкам цены каждого запроса"
+        "estimatedCostDetail": "Сумма по снимкам цены каждого запроса",
+        "successRateLabel": "Успешность"
       },
       "routingLabel": "Маршрутизация",
       "routingSaveSuccess": "Маршрутизация API-сервиса обновлена",
@@ -3382,7 +3405,9 @@
         "excludedModels": "Исключенные модели",
         "excludedModelsPlaceholder": "Модель или шаблон на строку",
         "savePolicy": "Сохранить политику",
-        "policySaved": "Политика моделей Key сохранена"
+        "policySaved": "Политика моделей Key сохранена",
+        "lastUsed": "Последнее использование",
+        "routingAccounts": "Аккаунты маршрутизации"
       },
       "routing": {
         "optionsTitle": "Параметры маршрута",
@@ -3419,7 +3444,10 @@
         "loading": "Загрузка журналов",
         "gatewayModeUnknown": "Неизвестный режим",
         "requestIdShort": "ID запроса {{id}}",
-        "httpStatus": "Статус HTTP {{status}}"
+        "httpStatus": "Статус HTTP {{status}}",
+        "allInstances": "Все инстансы",
+        "instanceFilter": "Инстанс",
+        "instanceUnknown": "Инстанс -"
       },
       "timeouts": {
         "entryLabel": "Дополнительно",
@@ -3480,6 +3508,10 @@
         "clearSelection": "Снять выбор",
         "saveSuccess": "Блокировки моделей сохранены",
         "cardCount": "{{count}} заблок."
+      },
+      "usage": {
+        "title": "Статистика использования",
+        "lastRecorded": "Последняя запись"
       }
     },
     "apiKey": {
@@ -4878,7 +4910,19 @@
       "queryFailed": "Сбой запроса",
       "retry": "Повтор",
       "inactive": "Недоступно",
-      "inactiveHint": "Чек-ин недоступен для этого аккаунта"
+      "inactiveHint": "Чек-ин недоступен для этого аккаунта",
+      "autoCheckinSettings": "Настройки автоматической отметки",
+      "autoCheckinLabel": "Авто-отметка",
+      "autoCheckinOff": "Авто-отметка выключена",
+      "autoCheckinEnabledHint": "Авто-отметка включена: случайная отметка между {{start}} и {{end}}",
+      "autoCheckinDisabledHint": "Авто-отметка отключена",
+      "enableAutoCheckin": "Включить авто-отметку",
+      "enableAutoCheckinDesc": "Ежедневно выполняет случайную отметку в указанном временном интервале",
+      "randomTimeRange": "Случайный интервал времени отметки",
+      "startTime": "Время начала",
+      "endTime": "Время окончания",
+      "timeRangeHint": "Ежедневно выбирает случайное время в этом интервале для выполнения фоновой отметки.",
+      "timeRangeError": "Время начала не может быть позже времени окончания"
     }
   },
   "zcode": {
@@ -5131,7 +5175,13 @@
     "saveAccountName": "Сохранить имя аккаунта",
     "cancelEditAccountName": "Отменить редактирование",
     "accountNameRequired": "Имя аккаунта обязательно.",
-    "copySecret": "Скопировать секрет"
+    "copySecret": "Скопировать секрет",
+    "migrationBatchProgress": "Скан {{current}}/{{total}}",
+    "migrationBatchIncomplete": "Не завершено; сохранить часть или продолжить.",
+    "continueMigrationScan": "Продолжить скан",
+    "savePartialMigrationBatch": "Сохранить часть",
+    "saveCompleteMigrationBatch": "Сохранить всё",
+    "clearMigrationBatch": "Очистить пакет"
   },
   "logViewer": {
     "fileLabel": "Файл журнала",

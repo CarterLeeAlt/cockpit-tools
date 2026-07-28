@@ -129,6 +129,7 @@ interface CodexLocalAccessModalProps {
     accountIds: string[];
     restrictFreeAccounts: boolean;
     backupAccountIds: string[];
+    preferredAccountIds: string[];
     sessionAffinity: boolean;
     sessionAffinityTtlMs: number;
   }) => Promise<unknown> | unknown;
@@ -180,7 +181,10 @@ interface CustomRoutingDraftRule {
   priority: number;
   weight: number;
   isBackup: boolean;
+  isPreferred: boolean;
 }
+
+type AccountUsagePriority = "lowest" | "normal" | "highest";
 
 interface TestChatMessage {
   id: string;
@@ -235,6 +239,14 @@ function normalizeCustomRoutingWeight(value: number): number {
     CUSTOM_ROUTING_WEIGHT_MIN,
     CUSTOM_ROUTING_WEIGHT_MAX,
   );
+}
+
+function resolveAccountUsagePriority(
+  rule?: Pick<CustomRoutingDraftRule, "isBackup" | "isPreferred"> | null,
+): AccountUsagePriority {
+  if (rule?.isPreferred) return "highest";
+  if (rule?.isBackup) return "lowest";
+  return "normal";
 }
 
 function readStoredStatsRange(): CodexStatsRangeKey {
@@ -426,13 +438,7 @@ export function CodexLocalAccessModal({
   const [customRoutingDraft, setCustomRoutingDraft] = useState<
     Record<string, CustomRoutingDraftRule>
   >({});
-  const [backupConfirmAccountId, setBackupConfirmAccountId] = useState<
-    string | null
-  >(null);
-  useEscClose(
-    isOpen,
-    backupConfirmAccountId ? () => setBackupConfirmAccountId(null) : onClose,
-  );
+  useEscClose(isOpen, onClose);
   const [customRoutingBulkPriority, setCustomRoutingBulkPriority] =
     useState("10");
   const [customRoutingBulkWeight, setCustomRoutingBulkWeight] = useState("1");
@@ -678,7 +684,6 @@ export function CodexLocalAccessModal({
     setCustomRoutingTagFilter([]);
     setCustomRoutingError("");
     setCustomRoutingSelected(new Set());
-    setBackupConfirmAccountId(null);
     setCustomRoutingDraft(() => {
       const ruleMap = new Map(
         (collection?.customRoutingRules ?? []).map((rule) => [
@@ -687,6 +692,7 @@ export function CodexLocalAccessModal({
             priority: normalizeCustomRoutingPriority(rule.priority),
             weight: normalizeCustomRoutingWeight(rule.weight),
             isBackup: Boolean(rule.isBackup),
+            isPreferred: Boolean(rule.isPreferred),
           },
         ]),
       );
@@ -696,6 +702,7 @@ export function CodexLocalAccessModal({
           priority: CUSTOM_ROUTING_PRIORITY_MIN,
           weight: CUSTOM_ROUTING_WEIGHT_MIN,
           isBackup: false,
+          isPreferred: false,
         };
       });
       return next;
@@ -986,7 +993,8 @@ export function CodexLocalAccessModal({
         // Keep unsupported accounts visible so users know why they cannot join.
         if (
           ineligibleReason === "chat_completions_api_key" ||
-          ineligibleReason === "pending_oauth"
+          ineligibleReason === "pending_oauth" ||
+          ineligibleReason === "web_session_quota_only"
         ) {
           return true;
         }
@@ -1054,6 +1062,17 @@ export function CodexLocalAccessModal({
     );
   }, [collection?.customRoutingRules, normalizedInitialSelectedIds]);
 
+  const initialPreferredAccountIds = useMemo(() => {
+    const selectedSet = new Set(normalizedInitialSelectedIds);
+    return new Set(
+      (collection?.customRoutingRules ?? [])
+        .filter(
+          (rule) => rule.isPreferred && selectedSet.has(rule.accountId),
+        )
+        .map((rule) => rule.accountId),
+    );
+  }, [collection?.customRoutingRules, normalizedInitialSelectedIds]);
+
   const currentBackupAccountIds = useMemo(() => {
     const ruleBackupById = new Map(
       (collection?.customRoutingRules ?? []).map((rule) => [
@@ -1074,19 +1093,42 @@ export function CodexLocalAccessModal({
     return next;
   }, [collection?.customRoutingRules, customRoutingDraft, selected]);
 
+  const currentPreferredAccountIds = useMemo(() => {
+    const rulePreferredById = new Map(
+      (collection?.customRoutingRules ?? []).map((rule) => [
+        rule.accountId,
+        Boolean(rule.isPreferred),
+      ]),
+    );
+    const next = new Set<string>();
+    selected.forEach((accountId) => {
+      const isPreferred =
+        customRoutingDraft[accountId]?.isPreferred ??
+        rulePreferredById.get(accountId) ??
+        false;
+      if (isPreferred) {
+        next.add(accountId);
+      }
+    });
+    return next;
+  }, [collection?.customRoutingRules, customRoutingDraft, selected]);
+
   const selectionDirty = useMemo(
     () =>
       !areSetsEqual(selected, new Set(normalizedInitialSelectedIds)) ||
       restrictFreeAccounts !== (collection?.restrictFreeAccounts ?? true) ||
       sessionAffinity !== initialSessionAffinity ||
       sessionAffinityTtlSeconds !== String(initialSessionAffinityTtlSeconds) ||
-      !areSetsEqual(currentBackupAccountIds, initialBackupAccountIds),
+      !areSetsEqual(currentBackupAccountIds, initialBackupAccountIds) ||
+      !areSetsEqual(currentPreferredAccountIds, initialPreferredAccountIds),
     [
       collection?.restrictFreeAccounts,
       currentBackupAccountIds,
+      currentPreferredAccountIds,
       initialSessionAffinity,
       initialSessionAffinityTtlSeconds,
       initialBackupAccountIds,
+      initialPreferredAccountIds,
       normalizedInitialSelectedIds,
       restrictFreeAccounts,
       sessionAffinity,
@@ -1191,6 +1233,23 @@ export function CodexLocalAccessModal({
       }>,
     [t],
   );
+  const memberPriorityOptions = useMemo(
+    () => [
+      {
+        value: "lowest",
+        label: t("codex.localAccess.memberPriorityLowest", "最低"),
+      },
+      {
+        value: "normal",
+        label: t("codex.localAccess.memberPriorityNormal", "正常"),
+      },
+      {
+        value: "highest",
+        label: t("codex.localAccess.memberPriorityHighest", "最高"),
+      },
+    ],
+    [t],
+  );
   const accessScopeOptions = useMemo(
     () => [
       {
@@ -1241,6 +1300,7 @@ export function CodexLocalAccessModal({
         priority: normalizeCustomRoutingPriority(rule.priority),
         weight: normalizeCustomRoutingWeight(rule.weight),
         isBackup: Boolean(rule.isBackup),
+        isPreferred: Boolean(rule.isPreferred),
       });
     });
     return next;
@@ -1535,10 +1595,18 @@ export function CodexLocalAccessModal({
           false;
         return isBackup;
       });
+      const preferredAccountIds = filtered.filter((accountId) => {
+        const isPreferred =
+          customRoutingDraft[accountId]?.isPreferred ??
+          customRoutingRuleByAccountId.get(accountId)?.isPreferred ??
+          false;
+        return isPreferred;
+      });
       await onSaveAccounts({
         accountIds: filtered,
         restrictFreeAccounts,
         backupAccountIds,
+        preferredAccountIds,
         sessionAffinity,
         sessionAffinityTtlMs: parsedSessionAffinityTtlSeconds * 1000,
       });
@@ -1593,7 +1661,6 @@ export function CodexLocalAccessModal({
 
   const closeCustomRoutingDialog = () => {
     if (saving) return;
-    setBackupConfirmAccountId(null);
     setCustomRoutingOpen(false);
     setCustomRoutingError("");
     setCustomRoutingSelected(new Set());
@@ -1638,6 +1705,7 @@ export function CodexLocalAccessModal({
         priority: CUSTOM_ROUTING_PRIORITY_MIN,
         weight: CUSTOM_ROUTING_WEIGHT_MIN,
         isBackup: false,
+        isPreferred: false,
       };
       return {
         ...prev,
@@ -1652,7 +1720,10 @@ export function CodexLocalAccessModal({
     });
   };
 
-  const toggleMemberBackup = (accountId: string) => {
+  const updateMemberUsagePriority = (
+    accountId: string,
+    usagePriority: AccountUsagePriority,
+  ) => {
     if (membersInteractionDisabled) return;
     if (!selected.has(accountId)) {
       setMembersDraftDirty(true);
@@ -1667,41 +1738,17 @@ export function CodexLocalAccessModal({
         priority: CUSTOM_ROUTING_PRIORITY_MIN,
         weight: CUSTOM_ROUTING_WEIGHT_MIN,
         isBackup: false,
+        isPreferred: false,
       };
-    if (!current.isBackup) {
-      setBackupConfirmAccountId(accountId);
-      return;
-    }
     setMembersDraftDirty(true);
     setCustomRoutingDraft((prev) => ({
       ...prev,
       [accountId]: {
         ...current,
-        isBackup: false,
+        isBackup: usagePriority === "lowest",
+        isPreferred: usagePriority === "highest",
       },
     }));
-  };
-
-  const confirmMemberBackup = () => {
-    const accountId = backupConfirmAccountId;
-    if (!accountId || membersInteractionDisabled) return;
-    setMembersDraftDirty(true);
-    setCustomRoutingDraft((prev) => {
-      const current = prev[accountId] ??
-        customRoutingRuleByAccountId.get(accountId) ?? {
-          priority: CUSTOM_ROUTING_PRIORITY_MIN,
-          weight: CUSTOM_ROUTING_WEIGHT_MIN,
-          isBackup: false,
-        };
-      return {
-        ...prev,
-        [accountId]: {
-          ...current,
-          isBackup: true,
-        },
-      };
-    });
-    setBackupConfirmAccountId(null);
   };
 
   const applyCustomRoutingBatch = () => {
@@ -1724,6 +1771,10 @@ export function CodexLocalAccessModal({
             next[accountId]?.isBackup ??
             customRoutingRuleByAccountId.get(accountId)?.isBackup ??
             false,
+          isPreferred:
+            next[accountId]?.isPreferred ??
+            customRoutingRuleByAccountId.get(accountId)?.isPreferred ??
+            false,
         };
       });
       return next;
@@ -1738,6 +1789,7 @@ export function CodexLocalAccessModal({
         priority: CUSTOM_ROUTING_PRIORITY_MIN,
         weight: CUSTOM_ROUTING_WEIGHT_MIN,
         isBackup: false,
+        isPreferred: false,
       };
     });
     setCustomRoutingDraft(next);
@@ -1755,12 +1807,14 @@ export function CodexLocalAccessModal({
             priority: CUSTOM_ROUTING_PRIORITY_MIN,
             weight: CUSTOM_ROUTING_WEIGHT_MIN,
             isBackup: false,
+            isPreferred: false,
           };
         return {
           accountId,
           priority: normalizeCustomRoutingPriority(rule.priority),
           weight: normalizeCustomRoutingWeight(rule.weight),
           isBackup: rule.isBackup,
+          isPreferred: rule.isPreferred,
         };
       });
       await onUpdateCustomRouting(rules);
@@ -3101,16 +3155,18 @@ export function CodexLocalAccessModal({
                         ineligibleReason === "chat_completions_api_key";
                       const isPendingOauthUnsupported =
                         ineligibleReason === "pending_oauth";
+                      const isWebSessionUnsupported =
+                        ineligibleReason === "web_session_quota_only";
                       const isJoinUnsupported =
                         isChatCompletionsApiKeyUnsupported ||
-                        isPendingOauthUnsupported;
+                        isPendingOauthUnsupported ||
+                        isWebSessionUnsupported;
                       const isChecked =
                         !isJoinUnsupported && selected.has(account.id);
-                      const isBackup =
-                        customRoutingDraft[account.id]?.isBackup ??
-                        customRoutingRuleByAccountId.get(account.id)
-                          ?.isBackup ??
-                        false;
+                      const usagePriority = resolveAccountUsagePriority(
+                        customRoutingDraft[account.id] ??
+                          customRoutingRuleByAccountId.get(account.id),
+                      );
                       const accountStats = allStatsByAccountId.get(
                         account.id,
                       )?.usage;
@@ -3147,42 +3203,41 @@ export function CodexLocalAccessModal({
                               >
                                 {maskAccountText(presentation.displayName)}
                               </button>
-                              <span className="codex-local-access-member-backup-slot">
+                              <span
+                                className="codex-local-access-member-priority-slot"
+                                title={t(
+                                  "codex.localAccess.memberPriorityDesc",
+                                  "最高优先使用，正常按当前规则调度，最低仅在其他账号不可用时使用。",
+                                )}
+                              >
                                 {!isJoinUnsupported ? (
-                                  <button
-                                    type="button"
-                                    className={`codex-local-access-member-backup-field${
-                                      isBackup ? " is-on" : ""
-                                    }`}
-                                    title={t(
-                                      "codex.localAccess.customRoutingBackupDesc",
-                                      "仅在所有普通账号不可用时使用；普通账号恢复后，新请求会自动切回。",
-                                    )}
-                                    aria-pressed={isBackup}
-                                    aria-label={t(
-                                      "codex.localAccess.customRoutingBackupTitle",
-                                      "备用账号",
-                                    )}
-                                    disabled={membersInteractionDisabled}
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      toggleMemberBackup(account.id);
-                                    }}
-                                  >
-                                    <span className="codex-local-access-member-backup-label">
+                                  <>
+                                    <span className="codex-local-access-member-priority-label">
                                       {t(
-                                        "codex.localAccess.customRoutingBackupShort",
-                                        "备用",
+                                        "codex.localAccess.memberPriorityLabel",
+                                        "优先级",
                                       )}
                                     </span>
-                                    <span
-                                      className="codex-local-access-member-backup-switch"
-                                      aria-hidden="true"
-                                    >
-                                      <span className="codex-local-access-member-backup-switch-track" />
-                                    </span>
-                                  </button>
+                                    <SingleSelectDropdown
+                                      value={usagePriority}
+                                      options={memberPriorityOptions}
+                                      className="codex-local-access-member-priority-dropdown"
+                                      menuClassName="codex-local-access-member-priority-menu"
+                                      menuWidth={112}
+                                      menuMaxHeight={180}
+                                      ariaLabel={t(
+                                        "codex.localAccess.memberPriorityLabel",
+                                        "优先级",
+                                      )}
+                                      disabled={membersInteractionDisabled}
+                                      onChange={(value) =>
+                                        updateMemberUsagePriority(
+                                          account.id,
+                                          value as AccountUsagePriority,
+                                        )
+                                      }
+                                    />
+                                  </>
                                 ) : null}
                               </span>
                               <span className="codex-local-access-member-plan">
@@ -3212,6 +3267,14 @@ export function CodexLocalAccessModal({
                                     {t(
                                       "codex.localAccess.modal.pendingOauthUnsupported",
                                       "待授权账号不可加入 API 服务",
+                                    )}
+                                  </span>
+                                )}
+                                {isWebSessionUnsupported && (
+                                  <span className="codex-local-access-member-unsupported">
+                                    {t(
+                                      "codex.webSessionImport.apiIneligible",
+                                      "Web Session 仅支持查看额度，不能加入 API 服务",
                                     )}
                                   </span>
                                 )}
@@ -3507,6 +3570,7 @@ export function CodexLocalAccessModal({
                         priority: CUSTOM_ROUTING_PRIORITY_MIN,
                         weight: CUSTOM_ROUTING_WEIGHT_MIN,
                         isBackup: false,
+                        isPreferred: false,
                       };
                       const checked = customRoutingSelected.has(account.id);
 
@@ -3537,17 +3601,19 @@ export function CodexLocalAccessModal({
                             >
                               {presentation.planLabel}
                             </span>
-                            {draftRule.isBackup && (
+                            {(draftRule.isBackup || draftRule.isPreferred) && (
                               <span
-                                className="codex-local-access-custom-routing-backup-badge"
+                                className="codex-local-access-custom-routing-usage-priority-badge"
                                 title={t(
-                                  "codex.localAccess.customRoutingBackupDesc",
-                                  "仅在所有普通账号不可用时使用；普通账号恢复后，新请求会自动切回。",
+                                  "codex.localAccess.memberPriorityDesc",
+                                  "最高优先使用，正常按当前规则调度，最低仅在其他账号不可用时使用。",
                                 )}
                               >
                                 {t(
-                                  "codex.localAccess.customRoutingBackupShort",
-                                  "备用",
+                                  draftRule.isPreferred
+                                    ? "codex.localAccess.memberPriorityHighest"
+                                    : "codex.localAccess.memberPriorityLowest",
+                                  draftRule.isPreferred ? "最高" : "最低",
                                 )}
                               </span>
                             )}
@@ -3637,67 +3703,6 @@ export function CodexLocalAccessModal({
                 {saving
                   ? t("common.saving")
                   : t("codex.localAccess.customRoutingSave", "保存自定义调度")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {backupConfirmAccountId && (
-        <div className="modal-overlay codex-local-access-backup-confirm-overlay">
-          <div
-            className="modal codex-local-access-backup-confirm-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="codex-local-access-backup-confirm-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="modal-header codex-local-access-backup-confirm-header">
-              <h3 id="codex-local-access-backup-confirm-title">
-                {t("codex.localAccess.customRoutingBackupTitle", "备用账号")}
-              </h3>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => setBackupConfirmAccountId(null)}
-                disabled={actionBusy}
-                aria-label={t("common.close")}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body codex-local-access-backup-confirm-body">
-              <strong>
-                {maskAccountText(
-                  localAccessAccountById.get(backupConfirmAccountId)
-                    ?.account_name ||
-                    localAccessAccountById.get(backupConfirmAccountId)?.email ||
-                    backupConfirmAccountId,
-                )}
-              </strong>
-              <p>
-                {t(
-                  "codex.localAccess.customRoutingBackupDesc",
-                  "仅在所有普通账号不可用时使用；普通账号恢复后，新请求会自动切回。",
-                )}
-              </p>
-            </div>
-            <div className="modal-footer codex-local-access-backup-confirm-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setBackupConfirmAccountId(null)}
-                disabled={actionBusy}
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={confirmMemberBackup}
-                disabled={actionBusy}
-              >
-                {t("common.confirm")}
               </button>
             </div>
           </div>

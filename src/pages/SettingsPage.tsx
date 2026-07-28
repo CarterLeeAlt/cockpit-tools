@@ -33,6 +33,9 @@ import {
 } from '../utils/updaterReleaseNotes';
 import { applyReducedMotion } from '../utils/reducedMotion';
 import { UI_SCALE_OPTION_STRINGS as UI_SCALE_OPTIONS } from '../utils/uiScale';
+import {
+  setClaudeQuotaDisplayRemainingEnabled,
+} from '../utils/claudeQuotaDisplayPreference';
 import { getSubscriptionTier } from '../utils/account';
 import type { Account } from '../types/account';
 import type { CodexAccount } from '../types/codex';
@@ -152,6 +155,9 @@ interface GeneralConfig {
   minimize_behavior?: 'dock_and_tray' | 'tray_only';
   hide_dock_icon?: boolean;
   tray_icon_style?: 'template' | 'color';
+  menu_bar_quota_enabled?: boolean;
+  menu_bar_show_account_prefix?: boolean;
+  menu_bar_quota_platform?: PlatformId;
   floating_card_show_on_startup?: boolean;
   startup_minimized?: boolean;
   remember_main_window_state?: boolean;
@@ -242,6 +248,7 @@ interface GeneralConfig {
   codex_quota_alert_threshold: number;
   claude_quota_alert_enabled: boolean;
   claude_quota_alert_threshold: number;
+  claude_quota_display_remaining?: boolean;
   ghcp_quota_alert_enabled: boolean;
   ghcp_quota_alert_threshold: number;
   windsurf_quota_alert_enabled: boolean;
@@ -477,6 +484,27 @@ export function SettingsPage() {
     { value: 'ar', label: 'العربية' },
     { value: 'id', label: 'Bahasa Indonesia' },
   ];
+
+  const menuBarQuotaPlatformOptions: Array<{ value: PlatformId; label: string }> = [
+    { value: 'codex', label: 'Codex' },
+    { value: 'claude_manager', label: 'Claude' },
+    { value: 'antigravity', label: 'Antigravity' },
+    { value: 'github-copilot', label: 'GitHub Copilot' },
+    { value: 'windsurf', label: 'Windsurf' },
+    { value: 'kiro', label: 'Kiro' },
+    { value: 'cursor', label: 'Cursor' },
+    { value: 'grok', label: 'Grok' },
+    { value: 'codebuddy', label: 'CodeBuddy' },
+    { value: 'codebuddy_cn', label: 'CodeBuddy CN' },
+    { value: 'qoder', label: 'Qoder' },
+    { value: 'zcode', label: 'ZCode' },
+    { value: 'trae', label: 'Trae' },
+    { value: 'trae_solo', label: 'TRAE SOLO' },
+    { value: 'trae_cn', label: 'Trae CN' },
+    { value: 'trae_solo_cn', label: 'TRAE SOLO CN' },
+    { value: 'workbuddy', label: 'WorkBuddy' },
+    { value: 'zed', label: 'Zed' },
+  ];
   
   // General Settings States
   const [language, setLanguage] = useState(getCurrentLanguage());
@@ -507,6 +535,14 @@ export function SettingsPage() {
   const [minimizeBehavior, setMinimizeBehavior] = useState<'dock_and_tray' | 'tray_only'>('dock_and_tray');
   const [hideDockIcon, setHideDockIcon] = useState(false);
   const [trayIconStyle, setTrayIconStyle] = useState<'template' | 'color'>('template');
+  const [menuBarQuotaEnabled, setMenuBarQuotaEnabled] = useState(false);
+  const [menuBarShowAccountPrefix, setMenuBarShowAccountPrefix] = useState(true);
+  const [menuBarQuotaPlatform, setMenuBarQuotaPlatform] = useState<PlatformId>('codex');
+  const [menuBarQuotaModalOpen, setMenuBarQuotaModalOpen] = useState(false);
+  const [menuBarQuotaModalMode, setMenuBarQuotaModalMode] = useState<'enable' | 'edit'>('enable');
+  const [menuBarQuotaDraftPlatform, setMenuBarQuotaDraftPlatform] =
+    useState<PlatformId>('codex');
+  const [menuBarQuotaDraftShowPrefix, setMenuBarQuotaDraftShowPrefix] = useState(true);
   const [floatingCardShowOnStartup, setFloatingCardShowOnStartup] = useState(false);
   const [startupMinimized, setStartupMinimized] = useState(false);
   const [rememberMainWindowState, setRememberMainWindowState] = useState(false);
@@ -642,6 +678,7 @@ export function SettingsPage() {
   const [codexQuotaAlertThreshold, setCodexQuotaAlertThreshold] = useState('20');
   const [claudeQuotaAlertEnabled, setClaudeQuotaAlertEnabled] = useState(false);
   const [claudeQuotaAlertThreshold, setClaudeQuotaAlertThreshold] = useState('20');
+  const [claudeQuotaDisplayRemaining, setClaudeQuotaDisplayRemaining] = useState(false);
   const [ghcpQuotaAlertEnabled, setGhcpQuotaAlertEnabled] = useState(false);
   const [ghcpQuotaAlertThreshold, setGhcpQuotaAlertThreshold] = useState('20');
   const [windsurfQuotaAlertEnabled, setWindsurfQuotaAlertEnabled] = useState(false);
@@ -1050,6 +1087,9 @@ export function SettingsPage() {
       minimize_behavior: minimizeBehavior,
       hide_dock_icon: hideDockIcon,
       tray_icon_style: isMacOS ? trayIconStyle : undefined,
+      menu_bar_quota_enabled: isMacOS ? menuBarQuotaEnabled : undefined,
+      menu_bar_show_account_prefix: isMacOS ? menuBarShowAccountPrefix : undefined,
+      menu_bar_quota_platform: isMacOS ? menuBarQuotaPlatform : undefined,
       floating_card_show_on_startup: floatingCardShowOnStartup,
       startup_minimized: startupMinimized,
       remember_main_window_state: rememberMainWindowState,
@@ -1118,6 +1158,10 @@ export function SettingsPage() {
       claude_quota_alert_threshold: Number.isNaN(parsedClaudeQuotaAlertThreshold)
         ? 20
         : parsedClaudeQuotaAlertThreshold,
+      claude_quota_display_remaining: (() => {
+        setClaudeQuotaDisplayRemainingEnabled(claudeQuotaDisplayRemaining);
+        return claudeQuotaDisplayRemaining;
+      })(),
       ghcp_quota_alert_enabled: ghcpQuotaAlertEnabled,
       ghcp_quota_alert_threshold: Number.isNaN(parsedGhcpQuotaAlertThreshold)
         ? 20
@@ -1260,6 +1304,9 @@ export function SettingsPage() {
     minimizeBehavior,
     hideDockIcon,
     trayIconStyle,
+    menuBarQuotaEnabled,
+    menuBarShowAccountPrefix,
+    menuBarQuotaPlatform,
     isMacOS,
     floatingCardShowOnStartup,
     startupMinimized,
@@ -1329,6 +1376,7 @@ export function SettingsPage() {
     codexQuotaAlertThreshold,
     claudeQuotaAlertEnabled,
     claudeQuotaAlertThreshold,
+    claudeQuotaDisplayRemaining,
     ghcpQuotaAlertEnabled,
     ghcpQuotaAlertThreshold,
     windsurfQuotaAlertEnabled,
@@ -1611,6 +1659,9 @@ export function SettingsPage() {
       setMinimizeBehavior(config.minimize_behavior || 'dock_and_tray');
       setHideDockIcon(Boolean(config.hide_dock_icon));
       setTrayIconStyle(config.tray_icon_style === 'color' ? 'color' : 'template');
+      setMenuBarQuotaEnabled(config.menu_bar_quota_enabled ?? false);
+      setMenuBarShowAccountPrefix(config.menu_bar_show_account_prefix ?? true);
+      setMenuBarQuotaPlatform(config.menu_bar_quota_platform ?? 'codex');
       setFloatingCardShowOnStartup(config.floating_card_show_on_startup ?? false);
       setStartupMinimized(config.startup_minimized ?? false);
       setRememberMainWindowState(config.remember_main_window_state ?? false);
@@ -1712,6 +1763,9 @@ export function SettingsPage() {
       setCodexQuotaAlertThreshold(String(config.codex_quota_alert_threshold ?? 20));
       setClaudeQuotaAlertEnabled(config.claude_quota_alert_enabled ?? false);
       setClaudeQuotaAlertThreshold(String(config.claude_quota_alert_threshold ?? 20));
+      const claudeRemainingDisplay = config.claude_quota_display_remaining ?? false;
+      setClaudeQuotaDisplayRemaining(claudeRemainingDisplay);
+      setClaudeQuotaDisplayRemainingEnabled(claudeRemainingDisplay);
       setGhcpQuotaAlertEnabled(config.ghcp_quota_alert_enabled ?? false);
       setGhcpQuotaAlertThreshold(String(config.ghcp_quota_alert_threshold ?? 20));
       setWindsurfQuotaAlertEnabled(config.windsurf_quota_alert_enabled ?? false);
@@ -3016,6 +3070,26 @@ export function SettingsPage() {
 
   useEscClose(releaseHistoryOpen, handleCloseReleaseHistory);
 
+  const openMenuBarQuotaModal = (mode: 'enable' | 'edit') => {
+    setMenuBarQuotaDraftPlatform(menuBarQuotaPlatform);
+    setMenuBarQuotaDraftShowPrefix(menuBarShowAccountPrefix);
+    setMenuBarQuotaModalMode(mode);
+    setMenuBarQuotaModalOpen(true);
+  };
+
+  const handleCloseMenuBarQuotaModal = () => {
+    setMenuBarQuotaModalOpen(false);
+  };
+
+  const handleConfirmMenuBarQuotaModal = () => {
+    setMenuBarQuotaPlatform(menuBarQuotaDraftPlatform);
+    setMenuBarShowAccountPrefix(menuBarQuotaDraftShowPrefix);
+    setMenuBarQuotaEnabled(true);
+    setMenuBarQuotaModalOpen(false);
+  };
+
+  useEscClose(menuBarQuotaModalOpen, handleCloseMenuBarQuotaModal);
+
   const handleDownloadReleaseVersion = async (version: string) => {
     const targetVersion = String(version || '').trim();
     if (!targetVersion) {
@@ -3407,6 +3481,56 @@ export function SettingsPage() {
                           {t('settings.general.trayIconStyleColor', '彩色图标')}
                         </option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">
+                        {t('settings.general.menuBarQuota', '菜单栏显示实时额度')}
+                      </div>
+                      <div className="row-desc">
+                        {menuBarQuotaEnabled
+                          ? t(
+                              'settings.general.menuBarQuotaEnabledDesc',
+                              '已启用 · {{platform}} · 显示该平台当前账号剩余额度（多条取最低）',
+                              {
+                                platform:
+                                  menuBarQuotaPlatformOptions.find(
+                                    (option) => option.value === menuBarQuotaPlatform
+                                  )?.label ?? menuBarQuotaPlatform,
+                              }
+                            )
+                          : t(
+                              'settings.general.menuBarQuotaDesc',
+                              '启用后在菜单栏图标旁显示所选平台当前账号的剩余额度；平台等专属选项在弹框中配置'
+                            )}
+                      </div>
+                    </div>
+                    <div className="row-control">
+                      <select
+                        className="settings-select"
+                        value={menuBarQuotaEnabled ? 'true' : 'false'}
+                        onChange={(e) => {
+                          if (e.target.value === 'true') {
+                            openMenuBarQuotaModal(menuBarQuotaEnabled ? 'edit' : 'enable');
+                            return;
+                          }
+                          setMenuBarQuotaEnabled(false);
+                        }}
+                      >
+                        <option value="false">{t('common.disable', '停用')}</option>
+                        <option value="true">{t('common.enable', '启用')}</option>
+                      </select>
+                      {menuBarQuotaEnabled ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => openMenuBarQuotaModal('edit')}
+                        >
+                          {t('settings.general.menuBarQuotaConfigure', '配置')}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </>
@@ -4825,6 +4949,36 @@ export function SettingsPage() {
                   })}
                   {renderCurrentAccountRefreshRow('claude')}
                   {renderAccountLevelRefreshConfig('claude')}
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">
+                        {t(
+                          'settings.general.claudeQuotaDisplayRemaining',
+                          'Claude 额度显示剩余%',
+                        )}
+                      </div>
+                      <div className="row-desc">
+                        {t(
+                          'settings.general.claudeQuotaDisplayRemainingDesc',
+                          '默认显示已用百分比；开启后改为显示剩余百分比。自动切号与预警仍按已用比例计算。',
+                        )}
+                      </div>
+                    </div>
+                    <div className="row-control">
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={claudeQuotaDisplayRemaining}
+                          onChange={(e) => {
+                            const enabled = e.target.checked;
+                            setClaudeQuotaDisplayRemaining(enabled);
+                            setClaudeQuotaDisplayRemainingEnabled(enabled);
+                          }}
+                        />
+                        <span className="slider" />
+                      </label>
+                    </div>
+                  </div>
                   <div className="settings-row settings-row--align-start">
                     <div className="row-label">
                       <div className="row-title">
@@ -7571,6 +7725,97 @@ export function SettingsPage() {
         )}
         </div>
       </div>
+      {menuBarQuotaModalOpen && (
+        <div className="modal-overlay">
+          <div
+            className="modal settings-menu-bar-quota-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>
+                {t('settings.general.menuBarQuotaModalTitle', '菜单栏额度')}
+              </h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={handleCloseMenuBarQuotaModal}
+                aria-label={t('common.close', '关闭')}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="settings-menu-bar-quota-modal-desc">
+                {t(
+                  'settings.general.menuBarQuotaModalDesc',
+                  '以下为菜单栏额度的专属选项：跟随所选平台当前账号。Codex 当前为 API 服务时显示「API + 池剩余%」；API Key 账号显示「API + 剩余额度」；普通账号显示邮箱前缀与剩余%（多条取最低；低红、中橙、高绿）。'
+                )}
+              </p>
+              <div className="settings-menu-bar-quota-modal-field">
+                <label className="settings-menu-bar-quota-modal-label" htmlFor="menu-bar-quota-platform">
+                  {t('settings.general.menuBarQuotaPlatform', '额度账号平台')}
+                </label>
+                <p className="settings-menu-bar-quota-modal-field-desc">
+                  {t(
+                    'settings.general.menuBarQuotaPlatformDesc',
+                    '跟随该平台当前正在使用的账号，刷新或切换后自动更新'
+                  )}
+                </p>
+                <select
+                  id="menu-bar-quota-platform"
+                  className="settings-select settings-menu-bar-quota-modal-select"
+                  value={menuBarQuotaDraftPlatform}
+                  onChange={(e) => setMenuBarQuotaDraftPlatform(e.target.value as PlatformId)}
+                >
+                  {menuBarQuotaPlatformOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="settings-menu-bar-quota-modal-field">
+                <label className="settings-menu-bar-quota-modal-label" htmlFor="menu-bar-quota-prefix">
+                  {t('settings.general.menuBarAccountPrefix', '显示账号邮箱前 4 位')}
+                </label>
+                <p className="settings-menu-bar-quota-modal-field-desc">
+                  {t(
+                    'settings.general.menuBarAccountPrefixDesc',
+                    '仅普通账号：关闭后不显示邮箱前缀。Codex API 服务 / API Key 仍会显示 API 标签'
+                  )}
+                </p>
+                <select
+                  id="menu-bar-quota-prefix"
+                  className="settings-select settings-menu-bar-quota-modal-select"
+                  value={menuBarQuotaDraftShowPrefix ? 'true' : 'false'}
+                  onChange={(e) => setMenuBarQuotaDraftShowPrefix(e.target.value === 'true')}
+                >
+                  <option value="true">{t('common.enable', '启用')}</option>
+                  <option value="false">{t('common.disable', '停用')}</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleCloseMenuBarQuotaModal}
+              >
+                {t('common.cancel', '取消')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmMenuBarQuotaModal}
+              >
+                {menuBarQuotaModalMode === 'enable'
+                  ? t('settings.general.menuBarQuotaConfirmEnable', '启用')
+                  : t('common.save', '保存')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {releaseHistoryOpen && (
         <div className="modal-overlay">
           <div className="modal settings-release-history-modal" onClick={(event) => event.stopPropagation()}>

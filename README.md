@@ -451,11 +451,11 @@ QQ 交流群、微信群或新建的 Telegram 畅聊群都可以加入。
 ## 致谢
 
 - Antigravity 账号切号逻辑参考：[Antigravity-Manager](https://github.com/lbjlaq/Antigravity-Manager)
-- Codex API 服务集成 CLIProxyAPI，Grok CLI 账号与 OAuth 实现方向亦参考其开源实现：[router-for-me/CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)（MIT）
+- Codex API 服务集成 CLIProxyAPI，Responses WebSocket 状态安全、canonical token accounting v2、Multi-Agent V2 兼容以及 Grok CLI 账号与 OAuth 实现方向亦参考其开源实现：[router-for-me/CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)（MIT）
 - Grok 图标造型参考：[LobeHub/lobe-icons](https://github.com/lobehub/lobe-icons)（MIT）
 - Grok CLI 任务用量查询与兼容解析方向参考：[junhoyeo/tokscale](https://github.com/junhoyeo/tokscale)（MIT）
 - Codex API 服务协议兼容方向参考：[codex-proxy](https://github.com/icebear0828/codex-proxy)
-- Codex Agent Identity 导入、动态签名与 task 失效恢复方向参考：[sub2api](https://github.com/Wei-Shaw/sub2api)
+- Codex Agent Identity 导入、动态签名、task 失效恢复及第三方 Responses 明确拒绝字段重试方向参考：[sub2api](https://github.com/Wei-Shaw/sub2api)
 - Codex Agent Identity runtime 注册协议与 Ed25519 密钥格式参考官方实现：[openai/codex](https://github.com/openai/codex)（Apache-2.0）
 - Codex、Claude CLI 与 Claude Desktop Gateway 第三方供应商预设和模型映射方向参考：[CC Switch](https://github.com/farion1231/cc-switch)
 - Codex 模型目录与前端模型显示思路参考：[CodexPlusPlus](https://github.com/BigPizzaV3/CodexPlusPlus)

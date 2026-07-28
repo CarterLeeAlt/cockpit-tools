@@ -50,8 +50,11 @@ import {
   getClaudeAccountDisplayEmail,
   getClaudePlanBadge,
   getClaudePlanBadgeClass,
-  getClaudeQuotaClass,
 } from "../types/claude";
+import {
+  resolveClaudeDisplayPercentage,
+  resolveClaudeDisplayQuotaClass,
+} from "../utils/claudeQuotaDisplayPreference";
 import {
   formatGitHubCopilotResetTime,
   getGitHubCopilotPlanBadge,
@@ -787,21 +790,31 @@ export function buildClaudeAccountPresentation(
 ): UnifiedAccountPresentation {
   const quotaItems: UnifiedQuotaMetric[] = [];
   if (account.quota) {
+    const fiveHourDisplay = resolveClaudeDisplayPercentage(
+      account.quota.five_hour_percentage,
+    );
+    const sevenDayDisplay = resolveClaudeDisplayPercentage(
+      account.quota.seven_day_percentage,
+    );
     quotaItems.push({
       key: "five_hour",
       label: t("claude.quota.fiveHour", "Current session"),
-      percentage: account.quota.five_hour_percentage,
-      quotaClass: getClaudeQuotaClass(account.quota.five_hour_percentage),
-      valueText: `${account.quota.five_hour_percentage}%`,
+      percentage: fiveHourDisplay,
+      quotaClass: resolveClaudeDisplayQuotaClass(
+        account.quota.five_hour_percentage,
+      ),
+      valueText: `${fiveHourDisplay}%`,
       resetText: formatClaudeResetTime(account.quota.five_hour_reset_time),
       resetAt: account.quota.five_hour_reset_time,
     });
     quotaItems.push({
       key: "seven_day",
       label: t("claude.quota.sevenDay", "Current week (all models)"),
-      percentage: account.quota.seven_day_percentage,
-      quotaClass: getClaudeQuotaClass(account.quota.seven_day_percentage),
-      valueText: `${account.quota.seven_day_percentage}%`,
+      percentage: sevenDayDisplay,
+      quotaClass: resolveClaudeDisplayQuotaClass(
+        account.quota.seven_day_percentage,
+      ),
+      valueText: `${sevenDayDisplay}%`,
       resetText: formatClaudeResetTime(account.quota.seven_day_reset_time),
       resetAt: account.quota.seven_day_reset_time,
     });

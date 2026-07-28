@@ -702,9 +702,9 @@
       "codebuddyAutoRefresh": "Aggiornamento automatico quota CodeBuddy",
       "codebuddyAutoRefreshDesc": "Intervallo di aggiornamento automatico in background",
       "codebuddyShareSessionsOnSwitch": "Condividi sessioni locali al cambio",
-    "codebuddyShareSessionsOnSwitchDesc": "Unisce le sessioni locali e lo stato di ripristino tra gli account CodeBuddy su questo dispositivo. I contenuti vengono letti e scritti solo in locale e non vengono caricati.",
-    "workbuddyShareSessionsOnSwitch": "Condividi sessioni locali al cambio",
-    "workbuddyShareSessionsOnSwitchDesc": "Unisce le sessioni locali e lo stato di ripristino tra gli account WorkBuddy su questo dispositivo. I contenuti vengono letti e scritti solo in locale e non vengono caricati.",
+      "codebuddyShareSessionsOnSwitchDesc": "Unisce le sessioni locali e lo stato di ripristino tra gli account CodeBuddy su questo dispositivo. I contenuti vengono letti e scritti solo in locale e non vengono caricati.",
+      "workbuddyShareSessionsOnSwitch": "Condividi sessioni locali al cambio",
+      "workbuddyShareSessionsOnSwitchDesc": "Unisce le sessioni locali e lo stato di ripristino tra gli account WorkBuddy su questo dispositivo. I contenuti vengono letti e scritti solo in locale e non vengono caricati.",
       "codebuddyAppPath": "Percorso di avvio di CodeBuddy",
       "codebuddyAppPathDesc": "Lascia vuoto per usare il percorso predefinito",
       "codebuddyAppPathPlaceholder": "Percorso predefinito",
@@ -851,7 +851,20 @@
       "externalNetwork": "Consenti rete esterna",
       "externalNetworkDesc": "Disattivo: blocca WebDAV, uso OpenRouter, annunci e controlli aggiornamento (il locale continua).",
       "webdavAllowedDomains": "Whitelist domini WebDAV",
-      "webdavAllowedDomainsDesc": "Separati da virgola; vuoto = nessun limite"
+      "webdavAllowedDomainsDesc": "Separati da virgola; vuoto = nessun limite",
+      "claudeQuotaDisplayRemaining": "Quota Claude come % residua",
+      "claudeQuotaDisplayRemainingDesc": "Predefinito: % usata. Attiva = % residua. Auto-switch e avvisi restano sull’uso.",
+      "menuBarQuota": "Quota live nella barra menu",
+      "menuBarQuotaDesc": "Se attivo, mostra la quota residua dell’account corrente della piattaforma scelta accanto all’icona. Opzioni piattaforma nella finestra.",
+      "menuBarQuotaEnabledDesc": "Attivo · {{platform}} · residuo dell’account corrente di quella piattaforma (minimo tra le quote)",
+      "menuBarQuotaConfigure": "Configura",
+      "menuBarQuotaModalTitle": "Quota barra menu",
+      "menuBarQuotaModalDesc": "Opzioni solo per questa funzione: segue l’account corrente. Servizio API Codex: «API + % residuo del pool»; account API Key: «API + saldo residuo»; normale: prefisso e-mail + % residuo (il più basso; rosso/arancio/verde).",
+      "menuBarQuotaPlatform": "Piattaforma account",
+      "menuBarQuotaPlatformDesc": "Usa l’account attivo di quella piattaforma; si aggiorna dopo refresh o cambio",
+      "menuBarAccountPrefix": "Primi 4 dell’e-mail",
+      "menuBarAccountPrefixDesc": "Solo account normali: disattivo nasconde il prefisso e-mail. Servizio API Codex / API Key mostrano ancora API",
+      "menuBarQuotaConfirmEnable": "Attiva"
     },
     "network": {
       "apiTitle": "API della cabina di pilotaggio antigravità",
@@ -1835,14 +1848,18 @@
       "formatBatchLabel": "Esempio batch"
     },
     "agentIdentityRegistration": {
-      "noticeTitle": "Avviso importazione Web Session",
-      "noticeMessage": "Rilevati {{count}} account Web Session. Continuando verranno registrati automaticamente come Agent Identity.",
-      "noticeApiOnly": "Questi account sono destinati solo al Servizio API e verranno aggiunti automaticamente al relativo pool.",
-      "noticeNoSwitch": "Non possono essere usati per il normale cambio account Codex, per avviare direttamente il client ufficiale o la CLI né come account associato tramite OAuth.",
-      "noticeCredential": "L'app genera e salva localmente una chiave privata Agent Identity. Proteggi i backup esportati come password.",
-      "noticeConfirm": "Ho capito, continua",
       "apiOnlyActionError": "Gli account Agent Identity sono disponibili solo tramite il Servizio API e non possono essere selezionati o avviati direttamente.",
       "oauthBindingUnsupported": "Gli account Agent Identity sono destinati solo al Servizio API e non possono essere usati come account associati tramite OAuth."
+    },
+    "webSessionImport": {
+      "noticeTitle": "Avviso Web Session",
+      "noticeMessage": "{{count}} Web Session. Solo quota, non per uso reale.",
+      "noticeQuotaOnly": "Solo quota. Niente client/CLI/cambio account.",
+      "noticeNoApi": "Non nel pool API né OAuth.",
+      "noticeConfirm": "Ho capito, continua",
+      "actionBlocked": "Web Session: solo quota.",
+      "apiIneligible": "Web Session solo quota, no API",
+      "oauthBindingUnsupported": "Web Session non per OAuth."
     },
     "exportFormat": {
       "label": "Formato di esportazione",
@@ -1954,6 +1971,11 @@
       "summaryMeta": "{{count}} account · {{scope}}",
       "summaryMetaUnconfigured": "Non configurato · {{scope}}",
       "memberTitle": "Membri della raccolta",
+      "memberPriorityLabel": "Priorità",
+      "memberPriorityLowest": "Minima",
+      "memberPriorityNormal": "Normale",
+      "memberPriorityHighest": "Massima",
+      "memberPriorityDesc": "Massima viene usata per prima, Normale segue le regole attuali e Minima solo se gli altri account non sono disponibili.",
       "stats": {
         "requests": "Richieste",
         "requestsDetail": "OK {{success}} / Errori {{failed}} / Annull. {{canceled}} / Monte {{upstreamFailed}} / Incompl. {{incomplete}}",
@@ -1971,7 +1993,8 @@
         "images": "Richieste immagine",
         "imagesDetail": "Genera {{generate}} / Modifica {{edit}} / Permesso {{blocked}}",
         "estimatedCost": "Valore stimato",
-        "estimatedCostDetail": "Somma dagli snapshot prezzo di ogni richiesta"
+        "estimatedCostDetail": "Somma dagli snapshot prezzo di ogni richiesta",
+        "successRateLabel": "Tasso di successo"
       },
       "routingLabel": "Instradamento",
       "routingSaveSuccess": "Instradamento del servizio API aggiornato",
@@ -3382,7 +3405,9 @@
         "excludedModels": "Modelli esclusi",
         "excludedModelsPlaceholder": "Un modello o pattern per riga",
         "savePolicy": "Salva criterio",
-        "policySaved": "Criterio modelli del Key salvato"
+        "policySaved": "Criterio modelli del Key salvato",
+        "lastUsed": "Ultimo uso",
+        "routingAccounts": "Account di routing"
       },
       "routing": {
         "optionsTitle": "Opzioni routing",
@@ -3419,7 +3444,10 @@
         "loading": "Caricamento log richieste",
         "gatewayModeUnknown": "Modalita sconosciuta",
         "requestIdShort": "ID richiesta {{id}}",
-        "httpStatus": "Stato HTTP {{status}}"
+        "httpStatus": "Stato HTTP {{status}}",
+        "allInstances": "Tutte le istanze",
+        "instanceFilter": "Istanza",
+        "instanceUnknown": "Istanza -"
       },
       "timeouts": {
         "entryLabel": "Avanzate",
@@ -3480,6 +3508,10 @@
         "clearSelection": "Cancella selezione",
         "saveSuccess": "Blocchi modello salvati",
         "cardCount": "{{count}} bloccati"
+      },
+      "usage": {
+        "title": "Statistiche uso",
+        "lastRecorded": "Ultima registrazione"
       }
     },
     "apiKey": {
@@ -4878,7 +4910,19 @@
       "queryFailed": "Query non riuscita",
       "retry": "Riprova",
       "inactive": "Non disponibile",
-      "inactiveHint": "Check-in non attivo per questo account"
+      "inactiveHint": "Check-in non attivo per questo account",
+      "autoCheckinSettings": "Impostazioni check-in automatico",
+      "autoCheckinLabel": "Check-in automatico",
+      "autoCheckinOff": "Check-in automatico disattivato",
+      "autoCheckinEnabledHint": "Check-in automatico attivo: check-in casuale tra {{start}} e {{end}}",
+      "autoCheckinDisabledHint": "Check-in automatico disattivato",
+      "enableAutoCheckin": "Attiva check-in automatico",
+      "enableAutoCheckinDesc": "Esegue il check-in giornaliero in modo casuale nella fascia oraria specificata",
+      "randomTimeRange": "Fascia oraria check-in casuale",
+      "startTime": "Ora di inizio",
+      "endTime": "Ora di fine",
+      "timeRangeHint": "Seleziona ogni giorno un orario casuale in questo intervallo per completare il check-in.",
+      "timeRangeError": "L'ora di inizio non può essere successiva all'ora di fine"
     }
   },
   "zcode": {
@@ -5131,7 +5175,13 @@
     "saveAccountName": "Salva nome account",
     "cancelEditAccountName": "Annulla modifica",
     "accountNameRequired": "Il nome account è obbligatorio.",
-    "copySecret": "Copia segreto"
+    "copySecret": "Copia segreto",
+    "migrationBatchProgress": "Scansione {{current}}/{{total}}",
+    "migrationBatchIncomplete": "Incompleto; salva parziale o continua.",
+    "continueMigrationScan": "Continua scansione",
+    "savePartialMigrationBatch": "Salva parziale",
+    "saveCompleteMigrationBatch": "Salva completo",
+    "clearMigrationBatch": "Svuota batch"
   },
   "logViewer": {
     "fileLabel": "File di log",
