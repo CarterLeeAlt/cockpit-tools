@@ -395,6 +395,55 @@ func TestBuildCockpitQuotaResponseAggregatesShortestWindowWithoutClamp(t *testin
 	}
 }
 
+func TestBuildCockpitQuotaResponsePreservesDynamicWindows(t *testing.T) {
+	present := true
+	fiveHourMinutes := int64(300)
+	weeklyMinutes := int64(10080)
+	monthlyMinutes := int64(43200)
+	state := quotaPoolStateFile{Accounts: map[string]quotaPoolAccountState{
+		"team-weekly": {
+			Primary: &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(71), WindowMinutes: &weeklyMinutes},
+		},
+		"plus-mixed": {
+			Primary:   &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(80), WindowMinutes: &fiveHourMinutes},
+			Secondary: &quotaPoolWindowState{Present: &present, RemainingPercent: intPtrForTest(52), WindowMinutes: &monthlyMinutes},
+		},
+	}}
+	accounts := map[string]*accountSpec{
+		"team-weekly": {ID: "team-weekly", PlanType: "team"},
+		"plus-mixed":  {ID: "plus-mixed", PlanType: "plus"},
+	}
+
+	response := buildCockpitQuotaResponseWithAccounts(
+		&apiKeySpec{AccountIDs: []string{"team-weekly", "plus-mixed"}},
+		state,
+		time.Now(),
+		accounts,
+	)
+	if len(response.Windows) != 3 {
+		t.Fatalf("dynamic windows = %#v, want 3", response.Windows)
+	}
+	wantLabels := []string{"5h", "7d", "1m"}
+	wantPercentages := []int{80, 71, 52}
+	for index := range wantLabels {
+		if response.Windows[index].Label != wantLabels[index] || response.Windows[index].RemainingPercent != wantPercentages[index] {
+			t.Fatalf("window %d = %#v, want %s %d", index, response.Windows[index], wantLabels[index], wantPercentages[index])
+		}
+	}
+	if response.WeeklyRemainingPercent == nil || *response.WeeklyRemainingPercent != 71 {
+		t.Fatalf("legacy weekly field must exclude monthly windows: %#v", response.WeeklyRemainingPercent)
+	}
+	if len(response.Plans) != 2 || len(response.Plans[0].Windows) != 1 || len(response.Plans[1].Windows) != 2 {
+		t.Fatalf("plan windows = %#v", response.Plans)
+	}
+	if response.Plans[0].Windows[0].Label != "7d" || response.Plans[1].Windows[1].Label != "1m" {
+		t.Fatalf("plan windows did not preserve actual durations: %#v", response.Plans)
+	}
+	if response.Plans[1].WeeklyRemainingPercent != nil {
+		t.Fatalf("monthly plan window must not populate legacy weekly field: %#v", response.Plans[1])
+	}
+}
+
 func TestBuildCockpitQuotaResponseGroupsPlansAndPoolHealth(t *testing.T) {
 	present := true
 	fiveHourMinutes := int64(300)
@@ -4184,7 +4233,6 @@ func TestCoreAuthSelectorFiltersNewModelExclusionsBeforeSessionAffinity(t *testi
 		t.Fatalf("Pick after exclusion = %#v, want %q", second, pro.ID)
 	}
 }
-
 
 func TestSidecarRuntimeDoesNotSelectAccountWithExcludedModel(t *testing.T) {
 	tempDir := t.TempDir()

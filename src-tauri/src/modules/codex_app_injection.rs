@@ -3,7 +3,7 @@
 //! 该模块只连接实例自己的 loopback CDP 端口，不修改官方 app.asar，
 //! 也不修改官方额度或速度逻辑。额度以独立的小字段显示在 composer 操作栏下方。
 
-use crate::models::codex::CodexAccount;
+use crate::models::codex::{CodexAccount, CodexQuota};
 use crate::modules::{
     app_lifecycle, codex_account, codex_local_access, codex_quota, config, i18n, logger,
 };
@@ -370,6 +370,14 @@ fn local_quota_url(base_url: &str) -> Option<String> {
     Some(url.to_string())
 }
 
+#[derive(Debug, Deserialize, Serialize, Default, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct QuotaWindowSummary {
+    label: String,
+    remaining_percent: i64,
+    window_minutes: Option<i64>,
+}
+
 #[derive(Debug, Deserialize, Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 struct QuotaPlanSummary {
@@ -377,6 +385,8 @@ struct QuotaPlanSummary {
     count: i64,
     weekly_remaining_percent: Option<i64>,
     five_hour_remaining_percent: Option<i64>,
+    #[serde(default)]
+    windows: Vec<QuotaWindowSummary>,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]
@@ -389,6 +399,8 @@ struct QuotaResponse {
     available_account_count: Option<i64>,
     abnormal_account_count: Option<i64>,
     cooldown_account_count: Option<i64>,
+    #[serde(default)]
+    windows: Vec<QuotaWindowSummary>,
     plans: Vec<QuotaPlanSummary>,
 }
 
@@ -402,6 +414,7 @@ impl QuotaResponse {
             available_account_count: Some(0),
             abnormal_account_count: Some(0),
             cooldown_account_count: Some(0),
+            windows: Vec::new(),
             plans: Vec::new(),
         }
     }
@@ -415,16 +428,72 @@ impl QuotaResponse {
     }
 }
 
+fn quota_window_label(window_minutes: Option<i64>, fallback: &str) -> String {
+    const HOUR_MINUTES: i64 = 60;
+    const DAY_MINUTES: i64 = 24 * HOUR_MINUTES;
+    const MONTH_MINUTES: i64 = 30 * DAY_MINUTES;
+
+    let Some(minutes) = window_minutes.filter(|value| *value > 0) else {
+        return fallback.to_string();
+    };
+
+    if minutes >= MONTH_MINUTES - 1 && (minutes + 1) % MONTH_MINUTES <= 1 {
+        let months = (minutes + MONTH_MINUTES - 1) / MONTH_MINUTES;
+        return format!("{}m", months);
+    }
+
+    if minutes >= DAY_MINUTES - 1 {
+        return format!("{}d", (minutes + DAY_MINUTES - 1) / DAY_MINUTES);
+    }
+
+    if minutes >= HOUR_MINUTES {
+        return format!("{}h", (minutes + HOUR_MINUTES - 1) / HOUR_MINUTES);
+    }
+
+    format!("{}min", minutes)
+}
+
+fn independent_quota_windows(quota: &CodexQuota) -> Vec<QuotaWindowSummary> {
+    let has_presence =
+        quota.hourly_window_present.is_some() || quota.weekly_window_present.is_some();
+    let mut windows = Vec::new();
+
+    if !has_presence || quota.hourly_window_present == Some(true) {
+        windows.push(QuotaWindowSummary {
+            label: quota_window_label(quota.hourly_window_minutes, "5h"),
+            remaining_percent: i64::from(quota.hourly_percentage.clamp(0, 100)),
+            window_minutes: quota.hourly_window_minutes,
+        });
+    }
+
+    if !has_presence || quota.weekly_window_present == Some(true) {
+        windows.push(QuotaWindowSummary {
+            label: quota_window_label(quota.weekly_window_minutes, "7d"),
+            remaining_percent: i64::from(quota.weekly_percentage.clamp(0, 100)),
+            window_minutes: quota.weekly_window_minutes,
+        });
+    }
+
+    windows.sort_by(|left, right| {
+        left.window_minutes
+            .unwrap_or(i64::MAX)
+            .cmp(&right.window_minutes.unwrap_or(i64::MAX))
+            .then_with(|| left.label.cmp(&right.label))
+    });
+    windows
+}
+
 fn independent_quota_response(account: &CodexAccount) -> QuotaResponse {
     let quota = account.quota.as_ref();
-    let weekly_remaining_percent = quota.and_then(|value| {
-        (value.weekly_window_present != Some(false))
-            .then_some(i64::from(value.weekly_percentage.clamp(0, 100)))
-    });
-    let five_hour_remaining_percent = quota.and_then(|value| {
-        (value.hourly_window_present != Some(false))
-            .then_some(i64::from(value.hourly_percentage.clamp(0, 100)))
-    });
+    let windows = quota.map(independent_quota_windows).unwrap_or_default();
+    let weekly_remaining_percent = windows
+        .iter()
+        .find(|window| window.label == "7d")
+        .map(|window| window.remaining_percent);
+    let five_hour_remaining_percent = windows
+        .iter()
+        .find(|window| window.label == "5h")
+        .map(|window| window.remaining_percent);
     let plan = account
         .plan_type
         .as_deref()
@@ -442,11 +511,13 @@ fn independent_quota_response(account: &CodexAccount) -> QuotaResponse {
         available_account_count: Some(if quota_available { 1 } else { 0 }),
         abnormal_account_count: Some(if account.quota_error.is_some() { 1 } else { 0 }),
         cooldown_account_count: Some(0),
+        windows: windows.clone(),
         plans: vec![QuotaPlanSummary {
             plan,
             count: 1,
             weekly_remaining_percent,
             five_hour_remaining_percent,
+            windows,
         }],
     }
 }
@@ -511,6 +582,7 @@ fn injection_script(
     let available_account_count = quota.available_account_count.or(account_count);
     let abnormal_account_count = quota.abnormal_account_count.unwrap_or(0);
     let cooldown_account_count = quota.cooldown_account_count.unwrap_or(0);
+    let quota_windows = serde_json::to_string(&quota.windows).unwrap_or_else(|_| "[]".to_string());
     let plans = serde_json::to_string(&quota.plans).unwrap_or_else(|_| "[]".to_string());
     let weekly = serde_json::to_string(&weekly).unwrap_or_else(|_| "null".to_string());
     let five_hour = serde_json::to_string(&five_hour).unwrap_or_else(|_| "null".to_string());
@@ -530,18 +602,6 @@ fn injection_script(
         &[],
     ))
     .unwrap_or_else(|_| "\"Accounts\"".to_string());
-    let weekly_label = serde_json::to_string(&i18n::translate(
-        locale,
-        "settings.general.codexAppUiInjectionWeeklyLabel",
-        &[],
-    ))
-    .unwrap_or_else(|_| "\"Weekly\"".to_string());
-    let five_hour_label = serde_json::to_string(&i18n::translate(
-        locale,
-        "settings.general.codexAppUiInjectionFiveHourLabel",
-        &[],
-    ))
-    .unwrap_or_else(|_| "\"5h\"".to_string());
     let account_pool_title = serde_json::to_string(&i18n::translate(
         locale,
         "codex.localAccess.accountPoolHealth.title",
@@ -595,10 +655,9 @@ fn injection_script(
       const availableAccountCount = {available_account_count_value};
       const abnormalAccountCount = {abnormal_account_count_value};
       const cooldownAccountCount = {cooldown_account_count_value};
+      const quotaWindows = {quota_windows};
       const plans = {plans};
       const accountPoolLabel = {account_pool_label};
-      const weeklyLabel = {weekly_label};
-      const fiveHourLabel = {five_hour_label};
       const accountPoolTitle = {account_pool_title};
       const quotaEmptyLabel = {quota_empty_label};
       const availableText = {available_text};
@@ -675,23 +734,29 @@ fn injection_script(
         const badgeStyle = 'display:inline-flex;align-items:center;gap:6px;height:24px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.20));border-radius:999px;padding:0 9px;background:var(--color-token-main-surface-primary,rgba(127,127,127,.10));color:inherit;font:inherit;box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(8px);font-weight:400;cursor:pointer;pointer-events:auto;';
         const escapeHtml = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}}[char]));
         const formatPercent = (value) => Number.isFinite(value) ? Math.round(value) + '%' : '—';
+        const quotaColors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899'];
+        const legacyWindows = (weeklyValue, fiveHourValue) => {{
+          const values = [];
+          if (Number.isFinite(fiveHourValue)) values.push({{label: '5h', remainingPercent: fiveHourValue, windowMinutes: 300}});
+          if (Number.isFinite(weeklyValue)) values.push({{label: '7d', remainingPercent: weeklyValue, windowMinutes: 10080}});
+          return values;
+        }};
+        const activeQuotaWindows = Array.isArray(quotaWindows) && quotaWindows.length ? quotaWindows : legacyWindows(weeklyPercent, fiveHourPercent);
         const renderPlan = (plan) => {{
-          const weekly = formatPercent(plan.weeklyRemainingPercent);
-          const fiveHour = formatPercent(plan.fiveHourRemainingPercent);
           const planKey = String(plan.plan || '').toUpperCase();
+          const planLabel = accountLabel || plan.plan;
+          const planCountHtml = accountLabel ? '' : ' <small style="font:inherit;opacity:.62;">' + Math.max(0, Math.round(plan.count || 0)) + '</small>';
           const planColor = planKey.includes('PLUS') ? '#8b5cf6' : (planKey.includes('TEAM') || planKey.includes('BUSINESS')) ? '#3b82f6' : planKey.includes('API_KEY') ? '#a3a3a3' : '#10b981';
-          const metrics = [];
-          if (Number.isFinite(plan.weeklyRemainingPercent)) metrics.push('<span style="display:inline-flex;align-items:center;gap:4px;"><i style="width:5px;height:5px;border-radius:999px;background:#10b981;"></i>' + escapeHtml(weeklyLabel) + ' ' + escapeHtml(weekly) + '</span>');
-          if (Number.isFinite(plan.fiveHourRemainingPercent)) metrics.push('<span style="display:inline-flex;align-items:center;gap:4px;"><i style="width:5px;height:5px;border-radius:999px;background:#3b82f6;"></i>' + escapeHtml(fiveHourLabel) + ' ' + escapeHtml(fiveHour) + '</span>');
+          const planWindows = Array.isArray(plan.windows) && plan.windows.length ? plan.windows : legacyWindows(plan.weeklyRemainingPercent, plan.fiveHourRemainingPercent);
+          const metrics = planWindows.filter((window) => Number.isFinite(window.remainingPercent)).map((window, index) => '<span style="display:inline-flex;align-items:center;gap:4px;"><i style="width:5px;height:5px;border-radius:999px;background:' + quotaColors[index % quotaColors.length] + ';"></i>' + escapeHtml(window.label) + ' ' + escapeHtml(formatPercent(window.remainingPercent)) + '</span>');
           const quotaHtml = metrics.length ? metrics.join('<span style="opacity:.35;">·</span>') : '<span style="opacity:.72;">' + escapeHtml(quotaEmptyLabel) + '</span>';
-          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:6px 0;border-bottom:1px solid var(--color-token-border-subtle,rgba(127,127,127,.10));"><span style="display:inline-flex;align-items:center;gap:6px;color:var(--color-token-text-secondary,#737373);font-weight:600;white-space:nowrap;"><i style="width:6px;height:6px;border-radius:999px;background:' + planColor + ';box-shadow:0 0 0 2px rgba(127,127,127,.10);"></i>' + escapeHtml(plan.plan) + ' <small style="font:inherit;opacity:.62;">' + Math.max(0, Math.round(plan.count || 0)) + '</small></span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--color-token-text-secondary,#737373);text-align:right;white-space:nowrap;">' + quotaHtml + '</span></div>';
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:6px 0;border-bottom:1px solid var(--color-token-border-subtle,rgba(127,127,127,.10));"><span style="display:inline-flex;align-items:center;gap:6px;color:var(--color-token-text-secondary,#737373);font-weight:600;white-space:nowrap;"><i style="width:6px;height:6px;border-radius:999px;background:' + planColor + ';box-shadow:0 0 0 2px rgba(127,127,127,.10);"></i>' + escapeHtml(planLabel) + planCountHtml + '</span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--color-token-text-secondary,#737373);text-align:right;white-space:nowrap;">' + quotaHtml + '</span></div>';
         }};
         const detailCardStyle = 'position:fixed;z-index:4;width:min(260px,calc(100vw - 24px));box-sizing:border-box;padding:9px 11px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.16));border-radius:10px;background:var(--color-token-main-surface-primary,#fff);color:var(--color-token-text-secondary,#737373);box-shadow:0 4px 14px rgba(0,0,0,.09);font-family:inherit;font-size:12px;line-height:1.3;letter-spacing:normal;pointer-events:auto;';
         const fields = [];
         if (accountLabel) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.14)"></span>' + escapeHtml(accountLabel) + '</button>');
         else if (Number.isFinite(accountCount) && accountCount >= 0) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.14)"></span>' + accountPoolLabel + ' ' + Math.round(accountCount) + '</button>');
-        if (Number.isFinite(fiveHourPercent)) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.14)"></span>' + fiveHourLabel + ' ' + Math.round(fiveHourPercent) + '%</button>');
-        if (Number.isFinite(weeklyPercent)) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#10b981;box-shadow:0 0 0 2px rgba(16,185,129,.14)"></span>' + weeklyLabel + ' ' + Math.round(weeklyPercent) + '%</button>');
+        activeQuotaWindows.filter((window) => Number.isFinite(window.remainingPercent)).forEach((window, index) => fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:' + quotaColors[index % quotaColors.length] + ';"></span>' + escapeHtml(window.label) + ' ' + Math.round(window.remainingPercent) + '%</button>'));
         if (fields.length) fields.push('<button type="button" data-cockpit-quota-refresh style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.20));border-radius:999px;padding:0;background:var(--color-token-main-surface-primary,rgba(127,127,127,.10));color:inherit;box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(8px);cursor:pointer;pointer-events:auto;transition:color .15s ease,border-color .15s ease,background .15s ease,opacity .15s ease"><svg data-cockpit-quota-refresh-icon viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v5h-5"></path><path d="M4 18v-5h5"></path><path d="M6.1 9a7 7 0 0 1 11.6-2.6L20 11"></path><path d="M4 13l2.3 4.6A7 7 0 0 0 17.9 15"></path></svg></button>');
         const nextHtml = fields.join('');
         if (host.innerHTML !== nextHtml) host.innerHTML = nextHtml;
@@ -1059,7 +1124,7 @@ mod tests {
         build_launch_args, independent_quota_response, injection_script,
         is_supported_independent_account, refresh_request_token_from_cdp_response,
         remote_debugging_port_from_command_line, supports_bind_account, QuotaPlanSummary,
-        QuotaResponse,
+        QuotaResponse, QuotaWindowSummary,
     };
     use crate::models::codex::{CodexAccount, CodexQuota, CodexTokens};
     use serde_json::json;
@@ -1192,11 +1257,13 @@ mod tests {
                 available_account_count: Some(12),
                 abnormal_account_count: Some(2),
                 cooldown_account_count: Some(0),
+                windows: Vec::new(),
                 plans: vec![QuotaPlanSummary {
                     plan: "PLUS".to_string(),
                     count: 14,
                     weekly_remaining_percent: Some(1387),
                     five_hour_remaining_percent: Some(100),
+                    windows: Vec::new(),
                 }],
             },
             "zh-cn",
@@ -1206,8 +1273,6 @@ mod tests {
         assert!(script.contains("const accountPoolLabel = \"账号\""));
         assert!(script.contains("const accountCount = 14"));
         assert!(script.contains("const accountLabel = null"));
-        assert!(script.contains("const weeklyLabel = \"周\""));
-        assert!(script.contains("const fiveHourLabel = \"5h\""));
         assert!(script.contains("data-cockpit-quota-footer"));
         assert!(script.contains("document.body.appendChild(host)"));
         assert!(script.contains("position:fixed"));
@@ -1237,8 +1302,7 @@ mod tests {
         assert!(script.contains("var(--color-token-main-surface-primary"));
         assert!(script.contains("var(--color-token-text-secondary"));
         assert!(script.contains("const planColor"));
-        assert!(script.contains("background:#10b981"));
-        assert!(script.contains("background:#3b82f6"));
+        assert!(script.contains("const quotaColors = ['#3b82f6', '#10b981'"));
         assert!(script.contains("root.quotaDetailsOpen"));
         assert!(script.contains("details.innerHTML !== detailsHtml"));
         assert!(script.contains("details.contains(mutation.target)"));
@@ -1295,11 +1359,11 @@ mod tests {
         account.quota = Some(CodexQuota {
             hourly_percentage: 82,
             hourly_reset_time: None,
-            hourly_window_minutes: None,
+            hourly_window_minutes: Some(300),
             hourly_window_present: Some(true),
             weekly_percentage: 64,
             weekly_reset_time: None,
-            weekly_window_minutes: None,
+            weekly_window_minutes: Some(10_080),
             weekly_window_present: Some(true),
             reset_credits_available: None,
             reset_credits: Vec::new(),
@@ -1312,10 +1376,110 @@ mod tests {
         assert_eq!(quota.account_label.as_deref(), Some("QmZrTa"));
         assert_eq!(quota.five_hour_remaining_percent, Some(82));
         assert_eq!(quota.weekly_remaining_percent, Some(64));
+        assert_eq!(
+            quota
+                .windows
+                .iter()
+                .map(|window| window.label.as_str())
+                .collect::<Vec<_>>(),
+            vec!["5h", "7d"]
+        );
 
         let script = injection_script("Codex", &quota, "en", false, None);
         assert!(script.contains("const accountLabel = \"QmZrTa\""));
         assert!(script.contains("escapeHtml(accountLabel)"));
+        assert!(script.contains("const planLabel = accountLabel || plan.plan"));
+        assert!(script.contains("const planCountHtml = accountLabel ? ''"));
+        assert!(script.contains("escapeHtml(planLabel) + planCountHtml"));
+    }
+
+    #[test]
+    fn independent_weekly_primary_window_does_not_invent_five_hour_quota() {
+        let mut account = CodexAccount::new(
+            "team-account".to_string(),
+            "team@example.com".to_string(),
+            CodexTokens {
+                id_token: "id-token".to_string(),
+                access_token: "access-token".to_string(),
+                refresh_token: Some("refresh-token".to_string()),
+            },
+        );
+        account.capsule_label = Some("ABCDEF".to_string());
+        account.plan_type = Some("TEAM".to_string());
+        account.quota = Some(CodexQuota {
+            hourly_percentage: 71,
+            hourly_reset_time: None,
+            hourly_window_minutes: Some(10_080),
+            hourly_window_present: Some(true),
+            weekly_percentage: 0,
+            weekly_reset_time: None,
+            weekly_window_minutes: None,
+            weekly_window_present: Some(false),
+            reset_credits_available: None,
+            reset_credits: Vec::new(),
+            reset_credits_next_expires_at: None,
+            raw_data: None,
+        });
+
+        let quota = independent_quota_response(&account);
+        assert_eq!(
+            quota.windows,
+            vec![QuotaWindowSummary {
+                label: "7d".to_string(),
+                remaining_percent: 71,
+                window_minutes: Some(10_080),
+            }]
+        );
+        assert_eq!(quota.five_hour_remaining_percent, None);
+        assert_eq!(quota.weekly_remaining_percent, Some(71));
+
+        let script = injection_script("Codex", &quota, "en", false, None);
+        assert!(script.contains("const accountLabel = \"ABCDEF\""));
+        assert!(script.contains(
+            "const quotaWindows = [{\"label\":\"7d\",\"remainingPercent\":71,\"windowMinutes\":10080}]"
+        ));
+        assert!(script.contains("const fiveHourPercent = null"));
+    }
+
+    #[test]
+    fn independent_quota_renders_five_hour_and_monthly_windows() {
+        let mut account = CodexAccount::new(
+            "monthly-account".to_string(),
+            "monthly@example.com".to_string(),
+            CodexTokens {
+                id_token: "id-token".to_string(),
+                access_token: "access-token".to_string(),
+                refresh_token: Some("refresh-token".to_string()),
+            },
+        );
+        account.quota = Some(CodexQuota {
+            hourly_percentage: 75,
+            hourly_reset_time: None,
+            hourly_window_minutes: Some(300),
+            hourly_window_present: Some(true),
+            weekly_percentage: 52,
+            weekly_reset_time: None,
+            weekly_window_minutes: Some(43_200),
+            weekly_window_present: Some(true),
+            reset_credits_available: None,
+            reset_credits: Vec::new(),
+            reset_credits_next_expires_at: None,
+            raw_data: None,
+        });
+
+        let quota = independent_quota_response(&account);
+        assert_eq!(
+            quota
+                .windows
+                .iter()
+                .map(|window| (window.label.as_str(), window.remaining_percent))
+                .collect::<Vec<_>>(),
+            vec![("5h", 75), ("1m", 52)]
+        );
+        let script = injection_script("Codex", &quota, "en", false, None);
+        assert!(script.contains("\"label\":\"5h\",\"remainingPercent\":75"));
+        assert!(script.contains("\"label\":\"1m\",\"remainingPercent\":52"));
+        assert!(script.contains("activeQuotaWindows.filter"));
     }
 
     #[test]

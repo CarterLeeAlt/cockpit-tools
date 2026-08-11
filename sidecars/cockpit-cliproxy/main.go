@@ -4078,27 +4078,35 @@ type quotaPoolStateFile struct {
 }
 
 type cockpitQuotaResponse struct {
-	Version                  int                       `json:"version"`
-	Scope                    string                    `json:"scope"`
-	RemainingPercent         *int                      `json:"remainingPercent,omitempty"`
-	WeeklyRemainingPercent   *int                      `json:"weeklyRemainingPercent,omitempty"`
-	FiveHourRemainingPercent *int                      `json:"fiveHourRemainingPercent,omitempty"`
-	AccountCount             int                       `json:"accountCount"`
-	IncludedAccountCount     int                       `json:"includedAccountCount"`
-	MissingAccountCount      int                       `json:"missingAccountCount"`
-	AvailableAccountCount    int                       `json:"availableAccountCount"`
-	AbnormalAccountCount     int                       `json:"abnormalAccountCount"`
-	CooldownAccountCount     int                       `json:"cooldownAccountCount"`
-	Plans                    []cockpitQuotaPlanSummary `json:"plans,omitempty"`
-	UpdatedAt                int64                     `json:"updatedAt,omitempty"`
-	Stale                    bool                      `json:"stale"`
+	Version                  int                         `json:"version"`
+	Scope                    string                      `json:"scope"`
+	RemainingPercent         *int                        `json:"remainingPercent,omitempty"`
+	WeeklyRemainingPercent   *int                        `json:"weeklyRemainingPercent,omitempty"`
+	FiveHourRemainingPercent *int                        `json:"fiveHourRemainingPercent,omitempty"`
+	AccountCount             int                         `json:"accountCount"`
+	IncludedAccountCount     int                         `json:"includedAccountCount"`
+	MissingAccountCount      int                         `json:"missingAccountCount"`
+	AvailableAccountCount    int                         `json:"availableAccountCount"`
+	AbnormalAccountCount     int                         `json:"abnormalAccountCount"`
+	CooldownAccountCount     int                         `json:"cooldownAccountCount"`
+	Windows                  []cockpitQuotaWindowSummary `json:"windows,omitempty"`
+	Plans                    []cockpitQuotaPlanSummary   `json:"plans,omitempty"`
+	UpdatedAt                int64                       `json:"updatedAt,omitempty"`
+	Stale                    bool                        `json:"stale"`
+}
+
+type cockpitQuotaWindowSummary struct {
+	Label            string `json:"label"`
+	RemainingPercent int    `json:"remainingPercent"`
+	WindowMinutes    int64  `json:"windowMinutes"`
 }
 
 type cockpitQuotaPlanSummary struct {
-	Plan                     string `json:"plan"`
-	Count                    int    `json:"count"`
-	WeeklyRemainingPercent   *int   `json:"weeklyRemainingPercent,omitempty"`
-	FiveHourRemainingPercent *int   `json:"fiveHourRemainingPercent,omitempty"`
+	Plan                     string                      `json:"plan"`
+	Count                    int                         `json:"count"`
+	WeeklyRemainingPercent   *int                        `json:"weeklyRemainingPercent,omitempty"`
+	FiveHourRemainingPercent *int                        `json:"fiveHourRemainingPercent,omitempty"`
+	Windows                  []cockpitQuotaWindowSummary `json:"windows,omitempty"`
 }
 
 func readQuotaPoolState(path string) (quotaPoolStateFile, error) {
@@ -4120,11 +4128,11 @@ func quotaWindowPresent(window *quotaPoolWindowState) bool {
 	return window != nil && (window.Present == nil || *window.Present)
 }
 
-func quotaWindowValue(window *quotaPoolWindowState) (int, int64, bool) {
+func quotaWindowValue(window *quotaPoolWindowState, fallbackMinutes int64) (int, int64, bool) {
 	if !quotaWindowPresent(window) || window.RemainingPercent == nil {
 		return 0, 0, false
 	}
-	minutes := int64(10080)
+	minutes := fallbackMinutes
 	if window.WindowMinutes != nil && *window.WindowMinutes > 0 {
 		minutes = *window.WindowMinutes
 	}
@@ -4151,6 +4159,51 @@ func addQuotaPercent(current *int, value int) *int {
 		result += *current
 	}
 	return &result
+}
+
+func quotaWindowLabel(minutes int64) string {
+	const hourMinutes int64 = 60
+	const dayMinutes int64 = 24 * hourMinutes
+	const monthMinutes int64 = 30 * dayMinutes
+
+	if minutes >= monthMinutes-1 && (minutes+1)%monthMinutes <= 1 {
+		months := (minutes + monthMinutes - 1) / monthMinutes
+		return fmt.Sprintf("%dm", months)
+	}
+	if minutes >= dayMinutes-1 {
+		return fmt.Sprintf("%dd", (minutes+dayMinutes-1)/dayMinutes)
+	}
+	if minutes >= hourMinutes {
+		return fmt.Sprintf("%dh", (minutes+hourMinutes-1)/hourMinutes)
+	}
+	return fmt.Sprintf("%dmin", minutes)
+}
+
+func addCockpitQuotaWindow(windows *[]cockpitQuotaWindowSummary, minutes int64, value int) {
+	label := quotaWindowLabel(minutes)
+	for index := range *windows {
+		if (*windows)[index].Label == label {
+			(*windows)[index].RemainingPercent += value
+			if minutes < (*windows)[index].WindowMinutes {
+				(*windows)[index].WindowMinutes = minutes
+			}
+			return
+		}
+	}
+	*windows = append(*windows, cockpitQuotaWindowSummary{
+		Label:            label,
+		RemainingPercent: value,
+		WindowMinutes:    minutes,
+	})
+}
+
+func sortCockpitQuotaWindows(windows []cockpitQuotaWindowSummary) {
+	sort.SliceStable(windows, func(left, right int) bool {
+		if windows[left].WindowMinutes != windows[right].WindowMinutes {
+			return windows[left].WindowMinutes < windows[right].WindowMinutes
+		}
+		return windows[left].Label < windows[right].Label
+	})
 }
 
 func buildCockpitQuotaResponse(spec *apiKeySpec, state quotaPoolStateFile, now time.Time) cockpitQuotaResponse {
@@ -4205,8 +4258,8 @@ func buildCockpitQuotaResponseWithAccounts(spec *apiKeySpec, state quotaPoolStat
 			result.AbnormalAccountCount++
 			continue
 		}
-		primaryValue, primaryMinutes, primaryOK := quotaWindowValue(item.Primary)
-		secondaryValue, secondaryMinutes, secondaryOK := quotaWindowValue(item.Secondary)
+		primaryValue, primaryMinutes, primaryOK := quotaWindowValue(item.Primary, 5*60)
+		secondaryValue, secondaryMinutes, secondaryOK := quotaWindowValue(item.Secondary, 7*24*60)
 		value, ok := 0, false
 		switch {
 		case primaryOK && secondaryOK && primaryMinutes <= secondaryMinutes:
@@ -4226,21 +4279,27 @@ func buildCockpitQuotaResponseWithAccounts(spec *apiKeySpec, state quotaPoolStat
 		result.AvailableAccountCount++
 		total += value
 		hasValue = true
-		if primaryOK && primaryMinutes >= 5*24*60 {
+		if primaryOK && quotaWindowLabel(primaryMinutes) == "7d" {
 			weeklyTotal += primaryValue
 			hasWeekly = true
 		}
-		if secondaryOK && secondaryMinutes >= 5*24*60 {
+		if secondaryOK && quotaWindowLabel(secondaryMinutes) == "7d" {
 			weeklyTotal += secondaryValue
 			hasWeekly = true
 		}
-		if primaryOK && primaryMinutes > 0 && primaryMinutes <= 6*60 {
+		if primaryOK && quotaWindowLabel(primaryMinutes) == "5h" {
 			fiveHourTotal += primaryValue
 			hasFiveHour = true
 		}
-		if secondaryOK && secondaryMinutes > 0 && secondaryMinutes <= 6*60 {
+		if secondaryOK && quotaWindowLabel(secondaryMinutes) == "5h" {
 			fiveHourTotal += secondaryValue
 			hasFiveHour = true
+		}
+		if primaryOK {
+			addCockpitQuotaWindow(&result.Windows, primaryMinutes, primaryValue)
+		}
+		if secondaryOK {
+			addCockpitQuotaWindow(&result.Windows, secondaryMinutes, secondaryValue)
 		}
 		var account *accountSpec
 		if accounts != nil {
@@ -4248,16 +4307,22 @@ func buildCockpitQuotaResponseWithAccounts(spec *apiKeySpec, state quotaPoolStat
 		}
 		if index, exists := planIndex[quotaPlanLabel(account)]; exists {
 			planSummary := &result.Plans[index]
-			if primaryOK && primaryMinutes >= 5*24*60 {
+			if primaryOK {
+				addCockpitQuotaWindow(&planSummary.Windows, primaryMinutes, primaryValue)
+			}
+			if secondaryOK {
+				addCockpitQuotaWindow(&planSummary.Windows, secondaryMinutes, secondaryValue)
+			}
+			if primaryOK && quotaWindowLabel(primaryMinutes) == "7d" {
 				planSummary.WeeklyRemainingPercent = addQuotaPercent(planSummary.WeeklyRemainingPercent, primaryValue)
 			}
-			if secondaryOK && secondaryMinutes >= 5*24*60 {
+			if secondaryOK && quotaWindowLabel(secondaryMinutes) == "7d" {
 				planSummary.WeeklyRemainingPercent = addQuotaPercent(planSummary.WeeklyRemainingPercent, secondaryValue)
 			}
-			if primaryOK && primaryMinutes > 0 && primaryMinutes <= 6*60 {
+			if primaryOK && quotaWindowLabel(primaryMinutes) == "5h" {
 				planSummary.FiveHourRemainingPercent = addQuotaPercent(planSummary.FiveHourRemainingPercent, primaryValue)
 			}
-			if secondaryOK && secondaryMinutes > 0 && secondaryMinutes <= 6*60 {
+			if secondaryOK && quotaWindowLabel(secondaryMinutes) == "5h" {
 				planSummary.FiveHourRemainingPercent = addQuotaPercent(planSummary.FiveHourRemainingPercent, secondaryValue)
 			}
 		}
@@ -4279,6 +4344,10 @@ func buildCockpitQuotaResponseWithAccounts(spec *apiKeySpec, state quotaPoolStat
 	}
 	if hasFiveHour {
 		result.FiveHourRemainingPercent = &fiveHourTotal
+	}
+	sortCockpitQuotaWindows(result.Windows)
+	for index := range result.Plans {
+		sortCockpitQuotaWindows(result.Plans[index].Windows)
 	}
 	return result
 }
@@ -4310,8 +4379,8 @@ func applyCockpitQuotaAuthHealth(result *cockpitQuotaResponse, spec *apiKeySpec,
 			continue
 		}
 		item, hasState := state.Accounts[accountID]
-		_, _, primaryOK := quotaWindowValue(item.Primary)
-		_, _, secondaryOK := quotaWindowValue(item.Secondary)
+		_, _, primaryOK := quotaWindowValue(item.Primary, 5*60)
+		_, _, secondaryOK := quotaWindowValue(item.Secondary, 7*24*60)
 		wasAvailable := hasState && (primaryOK || secondaryOK)
 		if wasAvailable && result.AvailableAccountCount > 0 {
 			result.AvailableAccountCount--
