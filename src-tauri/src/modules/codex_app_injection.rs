@@ -542,10 +542,28 @@ fn injection_script(
         : null;
       root.refreshing = refreshInProgress || Boolean(pendingRefreshToken);
       if (handledRefreshToken && root.refreshRequestToken === handledRefreshToken) root.refreshRequestToken = null;
+      const findComposerFooter = (anchor) => {{
+        const namedFooter = anchor.closest('[class*="_footer_"]');
+        if (namedFooter) return namedFooter;
+        const anchorRect = anchor.getBoundingClientRect();
+        const minWidth = Math.max(240, anchorRect.width * 3);
+        const maxHeight = Math.max(96, anchorRect.height * 4);
+        let candidate = anchor.parentElement;
+        while (candidate && candidate !== document.body) {{
+          const rect = candidate.getBoundingClientRect();
+          const spansAnchor = rect.left <= anchorRect.left
+            && rect.right >= anchorRect.right
+            && rect.top <= anchorRect.top
+            && rect.bottom >= anchorRect.bottom;
+          if (spansAnchor && rect.width >= minWidth && rect.height <= maxHeight) return candidate;
+          candidate = candidate.parentElement;
+        }}
+        return null;
+      }};
       const render = () => {{
         let host = document.querySelector('[data-cockpit-quota-footer]');
         const permissions = document.querySelector('[data-composer-navigation-target="permissions"]');
-        const footer = permissions?.closest('._footer_1qb5a_2') || permissions?.parentElement?.parentElement?.parentElement;
+        const footer = permissions ? findComposerFooter(permissions) : null;
         if (!footer || !permissions) {{
           if (host) host.style.display = 'none';
           const details = document.querySelector('[data-cockpit-quota-details]');
@@ -573,10 +591,11 @@ fn injection_script(
         }}
         const footerRect = footer.getBoundingClientRect();
         const permissionsRect = permissions.getBoundingClientRect();
-        host.style.cssText = 'position:fixed;transform:translate(-50%,-50%);z-index:2;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--color-token-text-secondary,#737373);font-size:12px;line-height:1;white-space:nowrap;pointer-events:none;';
-        host.style.left = Math.round(footerRect.left + footerRect.width / 2) + 'px';
+        host.style.cssText = 'position:fixed;transform:translateY(-50%);z-index:2;display:flex;align-items:center;justify-content:center;gap:6px;box-sizing:border-box;color:var(--color-token-text-secondary,#737373);font-size:12px;line-height:1;white-space:nowrap;pointer-events:none;';
+        host.style.left = Math.round(footerRect.left) + 'px';
+        host.style.width = Math.round(footerRect.width) + 'px';
         host.style.top = Math.round(permissionsRect.top + permissionsRect.height / 2) + 'px';
-        const badgeStyle = 'display:inline-flex;align-items:center;gap:6px;height:24px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.20));border-radius:999px;padding:0 9px;background:var(--color-token-main-surface-primary,rgba(127,127,127,.10));color:inherit;font:inherit;box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(8px);font-weight:500;cursor:pointer;pointer-events:auto;';
+        const badgeStyle = 'display:inline-flex;align-items:center;gap:6px;height:24px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.20));border-radius:999px;padding:0 9px;background:var(--color-token-main-surface-primary,rgba(127,127,127,.10));color:inherit;font:inherit;box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(8px);font-weight:400;cursor:pointer;pointer-events:auto;';
         const escapeHtml = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}}[char]));
         const formatPercent = (value) => Number.isFinite(value) ? Math.round(value) + '%' : '—';
         const renderPlan = (plan) => {{
@@ -588,7 +607,7 @@ fn injection_script(
           if (Number.isFinite(plan.weeklyRemainingPercent)) metrics.push('<span style="display:inline-flex;align-items:center;gap:4px;"><i style="width:5px;height:5px;border-radius:999px;background:#10b981;"></i>' + escapeHtml(weeklyLabel) + ' ' + escapeHtml(weekly) + '</span>');
           if (Number.isFinite(plan.fiveHourRemainingPercent)) metrics.push('<span style="display:inline-flex;align-items:center;gap:4px;"><i style="width:5px;height:5px;border-radius:999px;background:#3b82f6;"></i>' + escapeHtml(fiveHourLabel) + ' ' + escapeHtml(fiveHour) + '</span>');
           const quotaHtml = metrics.length ? metrics.join('<span style="opacity:.35;">·</span>') : '<span style="opacity:.72;">' + escapeHtml(quotaEmptyLabel) + '</span>';
-          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:6px 0;border-bottom:1px solid var(--color-token-border-subtle,rgba(127,127,127,.10));"><span style="display:inline-flex;align-items:center;gap:6px;color:var(--color-token-text-secondary,#737373);font-weight:500;white-space:nowrap;"><i style="width:6px;height:6px;border-radius:999px;background:' + planColor + ';box-shadow:0 0 0 2px rgba(127,127,127,.10);"></i>' + escapeHtml(plan.plan) + ' <small style="font:inherit;opacity:.62;">' + Math.max(0, Math.round(plan.count || 0)) + '</small></span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--color-token-text-secondary,#737373);text-align:right;white-space:nowrap;">' + quotaHtml + '</span></div>';
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:6px 0;border-bottom:1px solid var(--color-token-border-subtle,rgba(127,127,127,.10));"><span style="display:inline-flex;align-items:center;gap:6px;color:var(--color-token-text-secondary,#737373);font-weight:600;white-space:nowrap;"><i style="width:6px;height:6px;border-radius:999px;background:' + planColor + ';box-shadow:0 0 0 2px rgba(127,127,127,.10);"></i>' + escapeHtml(plan.plan) + ' <small style="font:inherit;opacity:.62;">' + Math.max(0, Math.round(plan.count || 0)) + '</small></span><span style="display:inline-flex;align-items:center;gap:5px;color:var(--color-token-text-secondary,#737373);text-align:right;white-space:nowrap;">' + quotaHtml + '</span></div>';
         }};
         const detailCardStyle = 'position:fixed;z-index:4;width:min(260px,calc(100vw - 24px));box-sizing:border-box;padding:9px 11px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.16));border-radius:10px;background:var(--color-token-main-surface-primary,#fff);color:var(--color-token-text-secondary,#737373);box-shadow:0 4px 14px rgba(0,0,0,.09);font-family:inherit;font-size:12px;line-height:1.3;letter-spacing:normal;pointer-events:auto;';
         const fields = [];
@@ -612,7 +631,7 @@ fn injection_script(
         details.style.display = root.quotaDetailsOpen ? 'block' : 'none';
         if (root.quotaDetailsOpen) {{
           const planRows = plans.map(renderPlan).join('');
-          const detailsHtml = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 4px;padding-bottom:6px;border-bottom:1px solid var(--color-token-border-subtle,rgba(127,127,127,.10));"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--color-token-text-secondary,#737373);"><i style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.12);"></i>' + escapeHtml(accountPoolTitle) + '</span><button type="button" data-cockpit-quota-close aria-label="' + escapeHtml(closeLabel) + '" title="' + escapeHtml(closeLabel) + '" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:0;border-radius:4px;background:transparent;color:var(--color-token-text-secondary,#737373);font:inherit;font-size:14px;line-height:1;cursor:pointer;padding:0;opacity:.72;">×</button></div>' + '<div>' + (planRows || '<div style="padding:6px 0;color:var(--color-token-text-secondary,#737373);opacity:.72;">' + escapeHtml(quotaEmptyLabel) + '</div>') + '</div>' + '<div style="display:flex;justify-content:space-between;gap:10px;padding-top:7px;color:var(--color-token-text-secondary,#737373);font-size:11px;opacity:.78;"><span>' + escapeHtml(availableText) + '</span><span>' + escapeHtml(issueText) + '</span></div>';
+          const detailsHtml = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 4px;padding-bottom:6px;border-bottom:1px solid var(--color-token-border-subtle,rgba(127,127,127,.10));"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--color-token-text-secondary,#737373);"><i style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.12);"></i>' + escapeHtml(accountPoolTitle) + '</span><button type="button" data-cockpit-quota-close aria-label="' + escapeHtml(closeLabel) + '" title="' + escapeHtml(closeLabel) + '" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:0;border-radius:4px;background:transparent;color:var(--color-token-text-secondary,#737373);font:inherit;font-size:14px;line-height:1;cursor:pointer;padding:0;opacity:.72;">×</button></div>' + '<div>' + (planRows || '<div style="padding:6px 0;color:var(--color-token-text-secondary,#737373);opacity:.72;">' + escapeHtml(quotaEmptyLabel) + '</div>') + '</div>' + '<div style="display:flex;justify-content:space-between;gap:10px;padding-top:7px;color:var(--color-token-text-secondary,#737373);font-size:11px;opacity:.78;"><span>' + escapeHtml(availableText) + '</span><span>' + escapeHtml(issueText) + '</span></div>';
           if (details.innerHTML !== detailsHtml) details.innerHTML = detailsHtml;
         }}
         host.querySelectorAll('[data-cockpit-quota-open]').forEach((button) => {{
@@ -998,6 +1017,13 @@ mod tests {
         assert!(script.contains("data-cockpit-quota-footer"));
         assert!(script.contains("document.body.appendChild(host)"));
         assert!(script.contains("position:fixed"));
+        assert!(script.contains("findComposerFooter"));
+        assert!(script.contains("anchor.closest('[class*=\"_footer_\"]')"));
+        assert!(script.contains("rect.width >= minWidth"));
+        assert!(script.contains("transform:translateY(-50%)"));
+        assert!(script.contains("host.style.width = Math.round(footerRect.width)"));
+        assert!(script.contains("const badgeStyle = 'display:inline-flex"));
+        assert!(script.contains("backdrop-filter:blur(8px);font-weight:400"));
         assert!(script.contains("footerRect.left + footerRect.width / 2"));
         assert!(script.contains("permissionsRect.top + permissionsRect.height / 2"));
         assert!(script.contains("justify-content:center"));
@@ -1035,6 +1061,8 @@ mod tests {
         assert!(!script.contains("justify-content:flex-end"));
         assert!(!script.contains("grid-row:3"));
         assert!(!script.contains("min-height:18px"));
+        assert!(!script.contains("._footer_1qb5a_2"));
+        assert!(!script.contains("font-weight:500"));
         assert!(!script.contains("data-cockpit-fast-mode"));
         assert!(!script.contains("Debugger"));
     }
