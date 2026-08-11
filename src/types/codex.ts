@@ -45,6 +45,7 @@ export interface CodexAccount {
   organization_id?: string;
   agent_identity?: CodexAgentIdentity;
   account_name?: string;
+  capsule_label?: string;
   account_structure?: string;
   account_note?: string;
   two_factor_secret?: string;
@@ -1112,6 +1113,24 @@ export function isCodexOpaqueAccessTokenOnlyAccount(
   const accessToken = account.tokens?.access_token?.trim() || "";
   const refreshToken = account.tokens?.refresh_token?.trim() || "";
   return accessToken.startsWith("at-") && !refreshToken;
+}
+
+export function isCodexIndependentAppInjectionAccount(
+  account?: CodexAccount | null,
+): boolean {
+  if (!account || isCodexApiKeyAccount(account) || isCodexWebSessionAccount(account)) {
+    return false;
+  }
+  if (isCodexAgentIdentityAccount(account)) {
+    return true;
+  }
+  if (
+    isCodexOpaqueAccessTokenOnlyAccount(account) &&
+    !account.tokens?.id_token?.trim()
+  ) {
+    return true;
+  }
+  return Boolean(account.tokens?.access_token?.trim() && account.tokens?.refresh_token?.trim());
 }
 
 function isCodexAccessTokenOnlySubscriptionLimited(account: CodexAccount): boolean {

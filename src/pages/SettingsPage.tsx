@@ -521,7 +521,7 @@ export function SettingsPage() {
   const [reducedMotionEnabled, setReducedMotionEnabled] = useState(false);
   const [uiScale, setUiScale] = useState('1');
   const [autoRefresh, setAutoRefresh] = useState('5');
-  const [codexAutoRefresh, setCodexAutoRefresh] = useState('10');
+  const [codexAutoRefresh, setCodexAutoRefresh] = useState('2');
   const [claudeAutoRefresh, setClaudeAutoRefresh] = useState('10');
   const [codexSyncWsl, setCodexSyncWsl] = useState(false);
   const [codexAppUiInjectionEnabled, setCodexAppUiInjectionEnabled] = useState(true);
@@ -1657,7 +1657,7 @@ export function SettingsPage() {
       setReducedMotionEnabled(Boolean(config.reduced_motion_enabled ?? false));
       setUiScale(String(config.ui_scale ?? 1));
       setAutoRefresh(String(config.auto_refresh_minutes));
-      setCodexAutoRefresh(String(config.codex_auto_refresh_minutes ?? 10));
+      setCodexAutoRefresh(String(config.codex_auto_refresh_minutes ?? 2));
       setClaudeAutoRefresh(String(config.claude_auto_refresh_minutes ?? 10));
       setCodexSyncWsl(Boolean(config.codex_sync_wsl ?? false));
       setCodexAppUiInjectionEnabled(Boolean(config.codex_app_ui_injection_enabled ?? false));

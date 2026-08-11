@@ -101,6 +101,7 @@ import {
   formatCodexResetTimeAbsolute,
   isCodexApiKeyAccount,
   isCodexAgentIdentityAccount,
+  isCodexIndependentAppInjectionAccount,
   isCodexWebSessionAccount,
   isCodexChatCompletionsApiKeyAccount,
   isCodexNewApiAccount,
@@ -418,6 +419,7 @@ type OAuthBindingQuotaReserveFieldErrors = {
 };
 type CodexAccountNoteFormState = {
   note: string;
+  capsuleLabel: string;
   twoFactorSecret: string;
   accountPassword: string;
   phoneNumber: string;
@@ -437,11 +439,13 @@ type CodexAccountNoteMailPreviewSnapshot = {
 };
 
 type CodexAccountNoteFieldErrors = {
+  capsuleLabel?: string;
   twoFactorSecret?: string;
 };
 
 const EMPTY_CODEX_ACCOUNT_NOTE_FORM: CodexAccountNoteFormState = {
   note: "",
+  capsuleLabel: "",
   twoFactorSecret: "",
   accountPassword: "",
   phoneNumber: "",
@@ -454,12 +458,22 @@ function buildCodexAccountNoteForm(
 ): CodexAccountNoteFormState {
   return {
     note: account?.account_note ?? "",
+    capsuleLabel: account?.capsule_label ?? "",
     twoFactorSecret: account?.two_factor_secret ?? "",
     accountPassword: account?.account_password ?? "",
     phoneNumber: account?.phone_number ?? "",
     mailUrl: account?.mail_url ?? "",
     chatgptAccountId: account?.account_id ?? "",
   };
+}
+
+function isValidCodexCapsuleLabel(raw: string): boolean {
+  const value = raw.trim();
+  if (!value) return true;
+  return (
+    /^[A-Za-z0-9_-]{1,6}$/.test(value) ||
+    /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]{1,3}$/.test(value)
+  );
 }
 
 function hasCodexAccountNoteDetails(account?: CodexAccount | null): boolean {
@@ -2765,6 +2779,7 @@ export function CodexAccountsPage() {
     refreshSubscriptionInfo,
     hydrateAccountProfilesIfNeeded,
     updateAccountName,
+    updateAccountCapsuleLabel,
     updateApiKeyCredentials,
     updateApiKeyBoundOAuthAccount,
     updateAccountAppSpeed,
@@ -3087,6 +3102,10 @@ export function CodexAccountsPage() {
     editingAccountNoteAccount &&
       isCodexOpaqueAccessTokenOnlyAccount(editingAccountNoteAccount),
   );
+  const activeAccountSupportsCapsuleLabel = Boolean(
+    editingAccountNoteAccount &&
+      isCodexIndependentAppInjectionAccount(editingAccountNoteAccount),
+  );
 
   const refreshSavedMfaRecords = useCallback(() => {
     setSavedMfaRecords(loadSavedMfaRecords());
@@ -3189,6 +3208,7 @@ export function CodexAccountsPage() {
         setPendingOAuthFieldErrors((prev) => ({
           ...prev,
           twoFactorSecret: undefined,
+          capsuleLabel: undefined,
         }));
       } else {
         setEditingAccountNoteForm((prev) => ({ ...prev, ...update }));
@@ -3196,6 +3216,7 @@ export function CodexAccountsPage() {
       setAccountNoteFieldErrors((prev) => ({
         ...prev,
         twoFactorSecret: undefined,
+        capsuleLabel: undefined,
       }));
       if (Object.prototype.hasOwnProperty.call(update, "mailUrl")) {
         resetAccountNoteMailPreview();
@@ -3365,6 +3386,19 @@ export function CodexAccountsPage() {
         });
         return;
       }
+      const rawCapsuleLabel = activeAccountNoteForm.capsuleLabel.trim();
+      if (
+        activeAccountSupportsCapsuleLabel &&
+        !isValidCodexCapsuleLabel(rawCapsuleLabel)
+      ) {
+        setAccountNoteFieldErrors({
+          capsuleLabel: t(
+            "codex.accountNote.capsuleLabelInvalid",
+            "请输入最多 6 个英数字符，或最多 3 个中文字符",
+          ),
+        });
+        return;
+      }
       const normalizedTwoFactorSecret =
         parsedTwoFactorSecret?.secret ?? rawTwoFactorSecret;
       const noteUpdate = {
@@ -3402,6 +3436,9 @@ export function CodexAccountsPage() {
         }));
       } else if (editingAccountNoteId) {
         await store.updateAccountNote(editingAccountNoteId, noteUpdate);
+        if (activeAccountSupportsCapsuleLabel) {
+          await updateAccountCapsuleLabel(editingAccountNoteId, rawCapsuleLabel);
+        }
         setEditingAccountNoteForm(EMPTY_CODEX_ACCOUNT_NOTE_FORM);
       } else {
         return;
@@ -3430,6 +3467,7 @@ export function CodexAccountsPage() {
     activeAccountNoteForm,
     activeAccountNoteMode,
     activeAccountNoteSaving,
+    activeAccountSupportsCapsuleLabel,
     activeAccountUsesPersonalAccessToken,
     editingAccountNoteId,
     setAccountNoteError,
@@ -3437,6 +3475,7 @@ export function CodexAccountsPage() {
     resetAccountNoteMailPreview,
     store,
     t,
+    updateAccountCapsuleLabel,
   ]);
 
   const activeAccountNoteOtpToken = useMemo(() => {
@@ -18134,6 +18173,45 @@ export function CodexAccountsPage() {
                       </div>
                     )}
                   </div>
+                  {activeAccountSupportsCapsuleLabel ? (
+                    <label className="codex-account-note-field">
+                      <span>
+                        {t("codex.accountNote.capsuleLabel", "胶囊显示字段")}
+                      </span>
+                      <input
+                        className={`codex-account-note-input ${
+                          accountNoteFieldErrors.capsuleLabel ? "has-error" : ""
+                        }`}
+                        type="text"
+                        value={activeAccountNoteForm.capsuleLabel}
+                        onChange={(event) => {
+                          updateActiveAccountNoteForm({
+                            capsuleLabel: event.target.value,
+                          });
+                        }}
+                        placeholder={t(
+                          "codex.accountNote.capsuleLabelPlaceholder",
+                          "留空自动生成 6 位英文字母",
+                        )}
+                        maxLength={6}
+                        autoComplete="off"
+                        spellCheck={false}
+                        disabled={activeAccountNoteSaving}
+                      />
+                      {accountNoteFieldErrors.capsuleLabel ? (
+                        <span className="codex-account-note-field-error">
+                          {accountNoteFieldErrors.capsuleLabel}
+                        </span>
+                      ) : (
+                        <small className="codex-account-note-field-hint">
+                          {t(
+                            "codex.accountNote.capsuleLabelHint",
+                            "支持最多 6 个英数字符或最多 3 个中文字符；留空会自动生成。",
+                          )}
+                        </small>
+                      )}
+                    </label>
+                  ) : null}
                   {activeAccountUsesPersonalAccessToken ? (
                     <label className="codex-account-note-field">
                       <span>
