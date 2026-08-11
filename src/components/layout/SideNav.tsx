@@ -171,7 +171,6 @@ export function SideNav({
   const brandRef = useRef<HTMLDivElement>(null);
   const navItemsRef = useRef<HTMLDivElement>(null);
   const bottomActionsRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLDivElement>(null);
   const morePopoverRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -632,21 +631,47 @@ export function SideNav({
     }
 
     const updateClassicHandleTop = () => {
-      const rect = logoRef.current?.getBoundingClientRect();
-      if (!rect) return;
+      const titleCandidates = document.querySelectorAll<HTMLElement>(
+        '.main-wrapper .page-top-strip-label, .main-wrapper .page-heading h1, .main-wrapper .page-title, .main-wrapper h1',
+      );
+      const visibleTitle = Array.from(titleCandidates).find((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        return rect.width > 0
+          && rect.height > 0
+          && style.display !== 'none'
+          && style.visibility !== 'hidden';
+      });
+      const rect = visibleTitle?.getBoundingClientRect();
+      if (!rect) {
+        setClassicHandleTop(null);
+        return;
+      }
       setClassicHandleTop(rect.top + rect.height / 2);
     };
 
     updateClassicHandleTop();
     const rafId = window.requestAnimationFrame(updateClassicHandleTop);
-    const resizeObserver = typeof ResizeObserver !== 'undefined' && logoRef.current
+    const mainWrapper = document.querySelector<HTMLElement>('.main-wrapper');
+    const resizeObserver = typeof ResizeObserver !== 'undefined' && mainWrapper
       ? new ResizeObserver(() => {
         updateClassicHandleTop();
       })
       : null;
+    const mutationObserver = typeof MutationObserver !== 'undefined' && mainWrapper
+      ? new MutationObserver(() => {
+        updateClassicHandleTop();
+      })
+      : null;
 
-    if (resizeObserver && logoRef.current) {
-      resizeObserver.observe(logoRef.current);
+    if (resizeObserver && mainWrapper) {
+      resizeObserver.observe(mainWrapper);
+    }
+    if (mutationObserver && mainWrapper) {
+      mutationObserver.observe(mainWrapper, {
+        childList: true,
+        subtree: true,
+      });
     }
 
     window.addEventListener('resize', updateClassicHandleTop);
@@ -655,8 +680,9 @@ export function SideNav({
       window.cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updateClassicHandleTop);
       resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
     };
-  }, [isClassicLayout, isClassicCollapsed, shouldShowUpdateActionEntry]);
+  }, [isClassicLayout, isClassicCollapsed, page, shouldShowUpdateActionEntry]);
 
   const handleLogoClick = useCallback(() => {
     if (hasBreakoutSession) {
@@ -895,7 +921,6 @@ export function SideNav({
       <div className="nav-brand" ref={brandRef} style={{ position: 'relative', zIndex: 10 }}>
         <div className="side-nav-brand-main">
           <div
-            ref={logoRef}
             className={`brand-logo rocket-easter-egg${hasBreakoutSession ? ' rocket-easter-egg-active' : ''}`}
             onClick={handleLogoClick}
             title={hasBreakoutSession ? t('breakout.resumeGameNav', '继续游戏') : undefined}

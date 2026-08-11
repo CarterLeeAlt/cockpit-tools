@@ -36,7 +36,7 @@
 .app-container-side-nav-classic {
   --side-nav-classic-width-expanded: 205px;
   --side-nav-classic-width-collapsed: 84px;
-  --side-nav-classic-top-padding: 58px;
+  --side-nav-classic-top-padding: 40px;
   --side-nav-classic-brand-margin-top: 2px;
   --side-nav-classic-brand-height: 52px;
   --side-nav-classic-handle-width: 18px;
