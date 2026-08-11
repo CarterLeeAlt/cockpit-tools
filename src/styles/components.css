@@ -175,7 +175,7 @@
   position: relative;
   flex: 1;
   margin-inline-start: 120px; /* 增加起始侧留白，主要避开 Sidebar */
-  padding: 40px 32px 32px 0;
+  padding: 32px 32px 32px 0;
   padding-inline-start: 0;
   padding-inline-end: 32px;
   height: 100vh;
