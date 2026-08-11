@@ -164,7 +164,7 @@
   align-items: center;
   min-width: 0;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -233,7 +233,7 @@
 
 .wakeup-task-meta-status span:first-child {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .wakeup-task-meta-status span:last-child,
@@ -423,7 +423,7 @@ select.wakeup-input::-ms-expand,
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -731,7 +731,7 @@ select.wakeup-input::-ms-expand,
 }
 
 .wakeup-error-link-value {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-mono);
   word-break: break-all;
   color: var(--text-primary);
   white-space: normal;

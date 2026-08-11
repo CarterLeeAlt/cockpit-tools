@@ -125,7 +125,7 @@ body.theme-light .group-modal-item-meta {
 
 .group-quota-meta-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
   flex-shrink: 0;
@@ -193,7 +193,7 @@ body.theme-light .group-modal-item-meta {
 
 .group-quota-dropdown-menu .single-select-dropdown-item-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .group-quota-custom-input {
@@ -349,7 +349,7 @@ body.theme-light .group-modal-item-meta {
 
 .add-to-group-item .group-count {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
   min-width: 24px;
   text-align: right;

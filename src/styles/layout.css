@@ -138,7 +138,7 @@
 
 .side-nav-update-text {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -207,7 +207,7 @@
   justify-content: center;
   width: 100%;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
   color: #fff;
   letter-spacing: 0.03em;
   text-shadow: 0 1px 3px rgba(15, 23, 42, 0.4);
@@ -326,7 +326,7 @@
   padding: 6px 10px;
   border-radius: 8px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -465,7 +465,7 @@
 
 .side-nav-brand-title {
   font-size: var(--side-nav-classic-brand-title-font-size-scaled);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.01em;
   min-width: 0;
@@ -518,7 +518,7 @@
   align-items: center;
   min-width: 0;
   font-size: var(--side-nav-classic-nav-item-text-size-scaled);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -607,7 +607,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--side-nav-classic-sub-item-text-size-scaled);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .side-nav.side-nav-classic .side-nav-more-popover,
@@ -768,7 +768,7 @@ html[data-theme="dark"] .side-nav-classic-handle:hover {
 
 .side-nav-more-title {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 8px;
   padding: 0 4px;
@@ -907,7 +907,7 @@ html[data-theme="dark"] .side-nav-classic-handle:hover {
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   opacity: 0;
   pointer-events: none;
   transform: translateX(-10px);

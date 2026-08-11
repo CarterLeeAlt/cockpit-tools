@@ -90,7 +90,7 @@
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.2;
-  font-weight: 740;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -107,7 +107,7 @@
   border: 1px solid transparent;
   border-radius: 999px;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -201,7 +201,7 @@
   color: var(--text-primary);
   box-shadow: none;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -380,7 +380,7 @@
 .codex-api-service-summary-card span {
   color: var(--text-secondary);
   font-size: 10.5px;
-  font-weight: 650;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -390,7 +390,7 @@
   color: var(--text-primary);
   font-size: 18px;
   line-height: 1.1;
-  font-weight: 760;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -453,7 +453,7 @@
   color: var(--text-primary);
   font-size: 13px;
   line-height: 1.35;
-  font-weight: 760;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -504,7 +504,7 @@
   min-width: 0;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 720;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -570,7 +570,7 @@
 .codex-api-service-section-title {
   color: var(--text-secondary);
   font-size: 10.5px;
-  font-weight: 760;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
@@ -592,7 +592,7 @@
   min-width: 0;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codex-api-service-config-list label > input[type="number"],
@@ -628,7 +628,7 @@
 .codex-api-service-routing-form label > span {
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 620;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -637,7 +637,7 @@
   padding: 0 12px;
   border-radius: 12px;
   font-size: 13px;
-  font-weight: 520;
+  font-weight: 600;
   line-height: 38px;
 }
 
@@ -649,7 +649,7 @@
 
 .codex-api-service-routing-form .single-select-dropdown-value {
   font-size: 13px;
-  font-weight: 620;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -846,7 +846,7 @@
 .codex-api-service-page .codex-api-service-client-host-select .single-select-dropdown-value {
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -891,7 +891,7 @@
 .codex-api-service-client-host-menu .single-select-dropdown-item-label {
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -938,7 +938,7 @@
   min-width: 0;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1049,7 +1049,7 @@
 .codex-api-service-key-last-used strong {
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
@@ -1119,7 +1119,7 @@
   min-width: 0;
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
   overflow: hidden;
@@ -1177,7 +1177,7 @@
 .api-key-usage-grid-head span {
   color: var(--primary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-api-service-key-advanced-toggle {
@@ -1214,7 +1214,7 @@
   flex: 0 0 auto;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .api-key-policy-dirty {
@@ -1270,7 +1270,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
 .api-key-account-scope-header > span:first-child {
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 600;
   line-height: 1.35;
 }
 
@@ -1303,7 +1303,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
   background: transparent;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -1391,7 +1391,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
 .api-key-account-scope-selection strong {
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.2;
 }
 
@@ -1427,7 +1427,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
   color: var(--primary-foreground, #fff);
   content: attr(data-priority-rank);
   font-size: 8px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 11px;
   text-align: center;
 }
@@ -1468,7 +1468,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
 .codex-api-service-policy-grid label > span {
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 18px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1555,7 +1555,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
   min-width: 0;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 720;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1585,7 +1585,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
   border-color: color-mix(in srgb, var(--primary) 26%, var(--codex-api-border-soft));
   background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
   color: color-mix(in srgb, var(--primary) 76%, var(--text-primary));
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1655,14 +1655,14 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
   background: transparent;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .codex-api-service-range-tabs button small {
   color: var(--text-muted);
   font-size: 9px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codex-api-service-range-tabs button.active small {
@@ -1705,7 +1705,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 720;
+  font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
@@ -1947,7 +1947,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
 .codex-api-service-account-model-check strong {
   color: var(--text-primary);
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -1981,7 +1981,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-api-service-pricing-rows {
@@ -2226,7 +2226,7 @@ html[data-reduced-motion="true"] .codex-api-service-key-advanced-toggle[aria-exp
 .codex-api-service-log-filters label > span {
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-api-service-log-filters input {

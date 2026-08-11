@@ -123,7 +123,7 @@
 
 .stat-value {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
 }
@@ -150,7 +150,7 @@
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   cursor: help;
 }
@@ -252,7 +252,7 @@
   cursor: pointer;
   transition: all 0.2s;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   opacity: 0.9;
 }
@@ -382,7 +382,7 @@
 
 .half-label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   color: var(--text-muted);
   letter-spacing: 0.5px;
@@ -465,7 +465,7 @@
   align-items: center;
   padding: 2px 6px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   border-radius: 3px;
   position: relative;
   overflow: hidden;
@@ -607,7 +607,7 @@
 
 .quota-package-name {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   max-width: 100px;
   overflow: hidden;
@@ -719,7 +719,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .mini-progress-track {
@@ -770,7 +770,7 @@
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   margin-bottom: 0px; /* Reduced to 0 */
   line-height: 1.2; /* Tighten line height */
 }
@@ -884,7 +884,7 @@
 .codex-api-mini-stat strong {
   font-size: 16px;
   color: var(--text-primary);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Card Bottom Action - Rounded Floating Style */

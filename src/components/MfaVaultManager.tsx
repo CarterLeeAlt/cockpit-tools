@@ -495,7 +495,7 @@ export function MfaVaultManager() {
 
         return (
           <tr key={record.id}>
-            <td title={displayAccount} style={{ fontWeight: 500 }}>
+            <td title={displayAccount} style={{ fontWeight: 600 }}>
               {!isHistory && editingAccountId === record.id ? (
                 <div className="mfa-vault-account-edit-wrap">
                   <div className="mfa-vault-account-edit-row">

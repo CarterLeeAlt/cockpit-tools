@@ -72,7 +72,7 @@
 
 .qs-title {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.01em;
 }
@@ -138,7 +138,7 @@
   gap: 8px;
   padding: 6px 0 10px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -165,7 +165,7 @@
   gap: 8px;
   font-size: 13px;
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
@@ -230,7 +230,7 @@
   background: var(--bg-tertiary);
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   outline: none;
   appearance: none;
@@ -394,7 +394,7 @@
 .qs-claude-candidate-target {
   margin-top: 5px;
   color: var(--text-secondary);
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.45;
   word-break: break-all;
@@ -419,7 +419,7 @@
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -560,7 +560,7 @@
 
 .qs-codex-quick-preset-btn__label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.3;
 }
 

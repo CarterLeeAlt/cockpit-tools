@@ -1,6 +1,6 @@
 .codex-stats-range-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .codex-stats-range-tabs { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--codex-api-border, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--bg-secondary) 82%, transparent); }
-.codex-stats-range-tabs button { min-width: 34px; height: 26px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 700; cursor: pointer; }
+.codex-stats-range-tabs button { min-width: 34px; height: 26px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 600; cursor: pointer; }
 .codex-stats-range-tabs button.active { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
 .codex-stats-range-tabs button:disabled { cursor: not-allowed; opacity: .55; }
 .codex-stats-range-fields { display: inline-flex; align-items: end; gap: 6px; flex-wrap: wrap; }

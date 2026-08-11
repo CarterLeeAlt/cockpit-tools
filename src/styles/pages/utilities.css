@@ -217,7 +217,7 @@
 
 .fp-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   font-family: var(--font-mono);
 }
@@ -287,7 +287,7 @@
 
 .confirm-profile .profile-field-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   font-family: var(--font-mono);
 }
@@ -317,7 +317,7 @@
 .form-group > label {
   display: block;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 6px;
 }
@@ -1022,7 +1022,7 @@
 
 .quota-detail-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -1181,7 +1181,7 @@
 
 .pagination-info {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text-secondary);
 }
