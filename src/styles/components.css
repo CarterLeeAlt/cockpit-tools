@@ -70,7 +70,7 @@
   background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
   color: white;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   border-radius: 9px;
   display: flex;
   align-items: center;
@@ -217,7 +217,7 @@
 
 .page-heading h1 {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -385,7 +385,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;
@@ -460,7 +460,7 @@
   display: inline-flex;
   align-items: center;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
   background: var(--gradient-primary);
@@ -502,7 +502,7 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
 }
@@ -599,7 +599,7 @@
   position: absolute;
   left: 0;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
@@ -620,7 +620,7 @@
 
 .page-title {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
@@ -973,7 +973,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   padding: 10px 16px;
   border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent;
@@ -1139,7 +1139,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   flex: 1;
   min-width: 0;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   background: transparent;
   overflow: hidden;
@@ -1352,7 +1352,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   padding: 1px 6px;
   border-radius: 4px;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1365,7 +1365,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
 
 .tier-text {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
@@ -1445,7 +1445,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
 }
 
 .quota-value {
-  font-weight: 700;
+  font-weight: 600;
   font-family: var(--font-mono);
 }
 
@@ -1504,7 +1504,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
 .quota-credits-label {
   color: var(--text-primary);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* Actions */
@@ -1663,7 +1663,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
 
 .modal-header h2 {
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-primary);
   margin: 0;
@@ -1725,7 +1725,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   min-width: 0;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .mfa-quick-code-select__title svg {
@@ -1785,7 +1785,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   color: var(--primary);
   font-family: var(--font-mono);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1795,7 +1795,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   color: var(--text-tertiary);
   font-family: inherit;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -1855,7 +1855,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
 
 .modal .quota-value {
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -2529,7 +2529,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   align-items: center;
   justify-content: space-between;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -2723,7 +2723,7 @@ html[data-reduced-motion="true"] .platform-group-switcher-trigger.is-open .platf
   display: block;
   margin-bottom: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 

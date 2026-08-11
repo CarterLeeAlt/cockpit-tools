@@ -67,7 +67,7 @@
 }
 
 .codex-overview-filter-banner-count {
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   color: var(--text-primary);
 }
@@ -87,7 +87,7 @@
   min-height: 30px;
   padding: 0 12px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 [data-theme="dark"] .codex-overview-filter-banner.is-active {
@@ -121,7 +121,7 @@
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -131,7 +131,7 @@
   background: transparent;
   color: var(--primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
   white-space: nowrap;
@@ -294,7 +294,7 @@
   color: var(--text-primary);
   box-shadow: none;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -368,7 +368,7 @@
 .codex-local-access-gateway-guide-title {
   margin-bottom: 5px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -408,7 +408,7 @@
   background: var(--primary);
   color: #fff;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -458,7 +458,7 @@
 .codex-local-access-summary-text {
   min-width: 0;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -498,7 +498,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -557,7 +557,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
@@ -728,7 +728,7 @@
   background: rgba(14, 165, 233, 0.08);
   color: #0369a1;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -789,7 +789,7 @@
   background: var(--codex-local-empty-btn-bg);
   color: var(--codex-local-empty-btn-color);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -911,7 +911,7 @@
   background: rgba(37, 99, 235, 0.08);
   color: #1d4ed8;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-local-access-stats-values {
@@ -933,7 +933,7 @@
 
 .codex-local-access-stats-values b {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
@@ -1068,7 +1068,7 @@
   padding: 0 2px;
   color: #047857;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
@@ -1090,7 +1090,7 @@
 .codex-local-access-health-summary-title {
   margin-right: auto;
   color: var(--text-muted);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codex-local-access-health-summary-value {
@@ -2033,7 +2033,7 @@
 .codex-ssh-sync-modal__titles h2 {
   margin: 0;
   font-size: 18px;
-  font-weight: 720;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: var(--text-primary);
@@ -2123,7 +2123,7 @@
 .codex-ssh-panel__title {
   margin: 0;
   font-size: 16px;
-  font-weight: 680;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
 }
@@ -2202,7 +2202,7 @@
 
 .codex-ssh-panel__section-kicker {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--ssh-accent, var(--primary)) 82%, var(--text-secondary));
@@ -2212,7 +2212,7 @@
 .codex-ssh-panel__list-title {
   margin: 4px 0 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text-primary);
 }
@@ -2280,7 +2280,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background 0.16s ease,
@@ -2328,7 +2328,7 @@
 
 .codex-ssh-panel__switch-copy strong {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -2407,7 +2407,7 @@
   padding: 0 10px;
   border-radius: 999px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-secondary);
   background: var(--bg-tertiary, color-mix(in srgb, var(--bg-primary) 40%, transparent));
   border: 1px solid var(--border);
@@ -2457,7 +2457,7 @@
 .codex-ssh-panel__empty h3 {
   margin: 0;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -2560,7 +2560,7 @@
 }
 
 .codex-ssh-panel__item-title strong {
-  font-weight: 720;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -2571,7 +2571,7 @@
   padding: 0 8px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ssh-accent, var(--primary));
   background: color-mix(in srgb, var(--ssh-accent, var(--primary)) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--ssh-accent, var(--primary)) 26%, transparent);
@@ -3007,14 +3007,14 @@
   background: color-mix(in srgb, var(--primary) 7%, var(--bg-secondary));
   color: color-mix(in srgb, var(--primary) 72%, var(--text-secondary));
   border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .codex-accounts-page .codex-status-pill.pending-auth {
   background: color-mix(in srgb, var(--primary) 7%, var(--bg-secondary));
   color: color-mix(in srgb, var(--primary) 72%, var(--text-secondary));
   border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -3027,7 +3027,7 @@
   padding: 3px 8px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
 }
@@ -3089,7 +3089,7 @@
   gap: 6px;
   min-width: 0;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -3100,7 +3100,7 @@
 
 .codex-accounts-page .codex-subscription-footer-main strong {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -3114,7 +3114,7 @@
   color: inherit;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   opacity: 0.72;
@@ -3263,7 +3263,7 @@
 }
 
 .codex-quota-section .quota-pct {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
 }
 
@@ -3413,7 +3413,7 @@
   min-width: 0;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3641,7 +3641,7 @@
   margin: 0;
   color: var(--text-primary);
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -3684,7 +3684,7 @@
   background: color-mix(in srgb, #f59e0b 10%, var(--bg-tertiary));
   color: color-mix(in srgb, #b45309 82%, var(--text-primary));
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-reset-credit-confirm-expiry svg {
@@ -3710,7 +3710,7 @@
 .codex-reset-credit-confirm-details-title {
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-reset-credit-confirm-detail {
@@ -3725,7 +3725,7 @@
 
 .codex-reset-credit-confirm-detail strong {
   color: var(--text-primary);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-reset-credit-confirm-detail-status {
@@ -3739,7 +3739,7 @@
   background: color-mix(in srgb, var(--text-muted) 12%, var(--bg-tertiary));
   color: color-mix(in srgb, var(--text-secondary) 86%, var(--text-primary));
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .codex-reset-credit-confirm-detail-status.is-available {
@@ -3773,7 +3773,7 @@
   background: color-mix(in srgb, var(--bg-tertiary) 64%, transparent);
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 @media (max-width: 560px) {
@@ -3801,7 +3801,7 @@
   border-radius: 999px;
   background: #18181b;
   color: #fff;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .codex-reset-credit-confirm-action:hover:not(:disabled) {
@@ -3939,7 +3939,7 @@
   gap: 10px;
   color: #0f766e;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4269,7 +4269,7 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   font-family: var(--font-mono);
   color: var(--text-secondary);
 }
@@ -4316,7 +4316,7 @@
   padding: 2px 6px;
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
 }
@@ -4714,7 +4714,7 @@
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   border-radius: 4px;
   border: 1px solid var(--border-light);
   max-width: 100%;
@@ -4809,7 +4809,7 @@
   .codex-auto-repair-mode-select
   .single-select-dropdown-value {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
@@ -5290,7 +5290,7 @@
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   flex-shrink: 0;
 }
 
@@ -5537,7 +5537,7 @@
 .cockpit-api-card-label {
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .cockpit-api-balance-card strong,
@@ -5562,7 +5562,7 @@
   margin-top: 10px;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
   font-variant-numeric: tabular-nums;
 }
@@ -5575,7 +5575,7 @@
   margin-top: 12px;
   color: var(--cockpit-api-accent);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -5696,7 +5696,7 @@
   overflow: hidden;
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -5992,7 +5992,7 @@
 
 .codex-account-note-readonly-value.is-empty {
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .codex-account-note-input {
@@ -6129,7 +6129,7 @@
   display: block;
   max-width: 100%;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -6139,7 +6139,7 @@
   color: var(--text-muted);
   font-size: 12px;
   font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -6152,7 +6152,7 @@
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -6238,7 +6238,7 @@
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 18px;
-  font-weight: 750;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -6263,7 +6263,7 @@
   overflow: hidden;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -6574,7 +6574,7 @@
   background: linear-gradient(to bottom, var(--bg-card), var(--bg-tertiary));
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 10px 16px;
   cursor: pointer;
   display: inline-flex;
@@ -6747,7 +6747,7 @@
   background: rgba(226, 241, 251, 0.76);
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6792,7 +6792,7 @@
   margin: 0;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codex-oauth-binding-quota-input-wrap {
@@ -6808,7 +6808,7 @@
   min-width: 0;
   height: 32px;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codex-oauth-binding-quota-input-wrap > span {
@@ -6842,7 +6842,7 @@
   margin-bottom: 0;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-oauth-binding-picker-controls {
@@ -7150,7 +7150,7 @@
   overflow: hidden;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 680;
+  font-weight: 600;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7169,7 +7169,7 @@
   overflow: hidden;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 560;
+  font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
 }
@@ -7181,7 +7181,7 @@
 
 .codex-oauth-binding-row-term strong {
   color: var(--text-secondary);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-oauth-binding-row-term span:last-child {
@@ -8122,7 +8122,7 @@
   gap: 4px;
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -8237,7 +8237,7 @@
   color: #134e4a;
   border: 1px solid rgba(20, 184, 166, 0.32);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .codex-provider-detail-title-chip.sponsor {
@@ -8409,7 +8409,7 @@
 
 .codex-provider-key-name {
   font-size: 11.5px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
@@ -8495,7 +8495,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background 0.18s ease,
@@ -8576,7 +8576,7 @@
   margin: 8px 0 6px;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .codex-provider-modal .api-provider-chip-list.sponsor {
@@ -8807,7 +8807,7 @@
 .codex-external-import-modal .modal-header h2 {
   margin: 0;
   font-size: 20px;
-  font-weight: 760;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0;
 }
@@ -8850,7 +8850,7 @@
   color: var(--text-primary);
   background: rgba(37, 99, 235, 0.07);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.4;
 }
 
@@ -8905,14 +8905,14 @@
 .codex-external-import-progress-head span {
   color: var(--text-primary);
   font-size: 28px;
-  font-weight: 760;
+  font-weight: 600;
   line-height: 1;
 }
 
 .codex-external-import-progress-head strong {
   color: var(--text-secondary);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.1;
 }
 
@@ -8959,7 +8959,7 @@
 .codex-external-import-stats strong {
   color: var(--text-primary);
   font-size: 26px;
-  font-weight: 760;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -9007,7 +9007,7 @@
   background: var(--bg-primary);
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 600;
   box-shadow: 0 0 0 4px var(--bg-secondary);
 }
 
@@ -9015,7 +9015,7 @@
   min-width: 0;
   max-width: 112px;
   color: inherit;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codex-external-import-step.is-active {
@@ -9599,7 +9599,7 @@
 
 .codex-wakeup-runtime-guide-modal .modal-header h2 {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -9706,7 +9706,7 @@
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #b45309;
@@ -9746,7 +9746,7 @@
 .codex-wakeup-runtime-config-header h4 {
   margin: 0;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -9830,7 +9830,7 @@
   background: rgba(191, 219, 254, 0.22);
   color: #1e3a8a;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -9948,7 +9948,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-wakeup-empty {
@@ -10273,7 +10273,7 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   font-family: var(--font-mono);
   color: var(--text-secondary);
 }
@@ -10436,7 +10436,7 @@
 .codex-provider-batch-test-model > label {
   margin: 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
@@ -10606,7 +10606,7 @@
 .codex-wakeup-history-modal .modal-header h2,
 .codex-wakeup-results-modal .modal-header h2 {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.015em;
 }
 
@@ -10956,7 +10956,7 @@
   background: rgba(248, 250, 255, 0.96);
   color: #1d4ed8;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -11010,7 +11010,7 @@
 .codex-wakeup-results-progress-head span {
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .codex-wakeup-results-progress-head strong {
@@ -11157,7 +11157,7 @@
 
 .codex-wakeup-results-runtime-meta strong {
   color: var(--text-primary);
-  font-weight: 700;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -11245,7 +11245,7 @@
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
 }
@@ -11338,7 +11338,7 @@
   font-size: 14px;
   line-height: 1.4;
   color: var(--text-primary);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .codex-wakeup-history-run-meta {
@@ -11374,7 +11374,7 @@
 .codex-wakeup-history-stat-chip strong {
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .codex-wakeup-history-stat-chip.is-total {
@@ -12152,7 +12152,7 @@
 .codex-sync-settings-title {
   color: var(--text-primary);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
 }
 
@@ -12200,7 +12200,7 @@
   padding: 6px 0 10px;
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -12222,7 +12222,7 @@
   min-width: 0;
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .codex-sync-settings-row-control {
@@ -12243,7 +12243,7 @@
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition:
@@ -12432,7 +12432,7 @@
 
 .codex-session-manager__kind-filter .single-select-dropdown-value {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .codex-session-manager__kind-filter .single-select-dropdown-arrow {
@@ -12469,7 +12469,7 @@
   padding: 0 12px;
   gap: 6px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   border-radius: 12px;
   justify-content: center;
   white-space: nowrap;
@@ -12756,7 +12756,7 @@
 
 .codex-session-folder__label {
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   cursor: pointer;
   min-width: 0;
@@ -13465,7 +13465,7 @@
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 

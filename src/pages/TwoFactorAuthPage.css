@@ -62,7 +62,7 @@
 .query-result-code {
   font-family: var(--font-mono);
   font-size: 32px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--text-primary);
 }
@@ -115,7 +115,7 @@
   background: transparent;
   border: none;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
@@ -170,7 +170,7 @@
 
 .tfa-table th {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
   background: var(--bg-tertiary);
   position: sticky;
   top: 0;
@@ -243,7 +243,7 @@
 }
 
 .tfa-remark-cell {
-  font-weight: 500;
+  font-weight: 600;
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -299,7 +299,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }

@@ -91,7 +91,7 @@ function GuardFallback({ failure }: { failure: GuardFailure }) {
           gap: 12,
         }}
       >
-        <div style={{ fontSize: 16, fontWeight: 700 }}>{title}</div>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
         <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary, #475569)' }}>
           {message}
         </div>

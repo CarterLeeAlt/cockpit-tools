@@ -94,7 +94,7 @@
 }
 
 .legendName {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* Grid Layout */
@@ -153,7 +153,7 @@
   flex: 1;
   min-width: 80px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   display: inline-flex;
   align-items: center;
@@ -176,7 +176,7 @@
   background: rgba(239, 68, 68, 0.12);
   color: #b91c1c;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -195,7 +195,7 @@
 .tier {
   flex-shrink: 0;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
   text-transform: uppercase;
@@ -229,7 +229,7 @@
 
 .quota {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   font-family: var(--font-mono);
   white-space: nowrap;
   display: inline-flex;
@@ -302,7 +302,7 @@
   color: white;
   border-radius: 50%;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Legend item with color picker */

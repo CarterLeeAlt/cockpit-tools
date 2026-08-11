@@ -341,7 +341,7 @@
 
 .checkin-account-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -354,7 +354,7 @@
   gap: 3px;
   font-size: 11px;
   color: var(--color-warning, #f59e0b);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .checkin-credit-badge {
@@ -363,7 +363,7 @@
   gap: 3px;
   font-size: 11px;
   color: var(--color-success, #22c55e);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .checkin-streak-reward {
@@ -566,7 +566,7 @@
 
 .quota-category-label {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
 }
@@ -588,7 +588,7 @@
 
 .quota-category-value {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   font-family: var(--font-mono);
 }
@@ -664,7 +664,7 @@
 
 .quota-detail-value {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-mono);
   flex-shrink: 0;
 }
@@ -742,7 +742,7 @@
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s ease;
   cursor: pointer;
   user-select: none;
@@ -974,7 +974,7 @@
   gap: 6px;
   padding: 5px 12px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   border: none;
   background: transparent;
@@ -1088,7 +1088,7 @@
 
 .log-timestamp {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   font-family: var(--font-mono);
 }
@@ -1107,7 +1107,7 @@
 
 .log-account-name-badge {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   background: var(--bg-tertiary);
   padding: 2px 8px;
@@ -1129,7 +1129,7 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 3px 10px;
   border-radius: 12px;
 }
@@ -1207,7 +1207,7 @@
 
 .detail-status {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .detail-status.success {

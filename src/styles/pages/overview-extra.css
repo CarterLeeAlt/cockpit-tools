@@ -82,7 +82,7 @@
 
 .tier-badge {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
   text-transform: uppercase;
@@ -155,18 +155,18 @@
 
 .model-name {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .model-reset {
   margin-left: 6px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 11px;
 }
 
 .model-pct {
-  font-weight: 700;
+  font-weight: 600;
   font-family: var(--font-mono);
 }
 
@@ -207,7 +207,7 @@
   background: var(--bg-secondary);
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }

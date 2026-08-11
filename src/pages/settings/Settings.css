@@ -73,7 +73,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   min-width: 80px;
@@ -106,7 +106,7 @@
   margin: 0 0 10px;
   padding-left: 12px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: 0.02em;
   line-height: 1.2;
@@ -167,7 +167,7 @@
 
 .row-title {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -275,7 +275,7 @@
 .settings-claude-candidate-target {
   margin-top: 5px;
   color: var(--text-secondary);
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.45;
   word-break: break-all;
@@ -345,7 +345,7 @@
   background: var(--bg-tertiary);
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   outline: none;
   appearance: none;
@@ -495,7 +495,7 @@ input:checked + .slider:before {
 
 .app-info h2 {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 8px;
   text-align: center;
 }
@@ -615,7 +615,7 @@ input:checked + .slider:before {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .settings-release-history-date {
@@ -663,7 +663,7 @@ input:checked + .slider:before {
   font-size: 12px;
   color: var(--text-primary);
   line-height: 1.4;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .settings-release-history-section ul {
@@ -753,7 +753,7 @@ input:checked + .slider:before {
   color: var(--text-muted);
   line-height: 1.5;
   word-break: break-all;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
 .settings-backup-list-wrap {

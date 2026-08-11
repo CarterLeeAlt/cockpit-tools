@@ -123,7 +123,7 @@
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   border-radius: 4px;
   border: 1px solid var(--border-light);
 }
@@ -441,7 +441,7 @@
 
 .folder-inline-quota-meta {
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .folder-inline-name-input {
@@ -454,7 +454,7 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .folder-inline-name-input:focus {
@@ -614,7 +614,7 @@
 .card-quota-grid .quota-column-title,
 .quota-grid .quota-column-title {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
@@ -737,7 +737,7 @@
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   flex-shrink: 0;
 }
 

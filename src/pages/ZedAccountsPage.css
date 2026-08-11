@@ -44,7 +44,7 @@
 }
 
 .zed-accounts-page .zed-usage-metric-value {
-  font-weight: 700;
+  font-weight: 600;
   font-family: var(--font-mono);
   letter-spacing: -0.2px;
 }

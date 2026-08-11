@@ -106,7 +106,7 @@
 .grok-accounts-page-add-modal .grok-api-field-error {
   color: var(--danger);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.35;
 }
 
@@ -170,7 +170,7 @@
 
 .grok-accounts-page .grok-quota-pct-sep {
   opacity: 0.55;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .grok-accounts-page .grok-quota-summary.card .quota-reset {

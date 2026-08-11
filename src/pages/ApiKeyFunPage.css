@@ -32,7 +32,7 @@
   min-height: 100%;
   padding: 10px 0 40px;
   color: var(--ak-ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   animation: fadeUp 0.48s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -134,7 +134,7 @@ html[data-theme="dark"] .apikey-fun-page {
   color: #22d3ee;
   background: rgba(6, 182, 212, 0.12);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.5px;
   line-height: 1;
   text-transform: uppercase;
@@ -143,7 +143,7 @@ html[data-theme="dark"] .apikey-fun-page {
 .apikey-fun-brand-text h1 {
   margin: 0 0 10px;
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.5px;
   background: linear-gradient(to right, #ffffff, #93c5fd);
@@ -168,7 +168,7 @@ html[data-theme="dark"] .apikey-fun-page {
   min-height: 40px;
   padding: 0 18px;
   border-radius: 11px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
   display: inline-flex;
   align-items: center;
@@ -246,7 +246,7 @@ html[data-theme="dark"] .apikey-fun-page {
 .apikey-fun-dashboard-panel h2 {
   margin: 0;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.25;
   color: var(--ak-ink);
 }
@@ -271,7 +271,7 @@ html[data-theme="dark"] .apikey-fun-page {
   background: rgba(239, 246, 255, 0.65);
   color: #1d4ed8;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   box-shadow: var(--ak-glass-inset-glow);
 }
 
@@ -294,7 +294,7 @@ html[data-theme="dark"] .apikey-fun-page {
 
 .apikey-fun-field > span {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ak-ink);
 }
 
@@ -326,7 +326,7 @@ html[data-theme="dark"] .apikey-fun-page {
   background: transparent;
   color: var(--ak-ink);
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .apikey-fun-secret-input input::placeholder {
@@ -393,7 +393,7 @@ html[data-theme="dark"] .apikey-fun-page {
   background: #ffffff;
   color: #334155;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -442,7 +442,7 @@ html[data-theme="dark"] .apikey-fun-page {
   min-height: 24px;
   color: #0f766e;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   animation: fadeUp 0.18s ease-out;
 }
 
@@ -503,7 +503,7 @@ html[data-theme="dark"] .apikey-fun-page {
 
 .apikey-fun-usage-card span {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ak-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -511,7 +511,7 @@ html[data-theme="dark"] .apikey-fun-page {
 
 .apikey-fun-usage-card strong {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--ak-ink);
   line-height: 1.1;
   overflow: hidden;
@@ -533,7 +533,7 @@ html[data-theme="dark"] .apikey-fun-page {
   color: #0f766e;
   background: rgba(240, 253, 250, 0.68);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -554,7 +554,7 @@ html[data-theme="dark"] .apikey-fun-page {
   color: #334155;
   background: rgba(255, 255, 255, 0.8);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 600;
   line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -568,7 +568,7 @@ html[data-theme="dark"] .apikey-fun-page {
   color: var(--ak-muted);
   background: rgba(255, 255, 255, 0.42);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 /* 骨架屏 */
@@ -680,7 +680,7 @@ html[data-theme="dark"] .apikey-fun-page {
 
 .apikey-fun-key-name-row .name-text {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ak-ink);
   overflow: hidden;
   text-overflow: ellipsis;

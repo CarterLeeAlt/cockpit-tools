@@ -110,7 +110,7 @@
   padding: 0 10px;
   border-radius: 999px;
   color: #dbeafe;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
   letter-spacing: 0.03em;
   display: inline-flex;
@@ -249,7 +249,7 @@
 .breakout-history-title {
   color: #dbeafe;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -333,7 +333,7 @@
 .breakout-history-rank {
   color: #cbd5e1;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.01em;
 }
 
@@ -344,7 +344,7 @@
 .breakout-history-score {
   color: #dbeafe;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.01em;
 }
 
@@ -403,7 +403,7 @@
 .breakout-drop-count-value {
   color: #dbeafe;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -442,7 +442,7 @@
 .breakout-close-confirm-title {
   color: #dbeafe;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -468,7 +468,7 @@
   background: rgba(30, 64, 175, 0.65);
   color: #eff6ff;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.15s ease;
 }
@@ -529,7 +529,7 @@
 .breakout-start-title {
   color: #dbeafe;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -548,7 +548,7 @@
   height: 34px;
   padding: 0 18px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .breakout-serve-hint {
@@ -601,7 +601,7 @@
 .breakout-level-clear-score {
   color: #dbeafe;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 8px;
 }
 
@@ -612,7 +612,7 @@
 .breakout-rank-summary-title {
   color: #bfdbfe;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 8px;
 }
 
@@ -634,12 +634,12 @@
 
 .breakout-rank-row.is-current {
   color: #dbeafe;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .breakout-rank-index {
   color: #93c5fd;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .breakout-rank-value {
@@ -654,21 +654,21 @@
 .breakout-gameover-title {
   color: #dbeafe;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .breakout-paused-title {
   color: #dbeafe;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .breakout-level-clear-title {
   color: #dbeafe;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
 
@@ -680,7 +680,7 @@
   background: rgba(30, 64, 175, 0.7);
   color: #eff6ff;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.15s ease;
 }
