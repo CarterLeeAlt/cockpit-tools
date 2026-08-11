@@ -3,7 +3,6 @@ import {
   lazy,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -19,10 +18,8 @@ import { FileText, FolderOpen, RefreshCw, X } from 'lucide-react';
 import { SideNav } from './components/layout/SideNav';
 import { GlobalModal } from './components/GlobalModal';
 import { AnnouncementHost } from './components/AnnouncementCenter';
-import { TopCenterPromoBanner } from './components/TopCenterPromoBanner';
 import type { QuickSettingsType } from './components/QuickSettingsPopover';
 import { isMainWindowNavigablePage, type Page } from './types/navigation';
-import type { TopRightAd } from './types/topRightAd';
 import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { useEasterEggTrigger } from './hooks/useEasterEggTrigger';
 import { useGlobalModal } from './hooks/useGlobalModal';
@@ -43,7 +40,6 @@ import { useWorkbuddyAccountStore } from './stores/useWorkbuddyAccountStore';
 import { useZedAccountStore } from './stores/useZedAccountStore';
 import { useSideNavLayoutStore } from './stores/useSideNavLayoutStore';
 import { usePlatformLayoutStore } from './stores/usePlatformLayoutStore';
-import { useTopRightAdStore } from './stores/useTopRightAdStore';
 import { useSponsorStore } from './stores/useSponsorStore';
 import { useRemoteConfigStore } from './stores/useRemoteConfigStore';
 import type { UpdateCheckResult, UpdateInfo } from './components/UpdateNotification';
@@ -222,103 +218,6 @@ const RENDERABLE_PAGE_VALUES: readonly Page[] = [
 ];
 const RENDERABLE_PAGE_SET = new Set<string>(RENDERABLE_PAGE_VALUES);
 
-const TOP_PROMO_DEFAULT_EXCLUDED_PAGES: readonly Page[] = ['api-relay', 'settings'];
-const TOP_PROMO_PAGE_PLATFORM_TARGETS: Partial<Record<Page, readonly string[]>> = {
-  overview: ['antigravity', 'antigravity-ide'],
-  instances: ['antigravity', 'antigravity-ide'],
-  wakeup: ['antigravity', 'antigravity-ide'],
-  verification: ['antigravity', 'antigravity-ide'],
-  codex: ['codex'],
-  'codex-api-service': ['codex_api_service', 'codex'],
-  'codex-instances': ['codex'],
-  claude: ['claude', 'claude-manager'],
-  'claude-cli': ['claude', 'claude-manager'],
-  zed: ['zed'],
-  'github-copilot': ['github-copilot'],
-  windsurf: ['windsurf'],
-  kiro: ['kiro'],
-  cursor: ['cursor'],
-  grok: ['grok'],
-  codebuddy: ['codebuddy'],
-  'codebuddy-cn': ['codebuddy-cn'],
-  qoder: ['qoder'],
-  zcode: ['zcode'],
-  trae: ['trae', 'trae-suite'],
-  'trae-solo': ['trae-solo', 'trae-suite'],
-  'trae-cn': ['trae-cn', 'trae-suite'],
-  'trae-solo-cn': ['trae-solo-cn', 'trae-suite'],
-  workbuddy: ['workbuddy'],
-};
-
-function normalizePromoTarget(value: string): string {
-  return value.trim().toLowerCase().replace(/_/g, '-');
-}
-
-function normalizePromoTargets(values?: string[] | null): string[] {
-  if (!Array.isArray(values)) {
-    return [];
-  }
-  return values
-    .map((value) => normalizePromoTarget(value))
-    .filter(Boolean);
-}
-
-function promoTargetsMatch(configuredTargets: string[], activeTargets: Set<string>): boolean {
-  return configuredTargets.some((target) => target === '*' || activeTargets.has(target));
-}
-
-function resolveTopPromoDisplayMode(ad: TopRightAd): string {
-  const mode = ad.displayMode ? normalizePromoTarget(ad.displayMode).replace(/[^a-z0-9]/g, '') : '';
-  if (!mode) {
-    return ad.displayPages?.length || ad.displayPlatforms?.length ? 'targets' : 'all';
-  }
-  return mode;
-}
-
-function isTopPromoAdVisibleOnPage(ad: TopRightAd, page: Page): boolean {
-  const pageTargets = new Set([normalizePromoTarget(page)]);
-  const platformTargets = new Set(
-    (TOP_PROMO_PAGE_PLATFORM_TARGETS[page] ?? []).map((value) => normalizePromoTarget(value)),
-  );
-  const displayPages = normalizePromoTargets(ad.displayPages);
-  const displayPlatforms = normalizePromoTargets(ad.displayPlatforms);
-  const pageMatches = promoTargetsMatch(displayPages, pageTargets);
-  const platformMatches = promoTargetsMatch(displayPlatforms, platformTargets);
-
-  if (
-    TOP_PROMO_DEFAULT_EXCLUDED_PAGES.includes(page)
-    && !pageMatches
-    && !displayPages.includes('*')
-  ) {
-    return false;
-  }
-
-  if (promoTargetsMatch(normalizePromoTargets(ad.excludePages), pageTargets)) {
-    return false;
-  }
-  if (promoTargetsMatch(normalizePromoTargets(ad.excludePlatforms), platformTargets)) {
-    return false;
-  }
-
-  switch (resolveTopPromoDisplayMode(ad)) {
-    case 'dashboard':
-      return page === 'dashboard';
-    case 'platforms':
-      return platformMatches;
-    case 'dashboardandplatforms':
-      return page === 'dashboard' || platformMatches;
-    case 'pages':
-      return pageMatches;
-    case 'dashboardandpages':
-      return page === 'dashboard' || pageMatches;
-    case 'targets':
-      return pageMatches || platformMatches;
-    case 'all':
-    default:
-      return true;
-  }
-}
-
 function normalizeStoredActivePage(value: string | null): Page | null {
   const normalized = value?.trim();
   if (!normalized) {
@@ -352,7 +251,6 @@ interface GeneralConfig extends GeneralConfigTheme, GeneralConfigLanguage {
   antigravity_app_path: string;
   codex_app_path: string;
   codex_launch_on_switch: boolean;
-  top_right_ad_visible?: boolean;
   vscode_app_path: string;
   windsurf_app_path: string;
   kiro_app_path: string;
@@ -435,7 +333,7 @@ function getTraeAppPath(config: GeneralConfig, app: TraePlatformApp): string {
   }
 }
 
-const TOP_RIGHT_AD_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+const SPONSOR_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const REMOTE_CONFIG_FALLBACK_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const EXTERNAL_IMPORT_DEDUPE_WINDOW_MS = 30 * 1000;
 
@@ -866,20 +764,11 @@ function MainApp() {
   const autoPromptedUpdateVersionsRef = useRef<Set<string>>(new Set());
   const externalImportHandledAtRef = useRef<Map<string, number>>(new Map());
   const { showModal, closeModal } = useGlobalModal();
-  const topRightAdState = useTopRightAdStore((state) => state.state);
-  const fetchTopRightAdState = useTopRightAdStore((state) => state.fetchState);
-  const forceRefreshTopRightAdState = useTopRightAdStore((state) => state.forceRefreshState);
   const sponsorModuleState = useSponsorStore((state) => state.state);
   const fetchSponsorModuleState = useSponsorStore((state) => state.fetchState);
   const sponsorModuleInitialized = useSponsorStore((state) => state.initialized);
   const fetchRemoteConfigState = useRemoteConfigStore((state) => state.fetchState);
   const sponsorEntryVisible = Boolean(sponsorModuleState.sponsorModule);
-  const [topRightAdVisible, setTopRightAdVisible] = useState(true);
-  const topRightAdVisibleRef = useRef<boolean | null>(null);
-  const visibleTopCenterPromoAds = useMemo(
-    () => topRightAdState.ads.filter((ad) => isTopPromoAdVisibleOnPage(ad, page)),
-    [page, topRightAdState.ads],
-  );
   const trayRefreshInFlightRef = useRef(false);
   const openPlatformLayoutModal = useCallback(() => {
     setPlatformLayoutRequestedGroupId(null);
@@ -1156,44 +1045,6 @@ function MainApp() {
   }, []);
 
   useEffect(() => {
-    void fetchTopRightAdState();
-  }, [fetchTopRightAdState]);
-
-  useEffect(() => {
-    let disposed = false;
-
-    const loadTopRightAdVisible = async () => {
-      try {
-        const config = await invoke<GeneralConfig>('get_general_config');
-        if (disposed) {
-          return;
-        }
-        const nextVisible = config.top_right_ad_visible ?? true;
-        const previousVisible = topRightAdVisibleRef.current;
-        topRightAdVisibleRef.current = nextVisible;
-        setTopRightAdVisible(nextVisible);
-        if (previousVisible === false && nextVisible) {
-          void forceRefreshTopRightAdState();
-        }
-      } catch (error) {
-        if (disposed) {
-          return;
-        }
-        console.error('Failed to load top-right ad visibility config:', error);
-        topRightAdVisibleRef.current = true;
-        setTopRightAdVisible(true);
-      }
-    };
-
-    void loadTopRightAdVisible();
-    window.addEventListener('config-updated', loadTopRightAdVisible);
-    return () => {
-      disposed = true;
-      window.removeEventListener('config-updated', loadTopRightAdVisible);
-    };
-  }, [forceRefreshTopRightAdState]);
-
-  useEffect(() => {
     void fetchSponsorModuleState();
   }, [fetchSponsorModuleState]);
 
@@ -1232,24 +1083,22 @@ function MainApp() {
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      void fetchTopRightAdState();
       void fetchSponsorModuleState();
-    }, TOP_RIGHT_AD_REFRESH_INTERVAL_MS);
+    }, SPONSOR_REFRESH_INTERVAL_MS);
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [fetchSponsorModuleState, fetchTopRightAdState]);
+  }, [fetchSponsorModuleState]);
 
   useEffect(() => {
     const handleLanguageChanged = () => {
-      void fetchTopRightAdState();
       void fetchSponsorModuleState();
     };
     window.addEventListener('general-language-updated', handleLanguageChanged);
     return () => {
       window.removeEventListener('general-language-updated', handleLanguageChanged);
     };
-  }, [fetchSponsorModuleState, fetchTopRightAdState]);
+  }, [fetchSponsorModuleState]);
 
   useEffect(() => {
     if (sponsorModuleInitialized && page === 'api-relay' && !sponsorEntryVisible) {
@@ -4018,11 +3867,6 @@ function MainApp() {
       </Suspense>
 
       <div className="main-wrapper">
-        {topRightAdVisible && visibleTopCenterPromoAds.length > 0 ? (
-          <div className="app-global-promo-layer" aria-hidden={false}>
-            <TopCenterPromoBanner ads={visibleTopCenterPromoAds} reserveWhenEmpty={false} />
-          </div>
-        ) : null}
         {/* overview 现在是合并后的账号总览页面 */}
         <Suspense fallback={suspenseFallback}>
           {page === 'dashboard' && (

@@ -235,7 +235,6 @@ interface GeneralConfig {
   codex_restart_specified_app_on_switch: boolean;
   codex_local_access_entry_visible: boolean;
   codex_hide_relay_quota?: boolean;
-  top_right_ad_visible?: boolean;
   antigravity_dual_switch_no_restart_enabled: boolean;
   auto_switch_enabled: boolean;
   auto_switch_threshold: number;
@@ -665,7 +664,6 @@ export function SettingsPage() {
   const [codexRestartSpecifiedAppOnSwitch, setCodexRestartSpecifiedAppOnSwitch] = useState(false);
   const [codexLocalAccessEntryVisible, setCodexLocalAccessEntryVisible] = useState(true);
   const [codexHideRelayQuota, setCodexHideRelayQuota] = useState(false);
-  const [topRightAdVisible, setTopRightAdVisible] = useState(true);
   const [antigravityDualSwitchNoRestartEnabled, setAntigravityDualSwitchNoRestartEnabled] = useState(false);
   const [autoSwitchEnabled, setAutoSwitchEnabled] = useState(false);
   const [autoSwitchThreshold, setAutoSwitchThreshold] = useState('20');
@@ -1147,7 +1145,6 @@ export function SettingsPage() {
       codex_restart_specified_app_on_switch: codexRestartSpecifiedAppOnSwitch,
       codex_local_access_entry_visible: codexLocalAccessEntryVisible,
       codex_hide_relay_quota: codexHideRelayQuota,
-      top_right_ad_visible: topRightAdVisible,
       antigravity_dual_switch_no_restart_enabled: antigravityDualSwitchNoRestartEnabled,
       auto_switch_enabled: autoSwitchEnabled,
       auto_switch_threshold: Number.isNaN(parsedAutoSwitchThreshold)
@@ -1377,7 +1374,6 @@ export function SettingsPage() {
     codexRestartSpecifiedAppOnSwitch,
     codexLocalAccessEntryVisible,
     codexHideRelayQuota,
-    topRightAdVisible,
     antigravityDualSwitchNoRestartEnabled,
     autoSwitchEnabled,
     autoSwitchThreshold,
@@ -1759,7 +1755,6 @@ export function SettingsPage() {
       );
       setCodexLocalAccessEntryVisible(config.codex_local_access_entry_visible ?? true);
       setCodexHideRelayQuota(config.codex_hide_relay_quota ?? false);
-      setTopRightAdVisible(config.top_right_ad_visible ?? true);
       setAntigravityDualSwitchNoRestartEnabled(
         config.antigravity_dual_switch_no_restart_enabled ?? false
       );
@@ -3826,30 +3821,6 @@ export function SettingsPage() {
                   <button className="btn btn-secondary" onClick={() => accountService.openDataFolder()}>
                     <FolderOpen size={16} />{t('common.open')}
                   </button>
-                </div>
-              </div>
-
-              <div className="settings-row">
-                <div className="row-label">
-                  <div className="row-title">
-                    {t('settings.general.topRightAdVisible', '显示顶部推广')}
-                  </div>
-                  <div className="row-desc">
-                    {t(
-                      'settings.general.topRightAdVisibleDesc',
-                      '关闭后隐藏应用顶部推广位。'
-                    )}
-                  </div>
-                </div>
-                <div className="row-control">
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={topRightAdVisible}
-                      onChange={(e) => setTopRightAdVisible(e.target.checked)}
-                    />
-                    <span className="slider"></span>
-                  </label>
                 </div>
               </div>
 

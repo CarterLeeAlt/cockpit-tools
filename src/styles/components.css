@@ -185,20 +185,6 @@
   gap: 20px;
 }
 
-.app-global-promo-layer {
-  position: absolute;
-  top: 70px;
-  left: 0;
-  right: 32px;
-  height: 0;
-  z-index: 6;
-  pointer-events: none;
-}
-
-.app-global-promo-layer .global-promo-center {
-  top: 0;
-}
-
 .main-content {
   flex: 1;
   display: flex;
