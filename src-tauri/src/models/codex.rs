@@ -118,6 +118,8 @@ pub struct CodexAccount {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub account_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capsule_label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub account_structure: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub account_note: Option<String>,
@@ -427,6 +429,7 @@ impl CodexAccount {
             organization_id: None,
             agent_identity: None,
             account_name: None,
+            capsule_label: None,
             account_structure: None,
             account_note: None,
             two_factor_secret: None,

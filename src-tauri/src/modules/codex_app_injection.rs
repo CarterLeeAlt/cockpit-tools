@@ -3,6 +3,7 @@
 //! 该模块只连接实例自己的 loopback CDP 端口，不修改官方 app.asar，
 //! 也不修改官方额度或速度逻辑。额度以独立的小字段显示在 composer 操作栏下方。
 
+use crate::models::codex::CodexAccount;
 use crate::modules::{
     app_lifecycle, codex_account, codex_local_access, codex_quota, config, i18n, logger,
 };
@@ -114,8 +115,27 @@ pub fn enabled_for_app() -> bool {
     config::get_user_config().codex_app_ui_injection_enabled
 }
 
+fn is_supported_independent_account(account: &CodexAccount) -> bool {
+    codex_account::is_independent_app_injection_account(account)
+}
+
 pub fn supports_bind_account(bind_account_id: Option<&str>) -> bool {
-    bind_account_id.is_some_and(crate::modules::codex_instance::is_api_service_bind_account_id)
+    let Some(bind_account_id) = bind_account_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return false;
+    };
+    if crate::modules::codex_instance::is_api_service_bind_account_id(bind_account_id) {
+        return true;
+    }
+    if crate::modules::codex_instance::parse_provider_gateway_bind_account_id(bind_account_id)
+        .is_some()
+    {
+        return false;
+    }
+    codex_account::load_account(bind_account_id)
+        .is_some_and(|account| is_supported_independent_account(&account))
 }
 
 fn remote_debugging_port_from_command_line(command_line: &str) -> Option<u16> {
@@ -276,8 +296,9 @@ pub fn start_for_profile(
     stop_for_profile(&profile_dir);
     let key = profile_key(&profile_dir);
     let task_profile = profile_dir.clone();
+    let task_bind_account_id = bind_account_id.clone();
     let task = tauri::async_runtime::spawn(async move {
-        run_injection_loop(app, instance_id, task_profile, port).await;
+        run_injection_loop(app, instance_id, task_profile, port, task_bind_account_id).await;
     });
     if let Ok(mut items) = runtimes().lock() {
         items.insert(key, InjectionRuntime { task });
@@ -364,6 +385,7 @@ struct QuotaResponse {
     weekly_remaining_percent: Option<i64>,
     five_hour_remaining_percent: Option<i64>,
     account_count: Option<i64>,
+    account_label: Option<String>,
     available_account_count: Option<i64>,
     abnormal_account_count: Option<i64>,
     cooldown_account_count: Option<i64>,
@@ -376,6 +398,7 @@ impl QuotaResponse {
             weekly_remaining_percent: Some(0),
             five_hour_remaining_percent: Some(0),
             account_count: Some(0),
+            account_label: None,
             available_account_count: Some(0),
             abnormal_account_count: Some(0),
             cooldown_account_count: Some(0),
@@ -390,6 +413,47 @@ impl QuotaResponse {
             self
         }
     }
+}
+
+fn independent_quota_response(account: &CodexAccount) -> QuotaResponse {
+    let quota = account.quota.as_ref();
+    let weekly_remaining_percent = quota.and_then(|value| {
+        (value.weekly_window_present != Some(false))
+            .then_some(i64::from(value.weekly_percentage.clamp(0, 100)))
+    });
+    let five_hour_remaining_percent = quota.and_then(|value| {
+        (value.hourly_window_present != Some(false))
+            .then_some(i64::from(value.hourly_percentage.clamp(0, 100)))
+    });
+    let plan = account
+        .plan_type
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("Codex")
+        .to_string();
+    let quota_available = quota.is_some() && account.quota_error.is_none();
+
+    QuotaResponse {
+        weekly_remaining_percent,
+        five_hour_remaining_percent,
+        account_count: Some(1),
+        account_label: account.capsule_label.clone(),
+        available_account_count: Some(if quota_available { 1 } else { 0 }),
+        abnormal_account_count: Some(if account.quota_error.is_some() { 1 } else { 0 }),
+        cooldown_account_count: Some(0),
+        plans: vec![QuotaPlanSummary {
+            plan,
+            count: 1,
+            weekly_remaining_percent,
+            five_hour_remaining_percent,
+        }],
+    }
+}
+
+fn load_independent_quota(account_id: &str) -> Option<QuotaResponse> {
+    let account = codex_account::ensure_account_capsule_label(account_id).ok()?;
+    is_supported_independent_account(&account).then(|| independent_quota_response(&account))
 }
 
 async fn fetch_quota(
@@ -412,7 +476,12 @@ async fn fetch_quota(
         .json::<QuotaResponse>()
         .await
         .ok()
-        .map(QuotaResponse::normalize_empty_pool)
+        .map(|mut value| {
+            // API Service keeps its original account-pool label; custom labels only belong to
+            // independent accounts bound directly to a Codex profile.
+            value.account_label = None;
+            value.normalize_empty_pool()
+        })
 }
 
 #[derive(Debug, Deserialize)]
@@ -434,6 +503,11 @@ fn injection_script(
     let weekly = quota.weekly_remaining_percent;
     let five_hour = quota.five_hour_remaining_percent;
     let account_count = quota.account_count;
+    let account_label = quota
+        .account_label
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
     let available_account_count = quota.available_account_count.or(account_count);
     let abnormal_account_count = quota.abnormal_account_count.unwrap_or(0);
     let cooldown_account_count = quota.cooldown_account_count.unwrap_or(0);
@@ -442,6 +516,8 @@ fn injection_script(
     let five_hour = serde_json::to_string(&five_hour).unwrap_or_else(|_| "null".to_string());
     let account_count_value =
         serde_json::to_string(&account_count).unwrap_or_else(|_| "null".to_string());
+    let account_label_value =
+        serde_json::to_string(&account_label).unwrap_or_else(|_| "null".to_string());
     let available_account_count_value =
         serde_json::to_string(&available_account_count).unwrap_or_else(|_| "null".to_string());
     let abnormal_account_count_value =
@@ -515,6 +591,7 @@ fn injection_script(
       const weeklyPercent = {weekly};
       const fiveHourPercent = {five_hour};
       const accountCount = {account_count_value};
+      const accountLabel = {account_label_value};
       const availableAccountCount = {available_account_count_value};
       const abnormalAccountCount = {abnormal_account_count_value};
       const cooldownAccountCount = {cooldown_account_count_value};
@@ -611,7 +688,8 @@ fn injection_script(
         }};
         const detailCardStyle = 'position:fixed;z-index:4;width:min(260px,calc(100vw - 24px));box-sizing:border-box;padding:9px 11px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.16));border-radius:10px;background:var(--color-token-main-surface-primary,#fff);color:var(--color-token-text-secondary,#737373);box-shadow:0 4px 14px rgba(0,0,0,.09);font-family:inherit;font-size:12px;line-height:1.3;letter-spacing:normal;pointer-events:auto;';
         const fields = [];
-        if (Number.isFinite(accountCount) && accountCount >= 0) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.14)"></span>' + accountPoolLabel + ' ' + Math.round(accountCount) + '</button>');
+        if (accountLabel) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.14)"></span>' + escapeHtml(accountLabel) + '</button>');
+        else if (Number.isFinite(accountCount) && accountCount >= 0) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.14)"></span>' + accountPoolLabel + ' ' + Math.round(accountCount) + '</button>');
         if (Number.isFinite(fiveHourPercent)) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.14)"></span>' + fiveHourLabel + ' ' + Math.round(fiveHourPercent) + '%</button>');
         if (Number.isFinite(weeklyPercent)) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#10b981;box-shadow:0 0 0 2px rgba(16,185,129,.14)"></span>' + weeklyLabel + ' ' + Math.round(weeklyPercent) + '%</button>');
         if (fields.length) fields.push('<button type="button" data-cockpit-quota-refresh style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.20));border-radius:999px;padding:0;background:var(--color-token-main-surface-primary,rgba(127,127,127,.10));color:inherit;box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(8px);cursor:pointer;pointer-events:auto;transition:color .15s ease,border-color .15s ease,background .15s ease,opacity .15s ease"><svg data-cockpit-quota-refresh-icon viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v5h-5"></path><path d="M4 18v-5h5"></path><path d="M6.1 9a7 7 0 0 1 11.6-2.6L20 11"></path><path d="M4 13l2.3 4.6A7 7 0 0 0 17.9 15"></path></svg></button>');
@@ -816,7 +894,32 @@ async fn run_quota_refresh_singleflight(app: &AppHandle) -> Result<Option<(i32, 
     }
 }
 
-async fn run_injection_loop(app: AppHandle, _instance_id: String, profile_dir: PathBuf, port: u16) {
+async fn run_quota_refresh_for_bind(
+    app: &AppHandle,
+    bind_account_id: &str,
+) -> Result<Option<(i32, usize)>, String> {
+    if crate::modules::codex_instance::is_api_service_bind_account_id(bind_account_id) {
+        return run_quota_refresh_singleflight(app).await;
+    }
+
+    if !supports_bind_account(Some(bind_account_id)) {
+        return Err("当前绑定账号不支持独立额度刷新".to_string());
+    }
+    codex_quota::refresh_account_quota(bind_account_id)
+        .await
+        .map(|_| Some((1, 1)))
+}
+
+async fn run_injection_loop(
+    app: AppHandle,
+    _instance_id: String,
+    profile_dir: PathBuf,
+    port: u16,
+    bind_account_id: Option<String>,
+) {
+    let is_api_service = bind_account_id.as_deref().is_some_and(|account_id| {
+        crate::modules::codex_instance::is_api_service_bind_account_id(account_id)
+    });
     let client = Client::new();
     let mut last_quota_at = Instant::now() - QUOTA_REFRESH_INTERVAL;
     let mut quota = QuotaResponse::default();
@@ -832,53 +935,87 @@ async fn run_injection_loop(app: AppHandle, _instance_id: String, profile_dir: P
         if let Some(result) = refresh_tasks.try_join_next() {
             refresh_finished = true;
             match result {
-                Ok(Ok(Some((0, 0)))) => {
+                Ok(Ok(Some((0, 0)))) if is_api_service => {
                     refreshed_empty_pool = true;
                     logger::log_info("[Codex App Injection] API 服务账号池为空，额度已归零");
                 }
                 Ok(Ok(Some((success_count, total)))) if success_count as usize == total => {
                     logger::log_info(&format!(
-                        "[Codex App Injection] API 服务额度刷新完成: success={}/{}",
-                        success_count, total
+                        "[Codex App Injection] {}额度刷新完成: success={}/{}",
+                        if is_api_service {
+                            "API 服务"
+                        } else {
+                            "独立账号"
+                        },
+                        success_count,
+                        total
                     ));
                 }
                 Ok(Ok(Some((success_count, total)))) => {
                     logger::log_warn(&format!(
-                        "[Codex App Injection] API 服务额度部分刷新完成: success={}/{}",
-                        success_count, total
+                        "[Codex App Injection] {}额度部分刷新完成: success={}/{}",
+                        if is_api_service {
+                            "API 服务"
+                        } else {
+                            "独立账号"
+                        },
+                        success_count,
+                        total
                     ));
                 }
-                Ok(Ok(None)) => {
+                Ok(Ok(None)) if is_api_service => {
                     logger::log_info("[Codex App Injection] 已等待另一个实例完成 API 服务额度刷新")
                 }
+                Ok(Ok(None)) => {}
                 Ok(Err(error)) => logger::log_warn(&format!(
-                    "[Codex App Injection] API 服务额度刷新失败: {}",
-                    error
+                    "[Codex App Injection] {}额度刷新失败: {}",
+                    if is_api_service {
+                        "API 服务"
+                    } else {
+                        "独立账号"
+                    },
+                    error,
                 )),
                 Err(error) => logger::log_warn(&format!(
-                    "[Codex App Injection] API 服务额度刷新任务异常结束: {}",
-                    error
+                    "[Codex App Injection] {}额度刷新任务异常结束: {}",
+                    if is_api_service {
+                        "API 服务"
+                    } else {
+                        "独立账号"
+                    },
+                    error,
                 )),
             }
         }
         if refresh_finished || last_quota_at.elapsed() >= QUOTA_REFRESH_INTERVAL {
-            let gateway = read_profile_gateway_config(&profile_dir);
-            if let Some(value) = fetch_quota(&client, gateway.as_ref()).await {
-                quota = value;
-            }
-            if refreshed_empty_pool {
-                quota = QuotaResponse::empty_pool();
+            if is_api_service {
+                let gateway = read_profile_gateway_config(&profile_dir);
+                if let Some(value) = fetch_quota(&client, gateway.as_ref()).await {
+                    quota = value;
+                }
+                if refreshed_empty_pool {
+                    quota = QuotaResponse::empty_pool();
+                }
+            } else if let Some(account_id) = bind_account_id.as_deref() {
+                if let Some(value) = load_independent_quota(account_id) {
+                    quota = value;
+                }
             }
             last_quota_at = Instant::now();
         }
-        let gateway = read_profile_gateway_config(&profile_dir);
-        let provider_name = gateway
-            .as_ref()
-            .map(|value| value.provider_name.as_str())
-            .unwrap_or("Codex");
+        let provider_name = if is_api_service {
+            let gateway = read_profile_gateway_config(&profile_dir);
+            gateway
+                .as_ref()
+                .map(|value| value.provider_name.as_str())
+                .unwrap_or("Codex")
+                .to_string()
+        } else {
+            "Codex".to_string()
+        };
         let locale = config::get_user_config().language;
         let script = injection_script(
-            provider_name,
+            &provider_name,
             &quota,
             &locale,
             !refresh_tasks.is_empty(),
@@ -896,7 +1033,7 @@ async fn run_injection_loop(app: AppHandle, _instance_id: String, profile_dir: P
         if let Some(token) = refresh_request_token.filter(|_| refresh_tasks.is_empty()) {
             handled_refresh_token = Some(token);
             let refreshing_script = injection_script(
-                provider_name,
+                &provider_name,
                 &quota,
                 &locale,
                 true,
@@ -906,7 +1043,11 @@ async fn run_injection_loop(app: AppHandle, _instance_id: String, profile_dir: P
                 let _ = evaluate_target(target, &refreshing_script).await;
             }
             let app = app.clone();
-            refresh_tasks.spawn(async move { run_quota_refresh_singleflight(&app).await });
+            let Some(bind_account_id) = bind_account_id.clone() else {
+                continue;
+            };
+            refresh_tasks
+                .spawn(async move { run_quota_refresh_for_bind(&app, &bind_account_id).await });
         }
         tokio::time::sleep(INJECTION_INTERVAL).await;
     }
@@ -915,10 +1056,12 @@ async fn run_injection_loop(app: AppHandle, _instance_id: String, profile_dir: P
 #[cfg(test)]
 mod tests {
     use super::{
-        build_launch_args, injection_script, refresh_request_token_from_cdp_response,
+        build_launch_args, independent_quota_response, injection_script,
+        is_supported_independent_account, refresh_request_token_from_cdp_response,
         remote_debugging_port_from_command_line, supports_bind_account, QuotaPlanSummary,
         QuotaResponse,
     };
+    use crate::models::codex::{CodexAccount, CodexQuota, CodexTokens};
     use serde_json::json;
 
     #[test]
@@ -947,13 +1090,62 @@ mod tests {
     }
 
     #[test]
-    fn only_api_service_binding_supports_quota_injection() {
+    fn api_service_and_supported_independent_accounts_support_injection() {
         assert!(supports_bind_account(Some("__api_service__")));
         assert!(!supports_bind_account(Some("api-key-account")));
         assert!(!supports_bind_account(Some(
             "__provider_gateway__:custom-provider"
         )));
         assert!(!supports_bind_account(None));
+
+        let oauth = CodexAccount::new(
+            "oauth-account".to_string(),
+            "oauth@example.com".to_string(),
+            CodexTokens {
+                id_token: "id-token".to_string(),
+                access_token: "access-token".to_string(),
+                refresh_token: Some("refresh-token".to_string()),
+            },
+        );
+        assert!(is_supported_independent_account(&oauth));
+
+        let pat = CodexAccount::new(
+            "pat-account".to_string(),
+            "pat@example.com".to_string(),
+            CodexTokens {
+                id_token: String::new(),
+                access_token: "at-personal-token".to_string(),
+                refresh_token: None,
+            },
+        );
+        assert!(is_supported_independent_account(&pat));
+
+        let mut web_session = pat.clone();
+        web_session.token_source_mode = "chatgpt_web_session".to_string();
+        assert!(!is_supported_independent_account(&web_session));
+
+        let access_token_only = CodexAccount::new(
+            "access-token-only".to_string(),
+            "access@example.com".to_string(),
+            CodexTokens {
+                id_token: String::new(),
+                access_token: "opaque-access-token".to_string(),
+                refresh_token: None,
+            },
+        );
+        assert!(!is_supported_independent_account(&access_token_only));
+
+        let api_key = CodexAccount::new_api_key(
+            "api-key".to_string(),
+            "api@example.com".to_string(),
+            "sk-test".to_string(),
+            crate::models::codex::CodexApiProviderMode::OpenaiBuiltin,
+            None,
+            None,
+            None,
+            Vec::new(),
+        );
+        assert!(!is_supported_independent_account(&api_key));
     }
 
     #[test]
@@ -996,6 +1188,7 @@ mod tests {
                 weekly_remaining_percent: Some(1387),
                 five_hour_remaining_percent: Some(100),
                 account_count: Some(14),
+                account_label: None,
                 available_account_count: Some(12),
                 abnormal_account_count: Some(2),
                 cooldown_account_count: Some(0),
@@ -1012,6 +1205,7 @@ mod tests {
         );
         assert!(script.contains("const accountPoolLabel = \"账号\""));
         assert!(script.contains("const accountCount = 14"));
+        assert!(script.contains("const accountLabel = null"));
         assert!(script.contains("const weeklyLabel = \"周\""));
         assert!(script.contains("const fiveHourLabel = \"5h\""));
         assert!(script.contains("data-cockpit-quota-footer"));
@@ -1083,6 +1277,45 @@ mod tests {
         );
         assert!(script.contains("const weeklyPercent = null"));
         assert!(script.contains("const fiveHourPercent = 63"));
+    }
+
+    #[test]
+    fn independent_account_quota_uses_custom_label_and_cached_windows() {
+        let mut account = CodexAccount::new(
+            "oauth-account".to_string(),
+            "oauth@example.com".to_string(),
+            CodexTokens {
+                id_token: "id-token".to_string(),
+                access_token: "access-token".to_string(),
+                refresh_token: Some("refresh-token".to_string()),
+            },
+        );
+        account.capsule_label = Some("QmZrTa".to_string());
+        account.plan_type = Some("PLUS".to_string());
+        account.quota = Some(CodexQuota {
+            hourly_percentage: 82,
+            hourly_reset_time: None,
+            hourly_window_minutes: None,
+            hourly_window_present: Some(true),
+            weekly_percentage: 64,
+            weekly_reset_time: None,
+            weekly_window_minutes: None,
+            weekly_window_present: Some(true),
+            reset_credits_available: None,
+            reset_credits: Vec::new(),
+            reset_credits_next_expires_at: None,
+            raw_data: None,
+        });
+
+        let quota = independent_quota_response(&account);
+        assert_eq!(quota.account_count, Some(1));
+        assert_eq!(quota.account_label.as_deref(), Some("QmZrTa"));
+        assert_eq!(quota.five_hour_remaining_percent, Some(82));
+        assert_eq!(quota.weekly_remaining_percent, Some(64));
+
+        let script = injection_script("Codex", &quota, "en", false, None);
+        assert!(script.contains("const accountLabel = \"QmZrTa\""));
+        assert!(script.contains("escapeHtml(accountLabel)"));
     }
 
     #[test]

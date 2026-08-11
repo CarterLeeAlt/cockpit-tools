@@ -1543,6 +1543,14 @@ pub fn update_codex_account_name(account_id: String, name: String) -> Result<Cod
 }
 
 #[tauri::command]
+pub fn update_codex_account_capsule_label(
+    account_id: String,
+    label: String,
+) -> Result<CodexAccount, String> {
+    codex_account::update_account_capsule_label(&account_id, label)
+}
+
+#[tauri::command]
 pub fn update_codex_api_key_credentials(
     account_id: String,
     api_key: String,

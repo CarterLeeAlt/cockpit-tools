@@ -693,8 +693,8 @@ fn default_auto_refresh() -> i32 {
     10
 } // 默认 10 分钟
 fn default_codex_auto_refresh() -> i32 {
-    10
-} // 默认 10 分钟
+    2
+} // 默认 2 分钟
 fn default_codex_sync_wsl() -> bool {
     false
 }
@@ -2562,6 +2562,15 @@ mod tests {
         }))
         .expect("显式关闭配置反序列化应成功");
         assert!(!disabled_cfg.codex_app_ui_injection_enabled);
+    }
+
+    #[test]
+    fn codex_auto_refresh_defaults_to_two_minutes() {
+        assert_eq!(UserConfig::default().codex_auto_refresh_minutes, 2);
+
+        let migrated_cfg: UserConfig =
+            serde_json::from_value(serde_json::json!({})).expect("旧配置反序列化应成功");
+        assert_eq!(migrated_cfg.codex_auto_refresh_minutes, 2);
     }
 
     #[test]
