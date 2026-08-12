@@ -174,14 +174,22 @@
 }
 
 .codex-api-service-hero-actions .btn {
-  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 30px;
   padding: 0 10px;
+  gap: 6px;
   border-radius: 9px;
   font-size: 12px;
+  line-height: 1;
   white-space: nowrap;
 }
 
 .codex-api-service-hero-actions .btn svg {
+  display: block;
+  flex: 0 0 auto;
   width: 13px;
   height: 13px;
 }

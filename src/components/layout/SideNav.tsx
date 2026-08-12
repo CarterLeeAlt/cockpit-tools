@@ -1025,11 +1025,11 @@ export function SideNav({
           <button
             className={`nav-item ${page === '2fa' && !shouldLockActiveOnMore ? 'active' : ''}`}
             onClick={() => setPage('2fa')}
-            title={t('nav.2faManager', '2FA / MFA 管理')}
+            title="2FA"
           >
             <ShieldCheck size={isClassicLayout ? classicMainIconSize : 20} />
             {showClassicLabels ? (
-              <span className="nav-item-text">{t('nav.2faManager', '2FA / MFA 管理')}</span>
+              <span className="nav-item-text">2FA</span>
             ) : null}
           </button>
 
