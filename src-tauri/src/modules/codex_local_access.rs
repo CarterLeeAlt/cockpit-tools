@@ -93,7 +93,6 @@ const SIDECAR_MESSAGE_LOCALES: &[&str] = &[
 ];
 const CODEX_LOCAL_ACCESS_SIDECAR_API_KEY_PRIORITY_FILE: &str = "api-key-priorities.json";
 const CODEX_LOCAL_ACCESS_SIDECAR_QUOTA_RESERVE_FILE: &str = "quota-reserve.json";
-const CODEX_LOCAL_ACCESS_SIDECAR_QUOTA_POOL_FILE: &str = "quota-pool-state.json";
 const CODEX_LOCAL_ACCESS_SIDECAR_AUTHS_DIR: &str = "auths";
 const CODEX_LOCAL_ACCESS_SIDECAR_BIN_NAME: &str = "cockpit-cliproxy";
 const SIDECAR_SERVICE_TIER_SUPPORTED_MODEL_PATTERN: &str = "*";
@@ -167,7 +166,6 @@ const BOUND_OAUTH_QUOTA_RESERVE_MAX_PERCENT: i32 = 100;
 const BOUND_OAUTH_QUOTA_RESERVE_MAX_SNAPSHOT_AGE_SECONDS: i64 = 3 * 60;
 const BOUND_OAUTH_QUOTA_RESERVE_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 const BOUND_OAUTH_QUOTA_RESERVE_MONITOR_TICK: Duration = Duration::from_secs(5);
-const BOUND_OAUTH_QUOTA_RESERVE_REQUEST_REFRESH_MIN_INTERVAL: Duration = Duration::from_secs(30);
 const GATEWAY_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
 const GATEWAY_PORT_RELEASE_TIMEOUT: Duration = Duration::from_secs(5);
 const GATEWAY_PORT_RELEASE_POLL_INTERVAL: Duration = Duration::from_millis(100);
@@ -10156,7 +10154,6 @@ struct SidecarLaunchConfig {
     config_path: PathBuf,
     manifest_path: PathBuf,
     quota_reserve_path: PathBuf,
-    quota_pool_path: PathBuf,
     fingerprint: String,
     proxy_signature: UpstreamHttpClientSignature,
 }
@@ -10276,10 +10273,6 @@ fn sidecar_api_key_priority_path(base_dir: &Path) -> PathBuf {
 
 fn sidecar_quota_reserve_path(base_dir: &Path) -> PathBuf {
     base_dir.join(CODEX_LOCAL_ACCESS_SIDECAR_QUOTA_RESERVE_FILE)
-}
-
-fn sidecar_quota_pool_path(base_dir: &Path) -> PathBuf {
-    base_dir.join(CODEX_LOCAL_ACCESS_SIDECAR_QUOTA_POOL_FILE)
 }
 
 fn sidecar_auths_dir(base_dir: &Path) -> PathBuf {
@@ -11319,73 +11312,6 @@ fn write_sidecar_quota_reserve_state_in_dir(
     Ok(path)
 }
 
-fn sidecar_quota_pool_window_value(
-    percentage: i32,
-    window_minutes: Option<i64>,
-    present: Option<bool>,
-    reset_at: Option<i64>,
-) -> Value {
-    let resolved_present =
-        present.unwrap_or(window_minutes.is_some() || reset_at.is_some() || percentage > 0);
-    json!({
-        "present": resolved_present,
-        "remainingPercent": percentage.clamp(0, 100),
-        "windowMinutes": window_minutes.filter(|value| *value > 0),
-        "resetAt": reset_at,
-    })
-}
-
-fn sidecar_quota_pool_state_value(collection: &CodexLocalAccessCollection) -> Value {
-    let mut accounts = Map::new();
-    for account_id in effective_sidecar_account_ids(collection) {
-        let Some(account) = codex_account::load_account(&account_id) else {
-            continue;
-        };
-        let Some(quota) = account.quota.as_ref() else {
-            continue;
-        };
-        accounts.insert(
-            account_id,
-            json!({
-                "primary": sidecar_quota_pool_window_value(
-                    quota.hourly_percentage,
-                    quota.hourly_window_minutes,
-                    quota.hourly_window_present,
-                    quota.hourly_reset_time,
-                ),
-                "secondary": sidecar_quota_pool_window_value(
-                    quota.weekly_percentage,
-                    quota.weekly_window_minutes,
-                    quota.weekly_window_present,
-                    quota.weekly_reset_time,
-                ),
-                "updatedAt": account.usage_updated_at,
-            }),
-        );
-    }
-    json!({ "accounts": accounts })
-}
-
-fn write_sidecar_quota_pool_state_in_dir(
-    collection: &CodexLocalAccessCollection,
-    base_dir: &Path,
-) -> Result<PathBuf, String> {
-    std::fs::create_dir_all(base_dir)
-        .map_err(|error| format!("创建 API 服务 sidecar 额度目录失败: {}", error))?;
-    let path = sidecar_quota_pool_path(base_dir);
-    let content = serde_json::to_string_pretty(&sidecar_quota_pool_state_value(collection))
-        .map_err(|error| format!("序列化 API 服务额度池快照失败: {}", error))?;
-    write_string_atomic_if_changed(&path, &content)?;
-    Ok(path)
-}
-
-fn write_sidecar_quota_pool_state(
-    collection: &CodexLocalAccessCollection,
-) -> Result<PathBuf, String> {
-    let base_dir = local_access_sidecar_dir()?;
-    write_sidecar_quota_pool_state_in_dir(collection, &base_dir)
-}
-
 fn sidecar_account_manifest_value(
     account: &CodexAccount,
     auth_id: Option<&str>,
@@ -12208,7 +12134,6 @@ fn prepare_sidecar_launch_config_in_dir_sync(
     let config_path = sidecar_config_path(&base_dir);
     let manifest_path = sidecar_manifest_path(&base_dir);
     let quota_reserve_path = sidecar_quota_reserve_path(&base_dir);
-    let quota_pool_path = sidecar_quota_pool_path(&base_dir);
     let config_content = serde_json::to_string_pretty(&Value::Object(config))
         .map_err(|e| format!("序列化 sidecar 配置失败: {}", e))?;
     let manifest_content = serde_json::to_string_pretty(&manifest)
@@ -12218,13 +12143,11 @@ fn prepare_sidecar_launch_config_in_dir_sync(
     write_string_atomic_if_changed(&manifest_path, &manifest_content)?;
     write_sidecar_api_key_priority_state_in_dir(collection, &base_dir)?;
     write_sidecar_quota_reserve_state_in_dir(collection, &base_dir)?;
-    write_sidecar_quota_pool_state_in_dir(collection, &base_dir)?;
 
     Ok(SidecarLaunchConfig {
         config_path,
         manifest_path,
         quota_reserve_path,
-        quota_pool_path,
         fingerprint,
         proxy_signature,
     })
@@ -15459,6 +15382,7 @@ async fn bound_oauth_quota_refresh_target() -> Option<String> {
 }
 
 async fn refresh_bound_oauth_quota_if_due(reason: &'static str, min_interval: Duration) {
+    let trigger_reason = reason;
     let Some(account_id) = bound_oauth_quota_refresh_target().await else {
         return;
     };
@@ -15481,7 +15405,8 @@ async fn refresh_bound_oauth_quota_if_due(reason: &'static str, min_interval: Du
         control.last_started_at = Some(Instant::now());
     }
 
-    let result = codex_quota::refresh_account_quota(&account_id).await;
+    let refresh_reason = crate::modules::codex_quota_coordinator::RefreshReason::ApiReserve;
+    let result = codex_quota::refresh_account_quota_for_reason(&account_id, refresh_reason).await;
     {
         let mut control = bound_oauth_quota_refresh_control().lock().await;
         control.in_flight = false;
@@ -15490,17 +15415,19 @@ async fn refresh_bound_oauth_quota_if_due(reason: &'static str, min_interval: Du
     match result {
         Ok(_) => logger::log_codex_api_info(&format!(
             "[CodexLocalAccess] 绑定 OAuth 配额刷新完成: reason={}, account_id={}",
-            reason, account_id
+            trigger_reason, account_id
         )),
         Err(error) => logger::log_codex_api_warn(&format!(
             "[CodexLocalAccess] 绑定 OAuth 配额刷新失败: reason={}, account_id={}, error={}",
-            reason, account_id, error
+            trigger_reason, account_id, error
         )),
     }
 }
 
 fn trigger_bound_oauth_quota_refresh_in_background(reason: &'static str, min_interval: Duration) {
-    tauri::async_runtime::spawn(refresh_bound_oauth_quota_if_due(reason, min_interval));
+    tauri::async_runtime::spawn(async move {
+        refresh_bound_oauth_quota_if_due(reason, min_interval).await;
+    });
 }
 
 fn ensure_bound_oauth_quota_monitor_started() {
@@ -15536,7 +15463,7 @@ pub async fn reevaluate_bound_oauth_quota_reserve_after_refresh(
             failures.insert(account_id.to_string());
         }
     }
-    let (matching_collection, active_collection) = {
+    let matching_collection = {
         let mut runtime = gateway_runtime().lock().await;
         let collection = runtime
             .collection
@@ -15551,19 +15478,8 @@ pub async fn reevaluate_bound_oauth_quota_reserve_after_refresh(
         if collection.is_some() {
             runtime.prepared_accounts.remove(account_id);
         }
-        (collection, runtime.collection.clone())
+        collection
     };
-
-    if let Some(collection) = active_collection {
-        if collection_gateway_mode(&collection) == CodexLocalAccessGatewayMode::Sidecar {
-            if let Err(error) = write_sidecar_quota_pool_state(&collection) {
-                logger::log_codex_api_warn(&format!(
-                    "[CodexLocalAccess] API 服务额度池快照热更新失败: {}",
-                    error
-                ));
-            }
-        }
-    }
 
     if let Some(collection) = matching_collection {
         if collection_gateway_mode(&collection) == CodexLocalAccessGatewayMode::Sidecar {
@@ -15769,8 +15685,6 @@ async fn ensure_gateway_matches_runtime_locked() -> Result<(), String> {
         .arg(&launch_config.manifest_path)
         .arg("--quota-reserve-state")
         .arg(&launch_config.quota_reserve_path)
-        .arg("--quota-pool-state")
-        .arg(&launch_config.quota_pool_path)
         .arg("--parent-pid")
         .arg(std::process::id().to_string())
         .current_dir(
@@ -16437,12 +16351,9 @@ async fn record_request_stats_with_meta(
     schedule_stats_flush_if_needed().await;
     if success {
         if let Some(account_id) = account_id {
-            if bound_oauth_quota_refresh_target().await.as_deref() == Some(account_id) {
-                trigger_bound_oauth_quota_refresh_in_background(
-                    "绑定账号请求完成",
-                    BOUND_OAUTH_QUOTA_RESERVE_REQUEST_REFRESH_MIN_INTERVAL,
-                );
-            }
+            crate::modules::codex_quota_coordinator::trigger_api_request_refresh(
+                account_id.to_string(),
+            );
         }
     }
     Ok(())
@@ -18084,8 +17995,6 @@ async fn spawn_provider_gateway_sidecar(
         .arg(&launch_config.manifest_path)
         .arg("--quota-reserve-state")
         .arg(&launch_config.quota_reserve_path)
-        .arg("--quota-pool-state")
-        .arg(&launch_config.quota_pool_path)
         .arg("--parent-pid")
         .arg(std::process::id().to_string())
         .current_dir(

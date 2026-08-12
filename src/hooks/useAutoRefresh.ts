@@ -44,14 +44,13 @@ import {
 } from '../utils/autoRefreshScheduler';
 import { CURRENT_ACCOUNT_CHANGED_EVENT } from '../utils/accountSyncEvents';
 import { refreshCodexApiKeyUsageForAccounts } from '../services/codexApiKeyUsageRefreshService';
-import * as codexService from '../services/codexService';
 import {
   getCodexAccountGroups,
-  getCodexCustomQuotaRefreshAccountIdsByMinutes,
-  getCodexInheritPlatformQuotaRefreshAccountIds,
   resolveCodexGroupQuotaAutoRefreshMinutes,
 } from '../services/codexAccountGroupService';
-import { isCodexApiKeyAccount, isCodexNewApiAccount } from '../types/codex';
+
+const CODEX_QUOTA_UPDATED_EVENT = 'codex:quota-updated';
+const CODEX_API_KEY_USAGE_REFRESH_MINUTES = 10;
 
 interface GeneralConfig {
   language: string;
@@ -256,8 +255,6 @@ export function useAutoRefresh() {
 
   const antigravityRefreshingRef = useRef(false);
   const antigravityCurrentRefreshingRef = useRef(false);
-  const codexRefreshingRef = useRef(false);
-  const codexCurrentRefreshingRef = useRef(false);
   const claudeRefreshingRef = useRef(false);
   const claudeCurrentRefreshingRef = useRef(false);
   const ghcpRefreshingRef = useRef(false);
@@ -420,7 +417,6 @@ export function useAutoRefresh() {
             await refreshProviderToken(accountId);
           };
 
-          // Codex 分组额度策略：继承平台 / 自定义间隔 / 不刷新（最高优先级）
           const codexGroups = await getCodexAccountGroups().catch(() => []);
           const codexCurrentAccount = useCodexAccountStore.getState().currentAccount;
           let codexCurrentMinutes = resolveCurrentMinutes(
@@ -439,10 +435,9 @@ export function useAutoRefresh() {
               codexCurrentMinutes = policy;
             }
           }
-          const codexCustomRefreshByMinutes =
-            await getCodexCustomQuotaRefreshAccountIdsByMinutes().catch(
-              () => new Map<number, string[]>(),
-            );
+          await invoke('configure_codex_quota_coordinator', {
+            currentMinutes: codexCurrentMinutes,
+          });
 
           const descriptors: PlatformRefreshDescriptor[] = [
             {
@@ -465,61 +460,6 @@ export function useAutoRefresh() {
                 await invoke('refresh_current_quota');
                 await fetchAccounts();
                 await fetchCurrentAccount();
-              },
-            },
-            {
-              key: 'codex',
-              label: 'Codex',
-              intervalMinutes: config.codex_auto_refresh_minutes,
-              currentMinutes: codexCurrentMinutes,
-              fullRefreshingRef: codexRefreshingRef,
-              currentRefreshingRef: codexCurrentRefreshingRef,
-              runFullRefresh: async () => {
-                try {
-                  // 平台间隔只刷「继承平台 + 未分组」；自定义间隔分组由独立任务负责
-                  const accounts = useCodexAccountStore.getState().accounts;
-                  const refreshableIds = accounts
-                    .filter(
-                      (account) =>
-                        !isCodexApiKeyAccount(account) || isCodexNewApiAccount(account),
-                    )
-                    .map((account) => account.id);
-                  const inheritIds =
-                    await getCodexInheritPlatformQuotaRefreshAccountIds(refreshableIds);
-                  if (inheritIds.length > 0) {
-                    await codexService.refreshCodexQuotasBatch(inheritIds, {
-                      respectGroupQuotaRefresh: true,
-                    });
-                  }
-                } finally {
-                  await refreshCodexApiKeyUsageForAccounts(
-                    useCodexAccountStore.getState().accounts,
-                  ).catch((error) => {
-                    console.error('[AutoRefresh] Codex API Key usage refresh failed:', error);
-                  });
-                  await fetchCodexAccounts();
-                  await fetchCurrentCodexAccount();
-                }
-              },
-              runCurrentRefresh: async () => {
-                if (!useCodexAccountStore.getState().currentAccount?.id) {
-                  await fetchCurrentCodexAccount();
-                }
-                if (!useCodexAccountStore.getState().currentAccount?.id) {
-                  return;
-                }
-                try {
-                  await invoke('refresh_current_codex_quota');
-                  await fetchCodexAccounts();
-                  await fetchCurrentCodexAccount();
-                } finally {
-                  const currentAccount = useCodexAccountStore.getState().currentAccount;
-                  if (currentAccount) {
-                    await refreshCodexApiKeyUsageForAccounts([currentAccount]).catch((error) => {
-                      console.error('[AutoRefresh] Codex API Key usage refresh failed:', error);
-                    });
-                  }
-                }
               },
             },
             {
@@ -816,41 +756,19 @@ export function useAutoRefresh() {
             }
           }
 
-          // Codex 分组自定义间隔：独立调度（最高优先级，不依赖平台间隔是否开启）
-          for (const [minutes, accountIds] of codexCustomRefreshByMinutes.entries()) {
-            if (minutes <= 0 || accountIds.length === 0) {
-              continue;
-            }
-            const uniqueIds = [...new Set(accountIds.filter(Boolean))];
-            if (uniqueIds.length === 0) {
-              continue;
-            }
-            console.log(
-              `[AutoRefresh] Codex 分组自定义刷新: 每 ${minutes} 分钟, accounts=${uniqueIds.length}`,
-            );
-            tasks.push({
-              key: `full:codex-group:${minutes}`,
-              label: `Codex 分组自定义刷新 (${minutes}m)`,
-              intervalMs: minutesToMs(minutes),
-              run: () =>
-                executeWithGuard(
-                  codexRefreshingRef,
-                  async () => {
-                    try {
-                      // 自定义分组任务目标明确，不因「不刷新」外的策略再过滤
-                      await codexService.refreshCodexQuotasBatch(uniqueIds, {
-                        respectGroupQuotaRefresh: false,
-                      });
-                    } finally {
-                      await fetchCodexAccounts();
-                      await fetchCurrentCodexAccount();
-                    }
-                  },
-                  `[AutoRefresh] 触发 Codex 分组自定义刷新 (${minutes}m)...`,
-                  `[AutoRefresh] Codex 分组自定义刷新失败 (${minutes}m):`,
-                ),
-            });
-          }
+          tasks.push({
+            key: 'usage:codex-api-key',
+            label: 'Codex API Key usage',
+            intervalMs: minutesToMs(CODEX_API_KEY_USAGE_REFRESH_MINUTES),
+            run: async () => {
+              await refreshCodexApiKeyUsageForAccounts(
+                useCodexAccountStore.getState().accounts,
+                { maxAgeMs: minutesToMs(CODEX_API_KEY_USAGE_REFRESH_MINUTES) },
+              ).catch((error) => {
+                console.error('[AutoRefresh] Codex API Key usage refresh failed:', error);
+              });
+            },
+          });
 
           if (tasks.length > 0) {
             const scheduler = createAutoRefreshScheduler(tasks, {
@@ -931,6 +849,7 @@ export function useAutoRefresh() {
     destroyedRef.current = false;
     let disposed = false;
     let unlistenCurrentAccount: UnlistenFn | undefined;
+    let unlistenCodexQuota: UnlistenFn | undefined;
     let startupTimer = window.setTimeout(() => {
       startupTimer = 0;
       console.log(
@@ -956,6 +875,15 @@ export function useAutoRefresh() {
         unlistenCurrentAccount = unlisten;
       }
     });
+    void listen(CODEX_QUOTA_UPDATED_EVENT, () => {
+      void Promise.all([fetchCodexAccounts(), fetchCurrentCodexAccount()]);
+    }).then((unlisten) => {
+      if (disposed) {
+        unlisten();
+      } else {
+        unlistenCodexQuota = unlisten;
+      }
+    });
 
     return () => {
       disposed = true;
@@ -966,6 +894,7 @@ export function useAutoRefresh() {
       }
       stopScheduler();
       unlistenCurrentAccount?.();
+      unlistenCodexQuota?.();
       window.removeEventListener('config-updated', handleConfigUpdate);
     };
   }, [setupAutoRefresh, stopScheduler]);

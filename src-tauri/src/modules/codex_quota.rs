@@ -24,6 +24,7 @@ const CHATGPT_WEB_REFERER: &str = "https://chatgpt.com/";
 const CHATGPT_WEB_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
 const RESET_CREDITS_MOCK_JSON_ENV: &str = "CODEX_RESET_CREDITS_MOCK_JSON";
 const SUBSCRIPTION_RETRY_INTERVAL_SECONDS: i64 = 30 * 60;
+const SUBSCRIPTION_REFRESH_INTERVAL_SECONDS: i64 = 60 * 60;
 const HTTP_ERROR_BODY_DISPLAY_MAX_CHARS: usize = 4000;
 
 fn get_header_value(headers: &HeaderMap, name: &str) -> String {
@@ -486,6 +487,14 @@ fn should_attempt_subscription_refresh(
     }
 
     let now = now_timestamp();
+    if account
+        .subscription_query_last_attempt_at
+        .is_some_and(|last_attempt_at| {
+            now.saturating_sub(last_attempt_at) < SUBSCRIPTION_REFRESH_INTERVAL_SECONDS
+        })
+    {
+        return false;
+    }
     account
         .subscription_query_next_retry_at
         .map(|next_retry_at| next_retry_at <= now)
@@ -1671,17 +1680,7 @@ async fn refresh_account_quota_once(
     Ok(result.quota)
 }
 
-pub async fn refresh_account_quota(account_id: &str) -> Result<CodexQuota, String> {
-    let result = refresh_account_quota_once(account_id, RefreshQuotaOptions::default()).await;
-    crate::modules::codex_local_access::reevaluate_bound_oauth_quota_reserve_after_refresh(
-        account_id,
-        result.is_ok(),
-    )
-    .await;
-    result
-}
-
-pub async fn refresh_account_quota_with_options(
+pub(crate) async fn refresh_account_quota_uncoordinated(
     account_id: &str,
     options: RefreshQuotaOptions,
 ) -> Result<CodexQuota, String> {
@@ -1692,6 +1691,39 @@ pub async fn refresh_account_quota_with_options(
     )
     .await;
     result
+}
+
+pub async fn refresh_account_quota(account_id: &str) -> Result<CodexQuota, String> {
+    crate::modules::codex_quota_coordinator::refresh_account(
+        account_id,
+        crate::modules::codex_quota_coordinator::RefreshReason::Manual,
+        RefreshQuotaOptions::default(),
+    )
+    .await
+}
+
+pub async fn refresh_account_quota_for_reason(
+    account_id: &str,
+    reason: crate::modules::codex_quota_coordinator::RefreshReason,
+) -> Result<CodexQuota, String> {
+    crate::modules::codex_quota_coordinator::refresh_account(
+        account_id,
+        reason,
+        RefreshQuotaOptions::default(),
+    )
+    .await
+}
+
+pub async fn refresh_account_quota_with_options(
+    account_id: &str,
+    options: RefreshQuotaOptions,
+) -> Result<CodexQuota, String> {
+    crate::modules::codex_quota_coordinator::refresh_account(
+        account_id,
+        crate::modules::codex_quota_coordinator::RefreshReason::Manual,
+        options,
+    )
+    .await
 }
 
 pub async fn probe_import_account_quota(account: &CodexAccount) -> Result<CodexQuota, String> {
@@ -1723,13 +1755,14 @@ pub async fn refresh_account_subscription_info(
         return Err("API Key 账号不支持刷新订阅信息".to_string());
     }
     if account.is_agent_identity_auth() {
-        let quota = fetch_quota(&account).await?;
-        account = codex_account::load_account(&account.id).unwrap_or(account);
-        if quota.plan_type.is_some() {
-            sync_subscription_from_token(&mut account, quota.plan_type, None);
-            codex_account::save_account(&account)?;
-        }
-        return Ok(account);
+        crate::modules::codex_quota_coordinator::refresh_account(
+            account_id,
+            crate::modules::codex_quota_coordinator::RefreshReason::Manual,
+            RefreshQuotaOptions::default(),
+        )
+        .await?;
+        return codex_account::load_account(account_id)
+            .ok_or_else(|| format!("未找到 Codex 账号: {}", account_id));
     }
 
     if crate::modules::codex_oauth::is_token_expired(&account.tokens.access_token) {
@@ -1767,6 +1800,19 @@ pub async fn refresh_quotas_for_account_ids(
 pub async fn refresh_quotas_for_account_ids_with_options(
     account_ids: &[String],
     respect_group_quota_refresh: bool,
+) -> Result<Vec<(String, Result<CodexQuota, String>)>, String> {
+    refresh_quotas_for_account_ids_with_reason(
+        account_ids,
+        respect_group_quota_refresh,
+        crate::modules::codex_quota_coordinator::RefreshReason::Manual,
+    )
+    .await
+}
+
+pub async fn refresh_quotas_for_account_ids_with_reason(
+    account_ids: &[String],
+    respect_group_quota_refresh: bool,
+    reason: crate::modules::codex_quota_coordinator::RefreshReason,
 ) -> Result<Vec<(String, Result<CodexQuota, String>)>, String> {
     use futures::future::join_all;
     use std::collections::HashSet;
@@ -1814,7 +1860,7 @@ pub async fn refresh_quotas_for_account_ids_with_options(
                     .acquire_owned()
                     .await
                     .map_err(|e| format!("获取 Codex 刷新并发许可失败: {}", e))?;
-                let result = refresh_account_quota(&account_id).await;
+                let result = refresh_account_quota_for_reason(&account_id, reason).await;
                 Ok::<(String, Result<CodexQuota, String>), String>((account_id, result))
             }
         })
