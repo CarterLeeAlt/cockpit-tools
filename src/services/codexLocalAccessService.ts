@@ -22,6 +22,23 @@ import type {
   CodexLocalAccessUsageEventPage,
 } from "../types/codexLocalAccess";
 
+export const CODEX_LOCAL_ACCESS_STATE_UPDATED_EVENT =
+  "codex-local-access-state-updated";
+
+function notifyCodexLocalAccessStateUpdated(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(CODEX_LOCAL_ACCESS_STATE_UPDATED_EVENT));
+}
+
+async function invokeCodexLocalAccessStateMutation(
+  command: string,
+  args?: Record<string, unknown>,
+): Promise<CodexLocalAccessState> {
+  const state = await invoke<CodexLocalAccessState>(command, args);
+  notifyCodexLocalAccessStateUpdated();
+  return state;
+}
+
 export async function getCodexLocalAccessState(): Promise<CodexLocalAccessState> {
   return await invoke("codex_local_access_get_state");
 }
@@ -297,16 +314,20 @@ export async function deleteCodexLocalAccessApiKey(
 export async function setCodexLocalAccessEnabled(
   enabled: boolean,
 ): Promise<CodexLocalAccessState> {
-  return await invoke("codex_local_access_set_enabled", { enabled });
+  return await invokeCodexLocalAccessStateMutation(
+    "codex_local_access_set_enabled",
+    { enabled },
+  );
 }
 
 export async function activateCodexLocalAccess(): Promise<CodexLocalAccessState> {
   const startedAt = performance.now();
   console.info("[Codex API Service Switch][Service] invoke codex_local_access_activate started");
   try {
-    return await invoke("codex_local_access_activate", {
-      autoRepairMode: null,
-    });
+    return await invokeCodexLocalAccessStateMutation(
+      "codex_local_access_activate",
+      { autoRepairMode: null },
+    );
   } finally {
     console.info(
       "[Codex API Service Switch][Service] invoke codex_local_access_activate finished",
