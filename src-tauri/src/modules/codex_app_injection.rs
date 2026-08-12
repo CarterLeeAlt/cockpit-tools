@@ -757,7 +757,7 @@ fn injection_script(
         if (accountLabel) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.14)"></span>' + escapeHtml(accountLabel) + '</button>');
         else if (Number.isFinite(accountCount) && accountCount >= 0) fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.14)"></span>' + accountPoolLabel + ' ' + Math.round(accountCount) + '</button>');
         activeQuotaWindows.filter((window) => Number.isFinite(window.remainingPercent)).forEach((window, index) => fields.push('<button type="button" data-cockpit-quota-open style="' + badgeStyle + '"><span style="width:6px;height:6px;border-radius:999px;background:' + quotaColors[index % quotaColors.length] + ';"></span>' + escapeHtml(window.label) + ' ' + Math.round(window.remainingPercent) + '%</button>'));
-        if (fields.length) fields.push('<button type="button" data-cockpit-quota-refresh style="display:inline-grid;place-items:center;box-sizing:border-box;flex:0 0 24px;width:24px;height:24px;min-width:24px;min-height:24px;aspect-ratio:1 / 1;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.20));border-radius:50%;padding:0;appearance:none;-webkit-appearance:none;background:var(--color-token-main-surface-primary,rgba(127,127,127,.10));color:inherit;line-height:0;vertical-align:middle;box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(8px);cursor:pointer;pointer-events:auto;transition:color .15s ease,border-color .15s ease,background .15s ease,opacity .15s ease"><svg data-cockpit-quota-refresh-icon viewBox="0 0 24 24" width="14" height="14" style="display:block;width:14px;height:14px;flex:0 0 14px;transform-origin:50% 50%;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg></button>');
+        if (fields.length) fields.push('<button type="button" data-cockpit-quota-refresh style="display:inline-grid;place-items:center;box-sizing:border-box;flex:0 0 24px;width:24px;height:24px;min-width:24px;min-height:24px;aspect-ratio:1 / 1;border:1px solid var(--color-token-border-subtle,rgba(127,127,127,.20));border-radius:50%;padding:0;appearance:none;-webkit-appearance:none;background:var(--color-token-main-surface-primary,rgba(127,127,127,.10));color:inherit;line-height:0;vertical-align:middle;box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(8px);cursor:pointer;pointer-events:auto;transition:color .15s ease,border-color .15s ease,background .15s ease,opacity .15s ease"><svg data-cockpit-quota-refresh-icon viewBox="0 0 24 24" width="12" height="12" style="display:block;width:12px;height:12px;flex:0 0 12px;transform-origin:50% 50%;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg></button>');
         const nextHtml = fields.join('');
         if (host.innerHTML !== nextHtml) host.innerHTML = nextHtml;
         host.style.display = fields.length ? 'flex' : 'none';
@@ -1297,9 +1297,14 @@ mod tests {
         assert!(script.contains("flex:0 0 24px;width:24px;height:24px"));
         assert!(script.contains("min-width:24px;min-height:24px;aspect-ratio:1 / 1"));
         assert!(script.contains("border-radius:50%"));
+        assert!(script.contains("width=\"12\" height=\"12\""));
+        assert!(script.contains("width:12px;height:12px;flex:0 0 12px"));
         assert!(script.contains("transform-origin:50% 50%"));
-        assert!(script.contains("M21 12a9 9 0 1 1-9-9"));
-        assert!(!script.contains("M6.1 9a7 7 0 0 1"));
+        assert!(script.contains("M3 12a9 9 0 0 1 9-9"));
+        assert!(script.contains("M21 3v5h-5"));
+        assert!(script.contains("M21 12a9 9 0 0 1-9 9"));
+        assert!(script.contains("M8 16H3v5"));
+        assert!(!script.contains("M21 12a9 9 0 1 1-9-9"));
         assert!(script.contains("data-cockpit-quota-open"));
         assert!(script.contains("data-cockpit-quota-details"));
         assert!(script.contains("data-cockpit-quota-close"));
