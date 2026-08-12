@@ -927,7 +927,7 @@ pub async fn switch_codex_account(
     Ok(account)
 }
 
-async fn run_codex_post_refresh_checks(app: &AppHandle) {
+pub(crate) async fn run_codex_post_refresh_checks(app: &AppHandle) {
     if CODEX_POST_REFRESH_CHECK_IN_PROGRESS.swap(true, Ordering::SeqCst) {
         logger::log_info("[AutoSwitch][Codex] 后置检查进行中，跳过本次执行");
         return;
@@ -1130,7 +1130,12 @@ async fn refresh_imported_codex_accounts(
         }
 
         attempted = true;
-        match codex_quota::refresh_account_quota(&account.id).await {
+        match codex_quota::refresh_account_quota_for_reason(
+            &account.id,
+            crate::modules::codex_quota_coordinator::RefreshReason::LoginOrImport,
+        )
+        .await
+        {
             Ok(_) => {
                 success_count += 1;
             }
@@ -1375,7 +1380,12 @@ async fn save_codex_oauth_tokens(
         codex_account::upsert_account(tokens)?
     };
 
-    if let Err(e) = codex_quota::refresh_account_quota(&account.id).await {
+    if let Err(e) = codex_quota::refresh_account_quota_for_reason(
+        &account.id,
+        crate::modules::codex_quota_coordinator::RefreshReason::LoginOrImport,
+    )
+    .await
+    {
         logger::log_error(&format!("刷新配额失败: {}", e));
     }
 
@@ -1495,7 +1505,12 @@ pub async fn add_codex_account_with_token(
     let account = codex_account::upsert_account(tokens)?;
 
     // 刷新配额
-    if let Err(e) = codex_quota::refresh_account_quota(&account.id).await {
+    if let Err(e) = codex_quota::refresh_account_quota_for_reason(
+        &account.id,
+        crate::modules::codex_quota_coordinator::RefreshReason::LoginOrImport,
+    )
+    .await
+    {
         logger::log_error(&format!("刷新配额失败: {}", e));
     }
 
@@ -1543,11 +1558,8 @@ pub fn update_codex_account_name(account_id: String, name: String) -> Result<Cod
 }
 
 #[tauri::command]
-pub fn update_codex_account_capsule_label(
-    account_id: String,
-    label: String,
-) -> Result<CodexAccount, String> {
-    codex_account::update_account_capsule_label(&account_id, label)
+pub fn configure_codex_quota_coordinator(current_minutes: i32) {
+    crate::modules::codex_quota_coordinator::configure_current_account_interval(current_minutes);
 }
 
 #[tauri::command]

@@ -104,9 +104,6 @@ pub struct UserConfig {
     /// Codex 切号时是否同步覆盖 WSL 配置 (Windows Only)
     #[serde(default = "default_codex_sync_wsl")]
     pub codex_sync_wsl: bool,
-    /// 是否启用 Codex 客户端中的 API 服务额度显示注入
-    #[serde(default = "default_codex_app_ui_injection_enabled")]
-    pub codex_app_ui_injection_enabled: bool,
     /// Codex WSL 配置目录 (Windows Only)
     #[serde(default = "default_codex_wsl_config_dir")]
     pub codex_wsl_config_dir: String,
@@ -698,9 +695,6 @@ fn default_codex_auto_refresh() -> i32 {
 fn default_codex_sync_wsl() -> bool {
     false
 }
-fn default_codex_app_ui_injection_enabled() -> bool {
-    true
-}
 fn default_codex_wsl_config_dir() -> String {
     String::new()
 }
@@ -1160,7 +1154,6 @@ impl Default for UserConfig {
             auto_refresh_minutes: default_auto_refresh(),
             codex_auto_refresh_minutes: default_codex_auto_refresh(),
             codex_sync_wsl: default_codex_sync_wsl(),
-            codex_app_ui_injection_enabled: default_codex_app_ui_injection_enabled(),
             codex_wsl_config_dir: default_codex_wsl_config_dir(),
             zed_auto_refresh_minutes: default_zed_auto_refresh(),
             ghcp_auto_refresh_minutes: default_ghcp_auto_refresh(),
@@ -2546,22 +2539,6 @@ mod tests {
         let migrated_cfg: UserConfig =
             serde_json::from_value(serde_json::json!({})).expect("旧配置反序列化应成功");
         assert!(!migrated_cfg.grok_sync_official_auth_on_switch);
-    }
-
-    #[test]
-    fn codex_api_service_quota_display_defaults_to_enabled() {
-        let default_cfg = UserConfig::default();
-        assert!(default_cfg.codex_app_ui_injection_enabled);
-
-        let upgraded_cfg: UserConfig =
-            serde_json::from_value(serde_json::json!({})).expect("旧配置反序列化应成功");
-        assert!(upgraded_cfg.codex_app_ui_injection_enabled);
-
-        let disabled_cfg: UserConfig = serde_json::from_value(serde_json::json!({
-            "codex_app_ui_injection_enabled": false
-        }))
-        .expect("显式关闭配置反序列化应成功");
-        assert!(!disabled_cfg.codex_app_ui_injection_enabled);
     }
 
     #[test]

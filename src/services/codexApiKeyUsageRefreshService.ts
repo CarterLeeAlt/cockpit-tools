@@ -92,13 +92,18 @@ function isUsageEligibleApiKey(account: CodexAccount): boolean {
 
 export async function refreshCodexApiKeyUsageForAccounts(
   accounts: CodexAccount[],
-  options?: { force?: boolean },
+  options?: { force?: boolean; maxAgeMs?: number },
 ): Promise<void> {
   const initialCache = readCodexApiKeyUsageCache();
+  const now = Date.now();
   const eligibleAccounts = accounts.filter(
     (account) =>
       isUsageEligibleApiKey(account) &&
-      (options?.force || !initialCache[account.id]?.unavailable),
+      (options?.force || !initialCache[account.id]?.unavailable) &&
+      (options?.force ||
+        !options?.maxAgeMs ||
+        !initialCache[account.id]?.updatedAt ||
+        now - initialCache[account.id].updatedAt! >= options.maxAgeMs),
   );
   if (eligibleAccounts.length === 0) return;
 

@@ -385,16 +385,6 @@ export async function updateCodexAccountName(accountId: string, name: string): P
   return await invoke('update_codex_account_name', { accountId, name });
 }
 
-export async function updateCodexAccountCapsuleLabel(
-  accountId: string,
-  label: string,
-): Promise<CodexAccount> {
-  return await invoke('update_codex_account_capsule_label', {
-    accountId,
-    label,
-  });
-}
-
 export async function updateCodexApiKeyCredentials(
   accountId: string,
   apiKey: string,

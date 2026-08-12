@@ -340,22 +340,7 @@ pub fn run() {
                 modules::codex_local_access::restore_local_access_gateway().await;
             });
 
-            {
-                let app_handle = app.handle().clone();
-                std::thread::spawn(move || {
-                    match modules::codex_app_injection::restore_running_profiles(app_handle) {
-                        Ok(0) => {}
-                        Ok(count) => logger::log_info(&format!(
-                            "[Codex App Injection] 启动恢复完成: count={}",
-                            count
-                        )),
-                        Err(err) => logger::log_warn(&format!(
-                            "[Codex App Injection] 启动恢复失败: {}",
-                            err
-                        )),
-                    }
-                });
-            }
+            modules::codex_quota_coordinator::ensure_started();
 
             {
                 let app_handle = app.handle().clone();
@@ -794,6 +779,7 @@ pub fn run() {
             commands::codex::refresh_codex_subscription_info,
             commands::codex::refresh_all_codex_quotas,
             commands::codex::refresh_current_codex_quota,
+            commands::codex::configure_codex_quota_coordinator,
             commands::codex::codex_oauth_login_start,
             commands::codex::codex_oauth_open_incognito_window,
             commands::codex::codex_oauth_login_completed,
@@ -802,7 +788,6 @@ pub fn run() {
             commands::codex::add_codex_account_with_token,
             commands::codex::add_codex_account_with_api_key,
             commands::codex::update_codex_account_name,
-            commands::codex::update_codex_account_capsule_label,
             commands::codex::update_codex_api_key_credentials,
             commands::codex::sync_codex_api_key_provider_accounts,
             commands::codex::update_codex_api_key_bound_oauth_account,
@@ -1273,7 +1258,6 @@ pub fn run() {
                     modules::logger::log_info("[Window] 主窗口已销毁，应用继续在托盘运行");
                 } else {
                     modules::app_lifecycle::begin_shutdown();
-                    modules::codex_app_injection::stop_all();
                     tauri::async_runtime::spawn(async {
                         modules::codex_local_access::shutdown_local_access_gateway_for_app_exit()
                             .await;
@@ -1282,7 +1266,6 @@ pub fn run() {
             }
             RunEvent::Exit => {
                 modules::app_lifecycle::begin_shutdown();
-                modules::codex_app_injection::stop_all();
                 tauri::async_runtime::spawn(async {
                     modules::codex_local_access::shutdown_local_access_gateway_for_app_exit().await;
                 });

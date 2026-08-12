@@ -86,8 +86,6 @@ pub struct GeneralConfig {
     pub codex_auto_refresh_minutes: i32,
     /// Codex 切号时是否同步覆盖 WSL 配置 (Windows Only)
     pub codex_sync_wsl: bool,
-    /// 是否启用 Codex 客户端中的 API 服务额度显示注入
-    pub codex_app_ui_injection_enabled: bool,
     /// Codex WSL 配置目录 (Windows Only)
     pub codex_wsl_config_dir: String,
     /// Zed 自动刷新间隔（分钟），-1 表示禁用
@@ -1047,7 +1045,6 @@ fn is_general_config_patch_field(key: &str) -> bool {
             | "auto_refresh_minutes"
             | "codex_auto_refresh_minutes"
             | "codex_sync_wsl"
-            | "codex_app_ui_injection_enabled"
             | "codex_wsl_config_dir"
             | "zed_auto_refresh_minutes"
             | "ghcp_auto_refresh_minutes"
@@ -2535,7 +2532,6 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         auto_refresh_minutes: user_config.auto_refresh_minutes,
         codex_auto_refresh_minutes: user_config.codex_auto_refresh_minutes,
         codex_sync_wsl: user_config.codex_sync_wsl,
-        codex_app_ui_injection_enabled: user_config.codex_app_ui_injection_enabled,
         codex_wsl_config_dir: user_config.codex_wsl_config_dir,
         zed_auto_refresh_minutes: user_config.zed_auto_refresh_minutes,
         ghcp_auto_refresh_minutes: user_config.ghcp_auto_refresh_minutes,

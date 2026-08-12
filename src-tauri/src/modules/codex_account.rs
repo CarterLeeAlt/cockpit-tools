@@ -6,7 +6,6 @@ use crate::models::codex::{
 use crate::modules::{account, codex_agent_identity, codex_oauth, logger};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use ed25519_dalek::pkcs8::DecodePrivateKey;
-use rand::Rng;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -85,8 +84,6 @@ const CODEX_TOKEN_REFRESH_FILE_LOCK_TIMEOUT_SECONDS: u64 = 120;
 const CODEX_TOKEN_REFRESH_FILE_LOCK_STALE_SECONDS: u64 = 10 * 60;
 const CODEX_TOKEN_REFRESH_FILE_LOCK_POLL_MS: u64 = 100;
 const CODEX_ACCOUNT_DETAIL_SCHEMA_VERSION: u32 = 2;
-const CAPSULE_LABEL_ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-const CAPSULE_LABEL_GENERATED_LENGTH: usize = 6;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -2952,8 +2949,6 @@ fn apply_compat_account_metadata(
     }
     account.account_name = read_json_string(value, &["account_name", "accountName"])
         .or_else(|| account.account_name.clone());
-    account.capsule_label = read_json_string(value, &["capsule_label", "capsuleLabel"])
-        .or_else(|| account.capsule_label.clone());
     account.account_structure = read_json_string(value, &["account_structure", "accountStructure"])
         .or_else(|| account.account_structure.clone());
     account.account_note = read_json_string(value, &["account_note", "accountNote"])
@@ -9045,7 +9040,7 @@ mod tests {
         format_refresh_error_for_user, get_accounts_dir, get_accounts_storage_path,
         get_current_account_from_loaded, import_from_json, is_loopback_http_base_url,
         is_managed_auth_refresh_due, is_pending_oauth_account, list_accounts_checked, load_account,
-        load_account_index, looks_like_sub2api_export, normalize_capsule_label, now_timestamp,
+        load_account_index, looks_like_sub2api_export, now_timestamp,
         parse_agent_identity_from_value, parse_auth_file_last_refresh, parse_codex_account_compat,
         parse_line_delimited_json_values, read_api_provider_from_config_toml,
         read_quick_config_from_config_toml, remove_accounts, resolve_api_provider_config,
@@ -9784,22 +9779,6 @@ mod tests {
             storage_path.display(),
             env.home_dir.display()
         );
-    }
-
-    #[test]
-    fn capsule_label_validation_accepts_supported_shapes_only() {
-        assert_eq!(normalize_capsule_label("").unwrap(), None);
-        assert_eq!(
-            normalize_capsule_label(" Ab12_- ").unwrap(),
-            Some("Ab12_-".to_string())
-        );
-        assert_eq!(
-            normalize_capsule_label("账号").unwrap(),
-            Some("账号".to_string())
-        );
-        assert!(normalize_capsule_label("abcdefg").is_err());
-        assert!(normalize_capsule_label("账号字段").is_err());
-        assert!(normalize_capsule_label("A中").is_err());
     }
 
     fn make_jwt(payload: serde_json::Value) -> String {
@@ -14122,124 +14101,17 @@ pub fn update_account_name(account_id: &str, name: String) -> Result<CodexAccoun
     Ok(account)
 }
 
-pub fn is_independent_app_injection_account(account: &CodexAccount) -> bool {
-    if account.is_api_key_auth() || account.is_web_session_auth() {
-        return false;
-    }
-    if account.is_agent_identity_auth() {
-        return true;
-    }
-
-    let access_token = account.tokens.access_token.trim();
-    let refresh_token = account
-        .tokens
-        .refresh_token
-        .as_deref()
-        .map(str::trim)
-        .filter(|token| !token.is_empty());
-    let personal_access_token = access_token.starts_with("at-")
-        && account.tokens.id_token.trim().is_empty()
-        && refresh_token.is_none();
-    !access_token.is_empty() && (refresh_token.is_some() || personal_access_token)
-}
-
-fn is_capsule_label_cjk_character(character: char) -> bool {
-    matches!(
-        character,
-        '\u{3400}'..='\u{4dbf}'
-            | '\u{4e00}'..='\u{9fff}'
-            | '\u{f900}'..='\u{faff}'
-    )
-}
-
-pub fn normalize_capsule_label(raw: &str) -> Result<Option<String>, String> {
-    let trimmed = raw.trim();
+/// 返回账号的分组额度刷新策略。账号未分组时继承平台配置。
+pub fn quota_refresh_policy_for_account(account_id: &str) -> CodexGroupQuotaRefreshPolicy {
+    let trimmed = account_id.trim();
     if trimmed.is_empty() {
-        return Ok(None);
+        return CodexGroupQuotaRefreshPolicy::Inherit;
     }
-
-    let characters: Vec<char> = trimmed.chars().collect();
-    let is_ascii_label = characters.iter().all(|character| {
-        character.is_ascii_alphanumeric() || *character == '_' || *character == '-'
-    });
-    if is_ascii_label && characters.len() <= CAPSULE_LABEL_GENERATED_LENGTH {
-        return Ok(Some(trimmed.to_string()));
-    }
-
-    let is_cjk_label = characters
-        .iter()
-        .all(|character| is_capsule_label_cjk_character(*character));
-    if is_cjk_label && characters.len() <= 3 {
-        return Ok(Some(trimmed.to_string()));
-    }
-
-    Err("胶囊显示字段只能使用最多 6 个英数字符，或最多 3 个中文字符".to_string())
-}
-
-fn generate_unique_capsule_label(account_id: &str) -> String {
-    let used_labels: HashSet<String> = list_accounts()
+    load_codex_account_group_records()
         .into_iter()
-        .filter(|account| account.id != account_id)
-        .filter_map(|account| account.capsule_label)
-        .map(|label| label.trim().to_ascii_lowercase())
-        .filter(|label| !label.is_empty())
-        .collect();
-
-    let mut rng = rand::thread_rng();
-    for _ in 0..64 {
-        let label: String = (0..CAPSULE_LABEL_GENERATED_LENGTH)
-            .map(|_| {
-                let index = rng.gen_range(0..CAPSULE_LABEL_ALPHABET.len());
-                CAPSULE_LABEL_ALPHABET[index] as char
-            })
-            .collect();
-        if !used_labels.contains(&label.to_ascii_lowercase()) {
-            return label;
-        }
-    }
-
-    (0..CAPSULE_LABEL_GENERATED_LENGTH)
-        .map(|_| {
-            let index = rng.gen_range(0..CAPSULE_LABEL_ALPHABET.len());
-            CAPSULE_LABEL_ALPHABET[index] as char
-        })
-        .collect()
-}
-
-pub fn ensure_account_capsule_label(account_id: &str) -> Result<CodexAccount, String> {
-    let mut account =
-        load_account(account_id).ok_or_else(|| format!("账号不存在: {}", account_id))?;
-    let normalized = account
-        .capsule_label
-        .as_deref()
-        .and_then(|label| normalize_capsule_label(label).ok().flatten());
-    if let Some(label) = normalized {
-        if account.capsule_label.as_deref() == Some(label.as_str()) {
-            return Ok(account);
-        }
-        account.capsule_label = Some(label);
-    } else {
-        account.capsule_label = Some(generate_unique_capsule_label(account_id));
-    }
-    save_account(&account)?;
-    Ok(account)
-}
-
-pub fn update_account_capsule_label(
-    account_id: &str,
-    raw_label: String,
-) -> Result<CodexAccount, String> {
-    let mut account =
-        load_account(account_id).ok_or_else(|| format!("账号不存在: {}", account_id))?;
-    if !is_independent_app_injection_account(&account) {
-        return Err("只有独立 Codex 账号支持设置胶囊显示字段".to_string());
-    }
-
-    let label = normalize_capsule_label(&raw_label)?
-        .unwrap_or_else(|| generate_unique_capsule_label(account_id));
-    account.capsule_label = Some(label);
-    save_account(&account)?;
-    Ok(account)
+        .find(|group| group.account_ids.iter().any(|id| id.trim() == trimmed))
+        .map(|group| group.policy())
+        .unwrap_or(CodexGroupQuotaRefreshPolicy::Inherit)
 }
 
 fn normalize_quota_alert_threshold(raw: i32) -> i32 {

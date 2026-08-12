@@ -3202,7 +3202,7 @@ mod imp {
                 make_text_row(
                     translate_or(
                         lang,
-                        "settings.general.codexAppUiInjectionPoolLabel",
+                        "codex.localAccess.accountCount",
                         "Accounts",
                         &[],
                     ),
